@@ -89,9 +89,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:image", content: "/6a5d4e514d1e968239079f7a/6a5d50ac891ff56ef52f9f60_Social%20Share.webp" },
     ],
     links: [
-      { rel: "stylesheet", href: "/webflow.css" },
-      { rel: "stylesheet", href: "/fonts/fonts.css" },
-      { rel: "stylesheet", href: "/privatum.css" },
+      // Single entry point for all styles. src/styles.css bundles, in order:
+      // fonts.css -> webflow.css -> privatum.css, then the Tailwind theme.
+      // Do NOT also link /webflow.css, /fonts/fonts.css or /privatum.css from
+      // public/ — those copies exist only for the static pages under public/
+      // (docs.html, case-study.html, dashboard.html) and linking them here
+      // loads ~260 KB of CSS a second time with unpredictable cascade order.
       {
         rel: "stylesheet",
         href: appCss,
@@ -111,9 +114,6 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
-        <link rel="stylesheet" href="/webflow.css" />
-        <link rel="stylesheet" href="/fonts/fonts.css" />
-        <link rel="stylesheet" href="/privatum.css" />
       </head>
       <body>
         {children}
