@@ -1,8 +1,18 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
-@import "./styles/fonts.css";
+
+/*
+ * Webflow design system. Import order is load-bearing and mirrors the original
+ * Webflow export in public/index.html: webflow -> fonts -> privatum, with
+ * privatum.css last so its brand overrides win.
+ *
+ * These three are unlayered, so they beat everything Tailwind puts in @layer
+ * base/components/utilities regardless of source order. That is deliberate —
+ * it is what keeps Tailwind's Preflight from resetting the Webflow layout.
+ */
 @import "./styles/webflow.css";
+@import "./styles/fonts.css";
 @import "./styles/privatum.css";
 
 @custom-variant dark (&:is(.dark *));
