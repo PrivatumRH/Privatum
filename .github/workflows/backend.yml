@@ -41,12 +41,16 @@ jobs:
         run: bun test
 
   build-push:
+    name: Build & Push Docker Image
     needs: test
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -55,26 +59,34 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/backend
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
 
-      - name: Build and push backend Docker image
+      - name: Build and push backend image
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
-          tags: |
-            ghcr.io/${{ github.repository }}/backend:latest
-            ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
   release:
+    name: Create Release Tag
     needs: build-push
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Generate release tag
         id: tag_gen
@@ -83,30 +95,32 @@ jobs:
           TIMESTAMP=$(date -u +'%Y%m%d%H%M')
           TAG_NAME="backend-${TIMESTAMP}-${SHORT_SHA}"
           echo "tag=${TAG_NAME}" >> "$GITHUB_OUTPUT"
-
-      - name: Create Git Tag
-        run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag ${{ steps.tag_gen.outputs.tag }}
-          git push origin ${{ steps.tag_gen.outputs.tag }}
+          git tag "${TAG_NAME}"
+          git push origin "${TAG_NAME}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag_gen.outputs.tag }}
+          name: Release ${{ steps.tag_gen.outputs.tag }}
           generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
+    name: Trigger Deploy
     needs: build-push
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Render Deployment
+      - name: Trigger Render Deploy Hook
         run: |
           if [ -z "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
-            echo "RENDER_DEPLOY_HOOK_URL is not set; skipping deployment trigger."
+            echo "RENDER_DEPLOY_HOOK_URL secret not set. Skipping deploy hook."
             exit 0
           fi
-          echo "Triggering Render deploy hook..."
-          curl -s -f -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" || echo "Warning: Render deploy hook call failed, continuing."
+          echo "Triggering deploy hook..."
+          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" || echo "Deploy hook request failed or service unreachable, continuing."
+
