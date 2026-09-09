@@ -534,3 +534,49 @@ a[data-soon].is-soon::after{opacity:1;transform:translateY(-50%) translateX(0)}
 .pv-docs-sec,.pv-docs-hero{min-width:0;max-width:100%}
 .pv-docs-pre{max-width:100%}
 
+/* Navigation dropdown and icon defensive styles */
+.dropdown-icon {
+  width: 11px !important;
+  height: 6px !important;
+  max-width: 11px !important;
+  max-height: 6px !important;
+  flex-shrink: 0 !important;
+}
+
+.dropdown-socials_wrapper .social {
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  flex-shrink: 0 !important;
+}
+
+.dropdown-socials_wrapper .social svg,
+.social svg {
+  width: 0.91rem !important;
+  height: 0.91rem !important;
+  max-width: 0.91rem !important;
+  max-height: 0.91rem !important;
+}
+
+/* Ensure mega-menu dropdown is strictly hidden unless hovered or opened */
+.w-dropdown-list,
+.dropdown-list {
+  display: none !important;
+  position: absolute !important;
+}
+
+.w-dropdown.w--open .w-dropdown-list,
+.w-dropdown.w--open .dropdown-list,
+.w-dropdown-list.w--open,
+.dropdown-list.w--open,
+.w-dropdown:hover .w-dropdown-list,
+.w-dropdown:hover .dropdown-list {
+  display: flex !important;
+}
+
+/* Ensure mobile menu tab items never render on desktop */
+@media (min-width: 992px) {
+  .tab-menus {
+    display: none !important;
+  }
+}
+
