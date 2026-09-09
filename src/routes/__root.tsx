@@ -1,61 +1,126 @@
-import { createRootRoute, Outlet, Link } from "@tanstack/react-router";
-import { Shield, Github } from "lucide-react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  Outlet,
+  Link,
+  createRootRouteWithContext,
+  useRouter,
+  HeadContent,
+  Scripts,
+} from "@tanstack/react-router";
+import { useEffect, type ReactNode } from "react";
 
-export const Route = createRootRoute({
-  component: () => (
-    <div className="min-h-screen flex flex-col bg-[#080d14] text-slate-100 font-sans selection:bg-[#38B6FF]/30 selection:text-[#38B6FF]">
-      {/* Navigation */}
-      <header className="border-b border-slate-800/80 bg-[#080d14]/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 rounded-lg bg-slate-900 border border-[#38B6FF]/40 flex items-center justify-center text-[#38B6FF] group-hover:border-[#38B6FF] transition">
-              <Shield className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="font-display font-semibold tracking-wider text-lg text-white">PRIVATUM</span>
-              <span className="ml-2 text-xs font-mono uppercase px-1.5 py-0.5 rounded bg-[#38B6FF]/10 text-[#38B6FF] border border-[#38B6FF]/20">
-                Robinhood Chain
-              </span>
-            </div>
+import appCss from "../styles.css?url";
+import { reportLovableError } from "../lib/lovable-error-reporting";
+
+function NotFoundComponent() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="max-w-md text-center">
+        <h1 className="text-7xl font-bold text-foreground">404</h1>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          The page you're looking for doesn't exist or has been moved.
+        </p>
+        <div className="mt-6">
+          <Link
+            to="/"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Go home
           </Link>
-
-          <nav className="flex items-center gap-6 text-sm text-slate-400">
-            <a href="#shards" className="hover:text-white transition">Architecture</a>
-            <a href="#assets" className="hover:text-white transition">USDG & ETH</a>
-            <a href="#sdk" className="hover:text-white transition">SDK</a>
-            <a
-              href="https://github.com/notadeveloper7/privatum"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1.5 text-slate-300 hover:text-white transition px-3 py-1.5 rounded-lg border border-slate-800 hover:border-slate-700 bg-slate-900/60"
-            >
-              <Github className="w-4 h-4" />
-              <span>GitHub</span>
-            </a>
-          </nav>
         </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1">
-        <Outlet />
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-900 py-10 bg-[#060a10]">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <div className="flex items-center gap-3">
-            <span className="font-display text-slate-300 font-semibold">PRIVATUM</span>
-            <span>·</span>
-            <span>Private Payments on Robinhood Chain (Chain ID: 4663)</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <a href="mailto:security@privatumrh.com" className="hover:text-slate-300 transition">Security</a>
-            <a href="https://github.com/notadeveloper7/privatum" className="hover:text-slate-300 transition">Open Source</a>
-            <span>MIT License</span>
-          </div>
-        </div>
-      </footer>
+      </div>
     </div>
-  ),
+  );
+}
+
+function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+  console.error(error);
+  const router = useRouter();
+  useEffect(() => {
+    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+  }, [error]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="max-w-md text-center">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          This page didn't load
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Something went wrong on our end. You can try refreshing or head back home.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          <button
+            onClick={() => {
+              router.invalidate();
+              reset();
+            }}
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Try again
+          </button>
+          <a
+            href="/"
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            Go home
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  head: () => ({
+    meta: [
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { title: "Lovable App" },
+      { name: "description", content: "Lovable Generated Project" },
+      { name: "author", content: "Lovable" },
+      { property: "og:title", content: "Lovable App" },
+      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:site", content: "@Lovable" },
+    ],
+    links: [
+      {
+        rel: "stylesheet",
+        href: appCss,
+      },
+      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+    ],
+  }),
+  shellComponent: RootShell,
+  component: RootComponent,
+  notFoundComponent: NotFoundComponent,
+  errorComponent: ErrorComponent,
 });
+
+function RootShell({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+
+function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <Outlet />
+    </QueryClientProvider>
+  );
+}
