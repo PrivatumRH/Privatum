@@ -13,6 +13,13 @@ bun.lockb
 dist/
 build/
 out/
+dist-ssr/
+.output/
+.vinxi/
+.tanstack/
+.nitro/
+.wrangler/
+.dev.vars
 .next/
 .vercel
 
