@@ -1103,7 +1103,7 @@ textarea.w-input, textarea.w-select {
   margin-right: 8px;
 }
 
-.w-widget-twitter-count-shim:not(.w--vertical.w--large {
+.w-widget-twitter-count-shim:not(.w--vertical).w--large {
   margin-left: 6px;
 }
 
@@ -1125,7 +1125,7 @@ textarea.w-input, textarea.w-select {
   margin-left: -9px;
 }
 
-.w-widget-twitter-count-shim:not(.w--vertical.w--large:before {
+.w-widget-twitter-count-shim:not(.w--vertical).w--large:before {
   border-width: 5px;
   margin-top: -5px;
   margin-left: -10px;
@@ -1138,7 +1138,7 @@ textarea.w-input, textarea.w-select {
   margin-left: -8px;
 }
 
-.w-widget-twitter-count-shim:not(.w--vertical.w--large:after {
+.w-widget-twitter-count-shim:not(.w--vertical).w--large:after {
   border-width: 5px;
   margin-top: -5px;
   margin-left: -9px;
