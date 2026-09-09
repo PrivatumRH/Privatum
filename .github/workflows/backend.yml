@@ -18,10 +18,31 @@ permissions:
 
 jobs:
   test:
+    name: Test & Lint
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: privatum_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     defaults:
       run:
         working-directory: backend
+    env:
+      NODE_ENV: test
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/privatum_test
+      SHARD_B_ENCRYPTION_KEY: 97bc58b23128c5097358f49d5e38337f7f313b1fac2ebb43a5d96c561bc35165f939a84cc46c9520e608eb6c1a5005d9075916e080193f643e2eeacf62278fab90158a68b277706129ad3acb9e319e33ee
+      ROBINHOOD_CHAIN_ID: 4663
+      ROBINHOOD_RPC_URL: https://rpc.mainnet.chain.robinhood.com
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,8 +58,12 @@ jobs:
       - name: Type check
         run: bun run check
 
+      - name: Run database migrations
+        run: bun -e 'import { migrate } from "./src/db/migrate"; await migrate();'
+
       - name: Run tests
         run: bun test
+
 
   build-push:
     name: Build & Push Docker Image
