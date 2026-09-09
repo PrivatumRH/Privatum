@@ -89,7 +89,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:image", content: "/6a5d4e514d1e968239079f7a/6a5d50ac891ff56ef52f9f60_Social%20Share.webp" },
     ],
     links: [
-      { rel: "stylesheet", href: "/6a5d4e514d1e968239079f7a/css/callium.webflow.shared.cd6b91f9a.css" },
+      { rel: "stylesheet", href: "/webflow.css" },
       { rel: "stylesheet", href: "/fonts/fonts.css" },
       { rel: "stylesheet", href: "/privatum.css" },
       {
@@ -111,6 +111,9 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <link rel="stylesheet" href="/webflow.css" />
+        <link rel="stylesheet" href="/fonts/fonts.css" />
+        <link rel="stylesheet" href="/privatum.css" />
       </head>
       <body>
         {children}
