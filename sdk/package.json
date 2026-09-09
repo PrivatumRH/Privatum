@@ -1,0 +1,39 @@
+{
+  "name": "@privatum/robinhood-chain-sdk",
+  "version": "0.1.0",
+  "description": "Viem-based TypeScript SDK for PRIVATUM 2-of-3 threshold self-custody and private payments on Robinhood Chain",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "check": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "keywords": [
+    "privatum",
+    "robinhood-chain",
+    "threshold-signatures",
+    "mpc",
+    "erc-4337",
+    "usdg",
+    "viem"
+  ],
+  "author": "PRIVATUM",
+  "license": "MIT",
+  "dependencies": {
+    "viem": "^2.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "bun-types": "^1.2.2",
+    "typescript": "^5.7.3"
+  }
+}
