@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>PRIVATUM Dashboard</title>
+<meta content="PRIVATUM threshold custody dashboard for private USDC and USDT payments on Robinhood Chain." name="description"/>
+<link href="assets/privatum-mark-black.png" rel="icon" type="image/png"/>
+<link href="fonts/fonts.css" rel="stylesheet"/>
+<link href="privatum-dashboard.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&amp;family=Outfit:wght@400;500;600&amp;display=swap" rel="stylesheet"/></head>
+<body>
+<div aria-hidden="true" class="cursor-dot"></div>
+<div aria-hidden="true" class="cursor-ring"></div>
+<div aria-hidden="true" class="app-bg">
+<div class="bg-gradient"></div>
+<canvas id="particle-canvas"></canvas>
+<div class="bg-grid"></div>
+<div class="bg-spotlight spotlight-a"></div>
+<div class="bg-spotlight spotlight-b"></div>
+</div>
+<div class="app-shell">
+<aside class="app-sidebar" id="app-sidebar">
+<a aria-label="PRIVATUM home" class="side-brand magnetic" href="index.html">
+<img alt="PRIVATUM logo" src="assets/privatum-mark-white.png"/>
+<span>
+<strong>Privatum</strong>
+<small>Private by design.</small>
+</span>
+</a>
+<div class="network-pill">
+<span class="pulse-dot"></span>
+<div>
+<strong>Robinhood Chain</strong>
+<small>Chain ID 4663</small>
+</div>
+</div>
+<nav aria-label="Dashboard modules" class="module-nav">
+<button class="nav-item active" data-module-link="overview" type="button">
+<span class="nav-icon">01</span><span>Overview</span><i></i>
+</button>
+<button class="nav-item" data-module-link="send" type="button">
+<span class="nav-icon">02</span><span>Private Send</span><i></i>
+</button>
+<button class="nav-item" data-module-link="receive" type="button">
+<span class="nav-icon">03</span><span>Stealth Receive</span><i></i>
+</button>
+<button class="nav-item" data-module-link="swap" type="button">
+<span class="nav-icon">04</span><span>Swap</span><i></i>
+</button>
+<button class="nav-item" data-module-link="shards" type="button">
+<span class="nav-icon">05</span><span>Shards</span><i></i>
+</button>
+<button class="nav-item" data-module-link="activity" type="button">
+<span class="nav-icon">06</span><span>Activity</span><i></i>
+</button>
+<button class="nav-item" data-module-link="recovery" type="button">
+<span class="nav-icon">07</span><span>Recovery</span><i></i>
+</button>
+<button class="nav-item" data-module-link="sdk" type="button">
+<span class="nav-icon">08</span><span>Open SDK</span><i></i>
+</button>
+<button class="nav-item" data-module-link="settings" type="button">
+<span class="nav-icon">09</span><span>Settings</span><i></i>
+</button>
+</nav>
+<div class="side-footer">
+<a class="side-link magnetic" href="docs.html">Developer docs</a>
+<a class="side-link magnetic" href="case-study.html">Research library</a>
+<a class="side-link magnetic" href="index.html">Marketing site</a>
+</div>
+</aside>
+<div class="sidebar-scrim" id="sidebar-scrim"></div>
+<main class="app-main">
+<header class="topbar glass-panel">
+<button aria-label="Open dashboard navigation" class="icon-button mobile-menu magnetic" id="mobile-menu" type="button">
+<span></span><span></span><span></span>
+</button>
+<div class="topbar-title">
+<small id="module-eyebrow">Threshold custody</small>
+<strong id="module-title">Overview</strong>
+</div>
+<div class="topbar-actions">
+<button class="ghost-button magnetic" id="demo-tour" type="button">Run tour</button>
+<button class="wallet-button magnetic" id="wallet-button" type="button">
+<img alt="MetaMask" src="assets/metamask-fox.svg"/>
+<span id="wallet-button-text">Connect Wallet</span>
+</button>
+</div>
+</header>
+<section class="module-stage" id="module-stage">
+<div class="module-page active" data-module="overview">
+<div class="bento-grid overview-grid">
+<article class="hero-card glass-panel reveal-card">
+<div class="hero-card-bg"></div>
+<div class="hero-card-content">
+<span class="eyebrow">Shielded portfolio</span>
+<h1><span id="total-balance">$24,806.42</span></h1>
+<p>Private USDC and USDT custody with distributed signing, policy controls, and passkey recovery.</p>
+<div class="hero-actions">
+<button class="primary-button magnetic" data-module-link="send" type="button">Start private send</button>
+<button class="secondary-button magnetic" data-module-link="shards" type="button">Check quorum</button>
+</div>
+</div>
+<div class="hero-orb">
+<img alt="" src="assets/privatum-mark-white.png"/>
+<span class="orbit orbit-a"></span>
+<span class="orbit orbit-b"></span>
+<span class="orbit orbit-c"></span>
+</div>
+</article>
+<article class="stat-card glass-panel reveal-card">
+<span>USDC available</span>
+<strong id="usdc-stat">$18,420.42</strong>
+<small>Ready for threshold signing</small>
+</article>
+<article class="stat-card glass-panel reveal-card">
+<span>USDT available</span>
+<strong id="usdt-stat">$6,386.00</strong>
+<small>Ready for swap routing</small>
+</article>
+<article class="stat-card glass-panel reveal-card">
+<span>Quorum</span>
+<strong>2-of-3</strong>
+<small>Client, co-signer, passkey</small>
+</article>
+<article class="stat-card glass-panel reveal-card">
+<span>Policy status</span>
+<strong id="policy-stat">Armed</strong>
+<small>Limits and velocity checks</small>
+</article>
+<article class="chart-panel glass-panel reveal-card">
+<div class="panel-heading">
+<div>
+<span class="eyebrow">Liquidity rhythm</span>
+<h2>Seven day balance flow</h2>
+</div>
+<button class="text-button magnetic" data-module-link="activity" type="button">Open ledger</button>
+</div>
+<div aria-label="Seven day balance chart" class="bar-chart" id="balance-chart"></div>
+</article>
+<article class="pipeline-panel glass-panel reveal-card">
+<div class="panel-heading">
+<div>
+<span class="eyebrow">Live posture</span>
+<h2>Signing pipeline</h2>
+</div>
+<span class="status-badge">Ready</span>
+</div>
+<div class="mini-pipeline">
+<span>Build</span><i></i><span>Shard A</span><i></i><span>Policy</span><i></i><span>Shard B</span><i></i><span>Settle</span>
+</div>
+</article>
+<article class="activity-panel glass-panel reveal-card">
+<div class="panel-heading">
+<div>
+<span class="eyebrow">Latest activity</span>
+<h2>Settlement feed</h2>
+</div>
+<button class="text-button magnetic" data-module-link="activity" type="button">View all</button>
+</div>
+<div class="activity-list compact" id="overview-activity"></div>
+</article>
+<article class="quick-panel glass-panel reveal-card">
+<div class="panel-heading">
+<div>
+<span class="eyebrow">Command actions</span>
+<h2>Quick operations</h2>
+</div>
+</div>
+<div class="quick-actions">
+<button class="quick-action magnetic" data-module-link="send" type="button">Private send</button>
+<button class="quick-action magnetic" data-module-link="receive" type="button">Stealth receive</button>
+<button class="quick-action magnetic" data-module-link="swap" type="button">Swap stablecoins</button>
+<button class="quick-action magnetic" data-module-link="recovery" type="button">Recovery rehearsal</button>
+</div>
+</article>
+</div>
+</div>
+<div class="module-page" data-module="send">
+<div class="two-column">
+<article class="form-panel glass-panel reveal-card">
+<span class="eyebrow">Private send</span>
+<h1>Compose a threshold-signed transfer.</h1>
+<p class="module-copy">The full private key is never assembled. Shard A signs locally, Shard B validates policy, and the aggregate signature settles on Robinhood Chain.</p>
+<form class="dashboard-form" id="send-form">
+<label>Recipient
+                  <input id="send-recipient" placeholder="name.privatum or 0x address" type="text" value="recipient.privatum"/>
+</label>
+<div class="form-row">
+<label>Asset
+                    <select id="send-asset">
+<option>USDC</option>
+<option>USDT</option>
+</select>
+</label>
+<label>Amount
+                    <input id="send-amount" inputmode="decimal" placeholder="0.00" type="text" value="50"/>
+</label>
+</div>
+<label>Memo
+                  <input id="send-memo" placeholder="Optional transaction memo" type="text" value="Private payment"/>
+</label>
+<div class="form-summary">
+<div><span>Available</span><strong id="send-available">$18,420.42 USDC</strong></div>
+<div><span>Network fee</span><strong>0.00018 ETH</strong></div>
+<div><span>Policy status</span><strong id="send-policy">Ready for quorum</strong></div>
+</div>
+<button class="primary-button full magnetic" id="send-submit" type="submit">Sign and send</button>
+</form>
+</article>
+<article class="pipeline-visual glass-panel reveal-card">
+<div class="panel-heading">
+<div>
+<span class="eyebrow">2-of-3 quorum</span>
+<h2>Two shards, one signature</h2>
+</div>
+<img alt="" class="panel-mark" src="assets/privatum-mark-white.png"/>
+</div>
+<div aria-hidden="true" class="flow-orbit">
+<span class="flow-node node-a">A</span>
+<span class="flow-node node-b">B</span>
+<span class="flow-node node-c">C</span>
+<span class="flow-core">2/3</span>
+</div>
+<div class="flow-steps" id="send-flow-steps"></div>
+</article>
+</div>
+</div>
+<div class="module-page" data-module="receive">
+<div class="two-column">
+<article class="form-panel glass-panel reveal-card">
+<span class="eyebrow">Stealth receive</span>
+<h1>Share one handle. Receive at one-time addresses.</h1>
+<p class="module-copy">The sender derives a fresh destination from your public meta-address. External explorers cannot trivially link incoming payments to a persistent identity.</p>
+<form class="dashboard-form" id="receive-form">
+<label>Public handle
+                  <input id="receive-handle" type="text" value="you.privatum"/>
+</label>
+<div class="stealth-display">
+<img alt="" src="assets/privatum-mark-white.png"/>
+<div>
+<span id="receive-count">Generated address #1</span>
+<strong id="stealth-address">0x5564f9a1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7</strong>
+</div>
+</div>
+<div class="button-row">
+<button class="primary-button magnetic" type="submit">Generate new address</button>
+<button class="secondary-button magnetic" id="copy-stealth" type="button">Copy address</button>
+</div>
+</form>
+</article>
+<article class="glass-panel reveal-card qr-panel">
+<div class="panel-heading">
+<div>
+<span class="eyebrow">Receiver pattern</span>
+<h2>ERC-5564 target flow</h2>
+</div>
+</div>
+<canvas aria-label="Generated receive pattern" height="420" id="qr-canvas" width="420"></canvas>
+<div class="receive-steps">
+<div><span>01</span><strong>Publish meta-address</strong><p>Your handle points to a public stealth meta-address.</p></div>
+<div><span>02</span><strong>Derive destination</strong><p>The sender creates a one-time address for each payment.</p></div>
+<div><span>03</span><strong>Scan and unlock</strong><p>The wallet detects funds without exposing a persistent identity.</p></div>
+</div>
+</article>
+</div>
+</div>
+<div class="module-page" data-module="swap">
+<div class="two-column">
+<article class="form-panel glass-panel reveal-card">
+<span class="eyebrow">Swap routing</span>
+<h1>Stablecoin conversion with policy controls.</h1>
+<form class="dashboard-form" id="swap-form">
+<div class="form-row">
+<label>From
+                    <select id="swap-from">
+<option>USDT</option>
+<option>USDC</option>
+</select>
+</label>
+<label>Amount
+                    <input id="swap-amount" inputmode="decimal" type="text" value="250"/>
+</label>
+</div>
+<button class="flip-button magnetic" id="swap-flip" type="button">Reverse pair</button>
+<div class="swap-preview">
+<span>Estimated output</span>
+<strong id="swap-output">249.68 USDC</strong>
+<small id="swap-route">Rate 0.9987 · Fee 0.08% · Route: aggregate</small>
+</div>
+<label>Max slippage <output id="slippage-output">0.3%</output>
+<input id="swap-slippage" max="2" min="0.1" step="0.1" type="range" value="0.3"/>
+</label>
+<button class="primary-button full magnetic" id="swap-submit" type="submit">Execute swap</button>
+</form>
+</article>
+<article class="glass-panel reveal-card route-panel">
+<div class="panel-heading">
+<div>
+<span class="eyebrow">Route intelligence</span>
+<h2>Liquidity path</h2>
+</div>
+</div>
+<div class="route-map">
+<div id="route-from">USDT</div><span></span><div>Aggregator</div><span></span><div id="route-to">USDC</div>
+</div>
+<div class="metric-grid">
+<div><span>Quoted spread</span><strong>0.13%</strong></div>
+<div><span>Policy</span><strong>Pass</strong></div>
+<div><span>Settlement</span><strong>L2</strong></div>
+</div>
+<canvas aria-label="Swap route visualization" height="260" id="route-canvas" width="720"></canvas>
+</article>
+</div>
+</div>
+<div class="module-page" data-module="shards">
+<div class="shard-layout">
+<article class="shard-card glass-panel reveal-card" data-shard="A">
+<div class="shard-icon">A</div>
+<span>Desktop client</span>
+<h2>Shard A</h2>
+<p>Encrypted local storage or OS keychain. Signs only after local user confirmation.</p>
+<div class="health-track"><span style="width:96%"></span></div>
+<div class="shard-meta"><strong data-shard-status="">Ready for health check</strong><button class="secondary-button magnetic" type="button">Run check</button></div>
+</article>
+<article class="shard-card glass-panel reveal-card" data-shard="B">
+<div class="shard-icon">B</div>
+<span>Co-signer</span>
+<h2>Shard B</h2>
+<p>Encrypted service shard. Enforces spending limits, session checks, and velocity policy.</p>
+<div class="health-track"><span style="width:99%"></span></div>
+<div class="shard-meta"><strong data-shard-status="">Ready for health check</strong><button class="secondary-button magnetic" type="button">Run check</button></div>
+</article>
+<article class="shard-card glass-panel reveal-card" data-shard="C">
+<div class="shard-icon">C</div>
+<span>Recovery passkey</span>
+<h2>Shard C</h2>
+<p>WebAuthn recovery shard. Combines with Shard B when the desktop shard is lost.</p>
+<div class="health-track"><span style="width:92%"></span></div>
+<div class="shard-meta"><strong data-shard-status="">Ready for health check</strong><button class="secondary-button magnetic" type="button">Run check</button></div>
+</article>
+<article class="quorum-panel glass-panel reveal-card">
+<span class="eyebrow">Quorum rule</span>
+<h2>Any two shards can approve. One cannot.</h2>
+<div class="quorum-visual">
+<span>A</span><i>+</i><span>B</span><i>=</i><strong>Sign</strong>
+<span>B</span><i>+</i><span>C</span><i>=</i><strong>Recover</strong>
+</div>
+<button class="primary-button magnetic" id="rotate-client" type="button">Rotate client shard</button>
+</article>
+</div>
+</div>
+<div class="module-page" data-module="activity">
+<article class="glass-panel reveal-card activity-ledger">
+<div class="panel-heading">
+<div>
+<span class="eyebrow">Ledger</span>
+<h1>Activity and settlement history</h1>
+</div>
+<div class="button-row">
+<button class="secondary-button magnetic" id="clear-activity" type="button">Reset demo ledger</button>
+<button class="primary-button magnetic" id="export-activity" type="button">Export CSV</button>
+</div>
+</div>
+<div class="filter-row" id="activity-filters">
+<button class="active" data-filter="All" type="button">All</button>
+<button data-filter="Send" type="button">Send</button>
+<button data-filter="Receive" type="button">Receive</button>
+<button data-filter="Swap" type="button">Swap</button>
+<button data-filter="Recovery" type="button">Recovery</button>
+<button data-filter="SDK" type="button">SDK</button>
+</div>
+<div class="activity-list" id="activity-list"></div>
+</article>
+</div>
+<div class="module-page" data-module="recovery">
+<div class="two-column">
+<article class="recovery-panel glass-panel reveal-card">
+<span class="eyebrow">Recovery rehearsal</span>
+<h1>Recover access without a seed phrase.</h1>
+<div class="recovery-progress"><span id="recovery-progress-bar"></span></div>
+<div class="recovery-step-card" id="recovery-step-card"></div>
+<div class="button-row">
+<button class="secondary-button magnetic" id="recovery-back" type="button">Back</button>
+<button class="primary-button magnetic" id="recovery-next" type="button">Continue</button>
+</div>
+</article>
+<article class="glass-panel reveal-card recovery-map-panel">
+<div class="panel-heading">
+<div>
+<span class="eyebrow">Recovery path</span>
+<h2>Shard B plus Shard C</h2>
+</div>
+</div>
+<div class="recovery-map">
+<div><strong>Passkey</strong><span>Shard C</span></div>
+<i>+</i>
+<div><strong>Co-signer</strong><span>Shard B</span></div>
+<i>=</i>
+<div><strong>New client</strong><span>Shard A</span></div>
+</div>
+<p class="module-copy">No raw seed phrase is displayed, copied, or stored. Recovery uses an independent quorum path.</p>
+</article>
+</div>
+</div>
+<div class="module-page" data-module="sdk">
+<div class="sdk-layout">
+<article class="glass-panel reveal-card sdk-hero">
+<span class="eyebrow">Open SDK</span>
+<h1>Embed threshold custody with typed TypeScript primitives.</h1>
+<p class="module-copy">The proposed @privatum/robinhood-chain-sdk package exposes shard creation, wallet composition, threshold signing, and network submission through Viem based APIs.</p>
+<div class="button-row">
+<button class="primary-button magnetic" id="copy-install" type="button">Copy install command</button>
+<button class="secondary-button magnetic" id="download-guide" type="button">Download integration guide</button>
+<a class="secondary-button magnetic" href="docs.html#sdk">Open docs</a>
+</div>
+</article>
+<article class="code-panel glass-panel reveal-card">
+<div class="code-header"><span>integration.ts</span><button class="text-button magnetic" id="copy-sdk" type="button">Copy code</button></div>
+<pre><code id="sdk-code">import { Shard, PrivatumWallet, sendUsdc } from "@privatum/robinhood-chain-sdk";
+
+const driveShard = await Shard.create("drive");
+const serverShard = await Shard.create("server");
+const recoveryShard = await Shard.create("recovery");
+
+const wallet = PrivatumWallet.twoOfThree({
+  shards: [driveShard, serverShard, recoveryShard],
+  threshold: 2,
+});
+
+const txHash = await sendUsdc({
+  wallet,
+  to: "recipient.privatum",
+  amount: "50.0",
+  signingShards: [driveShard, serverShard],
+});</code></pre>
+</article>
+</div>
+</div>
+<div class="module-page" data-module="settings">
+<div class="two-column">
+<article class="form-panel glass-panel reveal-card">
+<span class="eyebrow">Policy engine</span>
+<h1>Configure co-signer controls.</h1>
+<form class="dashboard-form" id="settings-form">
+<label>Daily spend limit <output id="daily-output">$2,500</output>
+<input id="daily-limit" max="10000" min="100" step="100" type="range" value="2500"/>
+</label>
+<label>Velocity limit <output id="velocity-output">6 transfers per hour</output>
+<input id="velocity-limit" max="24" min="1" type="range" value="6"/>
+</label>
+<div class="toggle-row">
+<div><strong>Anomaly detection</strong><span>Flag unusual amount, destination, or velocity patterns.</span></div>
+<button aria-label="Toggle anomaly detection" class="toggle active" id="anomaly-toggle" type="button"><span></span></button>
+</div>
+<div class="toggle-row">
+<div><strong>Stealth receive by default</strong><span>Generate a one-time address for incoming payments.</span></div>
+<button aria-label="Toggle stealth receive" class="toggle active" id="stealth-toggle" type="button"><span></span></button>
+</div>
+<button class="primary-button full magnetic" type="submit">Save policy</button>
+<button class="secondary-button full magnetic" id="reset-demo" type="button">Reset entire demo</button>
+</form>
+</article>
+<article class="glass-panel reveal-card posture-panel">
+<div class="panel-heading">
+<div>
+<span class="eyebrow">Operational posture</span>
+<h2>Recommended defaults</h2>
+</div>
+</div>
+<div class="recommendations">
+<div>Keep anomaly detection enabled.</div>
+<div>Use a daily limit below your operating balance.</div>
+<div>Rehearse passkey recovery after every device change.</div>
+<div>Export activity regularly for finance operations.</div>
+<div>Keep the co-signer shard isolated from the desktop environment.</div>
+</div>
+</article>
+</div>
+</div>
+</section>
+</main>
+</div>
+<nav aria-label="Mobile dashboard modules" class="mobile-module-nav">
+<button class="active" data-module-link="overview" type="button">Overview</button>
+<button data-module-link="send" type="button">Send</button>
+<button data-module-link="receive" type="button">Receive</button>
+<button data-module-link="swap" type="button">Swap</button>
+<button data-module-link="shards" type="button">Shards</button>
+</nav>
+<div aria-labelledby="wallet-modal-title" aria-modal="true" class="wallet-modal" id="wallet-modal" role="dialog">
+<div class="wallet-card glass-panel">
+<button aria-label="Close wallet dialog" class="modal-close magnetic" id="wallet-close" type="button">×</button>
+<div class="wallet-hero">
+<img alt="MetaMask logo" src="assets/metamask-fox.svg"/>
+<div>
+<span class="eyebrow">Wallet access</span>
+<h2 id="wallet-modal-title">Connect MetaMask</h2>
+<p>Connect to Robinhood Chain, chain ID 4663. Your wallet remains in your control.</p>
+</div>
+</div>
+<div class="wallet-option">
+<img alt="" src="assets/metamask-fox.svg"/>
+<div><strong>MetaMask</strong><span>Chrome extension and mobile app handoff</span></div>
+<button class="primary-button magnetic" id="wallet-connect" type="button">Connect</button>
+</div>
+<div class="wallet-status">
+<div><span>Status</span><strong id="wallet-status">Ready to connect on desktop or mobile.</strong></div>
+<div><span>Network</span><strong id="wallet-network">Not connected</strong></div>
+<div><span>Account</span><strong id="wallet-account">Not connected</strong></div>
+</div>
+<div class="button-row">
+<button class="secondary-button magnetic" id="wallet-copy" type="button">Copy address</button>
+<a class="secondary-button magnetic" href="https://robinhoodchain.blockscout.com" rel="noreferrer" target="_blank">Explorer</a>
+<button class="ghost-button magnetic" id="wallet-disconnect" type="button">Disconnect</button>
+</div>
+</div>
+</div>
+<div aria-live="polite" class="toast-stack" id="toast-stack"></div>
+<script src="gsap/3.15.0/gsap.min.js"></script>
+<script defer="" src="privatum-dashboard.js"></script>
+</body>
+</html>
