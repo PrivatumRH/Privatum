@@ -47,6 +47,38 @@ const FAQS = [
   },
 ];
 
+/**
+ * The dashboard is not live yet, so every CTA that used to open it renders as
+ * an inert "Coming soon" control.
+ *
+ * Rendered as an <a> with no href — per HTML that is a "placeholder link",
+ * which is exactly right here: nothing to navigate to, no history entry, and
+ * nothing for a crawler to follow. It must stay an anchor rather than a span
+ * because the Webflow design colours these through the bare `a { color: ... }`
+ * rule; a span inherits the section's text colour instead and the label
+ * disappears against the button fill.
+ *
+ * To re-enable: swap these back to <a href="/dashboard.html"> with the original
+ * label. Sites are listed in the handover doc.
+ */
+function ComingSoonCta({
+  className = "primary-button w-inline-block",
+  textClassName = "primary-button-text",
+  style,
+}: {
+  className?: string;
+  textClassName?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <a aria-disabled="true" className={className} style={{ cursor: "default", ...style }}>
+      <div className="primary-button-wrap">
+        <div className={textClassName}>Coming soon</div>
+      </div>
+    </a>
+  );
+}
+
 function LandingPage() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -82,7 +114,7 @@ function LandingPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const triggerSoon = (e: React.MouseEvent, name: string) => {
+  const triggerSoon = (e: React.SyntheticEvent, name: string) => {
     e.preventDefault();
     setSoonTip(name);
     setTimeout(() => setSoonTip((curr) => (curr === name ? null : curr)), 2200);
@@ -151,14 +183,7 @@ function LandingPage() {
                       </div>
                       <div className="dropdown-card_texts">
                         <p className="text-size-small">Why choose Privatum for private self-custody?</p>
-                        <a
-                          className="primary-button w-variant-fb78eba0-dd3e-a77a-385e-cc8838022b83 w-inline-block"
-                          href="/dashboard.html"
-                        >
-                          <div className="primary-button-wrap">
-                            <div className="primary-button-text">Open Dashboard</div>
-                          </div>
-                        </a>
+                        <ComingSoonCta className="primary-button w-variant-fb78eba0-dd3e-a77a-385e-cc8838022b83 w-inline-block" />
                       </div>
                     </div>
 
@@ -187,16 +212,40 @@ function LandingPage() {
                       <div className="dropdown-links_wrapper">
                         <div className="nav-heading">Product</div>
                         <div className="dropdown-links">
-                          <a className="inner-link w-inline-block" href="/dashboard.html">
+                          <a
+                            aria-disabled="true"
+                            className={`inner-link w-inline-block ${soonTip === "Dashboard" ? "is-soon" : ""}`}
+                            data-soon="Dashboard"
+                            href="#"
+                            onClick={(e) => triggerSoon(e, "Dashboard")}
+                          >
                             <div>Dashboard</div>
                           </a>
-                          <a className="inner-link w-inline-block" href="/dashboard.html#send">
+                          <a
+                            aria-disabled="true"
+                            className={`inner-link w-inline-block ${soonTip === "Private Send" ? "is-soon" : ""}`}
+                            data-soon="Private Send"
+                            href="#"
+                            onClick={(e) => triggerSoon(e, "Private Send")}
+                          >
                             <div>Private Send</div>
                           </a>
-                          <a className="inner-link w-inline-block" href="/dashboard.html#receive">
+                          <a
+                            aria-disabled="true"
+                            className={`inner-link w-inline-block ${soonTip === "Stealth Receive" ? "is-soon" : ""}`}
+                            data-soon="Stealth Receive"
+                            href="#"
+                            onClick={(e) => triggerSoon(e, "Stealth Receive")}
+                          >
                             <div>Stealth Receive</div>
                           </a>
-                          <a className="inner-link w-inline-block" href="/dashboard.html#swap">
+                          <a
+                            aria-disabled="true"
+                            className={`inner-link w-inline-block ${soonTip === "Swaps" ? "is-soon" : ""}`}
+                            data-soon="Swaps"
+                            href="#"
+                            onClick={(e) => triggerSoon(e, "Swaps")}
+                          >
                             <div>Swaps</div>
                           </a>
                           <a className="inner-link w-inline-block" href="/docs.html#sdk">
@@ -285,19 +334,13 @@ function LandingPage() {
               </div>
 
               <div className="nav-buttons-wrap">
-                <a className="link" href="/dashboard.html">
-                  Connect Wallet
+                <a aria-disabled="true" className="link" style={{ cursor: "default" }}>
+                  Coming soon
                 </a>
-                <a
+                <ComingSoonCta
                   className="primary-button w-variant-c2dc9de4-8772-9172-2dd8-cda2f9121fc9 w-inline-block"
-                  href="/dashboard.html"
-                >
-                  <div className="primary-button-wrap">
-                    <div className="primary-button-text w-variant-c2dc9de4-8772-9172-2dd8-cda2f9121fc9">
-                      Open Dashboard
-                    </div>
-                  </div>
-                </a>
+                  textClassName="primary-button-text w-variant-c2dc9de4-8772-9172-2dd8-cda2f9121fc9"
+                />
               </div>
             </div>
           </div>
@@ -343,16 +386,40 @@ function LandingPage() {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 <strong style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#687182" }}>Product</strong>
-                <a className="link mob" href="/dashboard.html" onClick={() => setMobileMenuOpen(false)}>
+                <a
+                  aria-disabled="true"
+                  className={`link mob ${soonTip === "Dashboard" ? "is-soon" : ""}`}
+                  data-soon="Dashboard"
+                  href="#"
+                  onClick={(e) => triggerSoon(e, "Dashboard")}
+                >
                   Dashboard
                 </a>
-                <a className="link mob" href="/dashboard.html#send" onClick={() => setMobileMenuOpen(false)}>
+                <a
+                  aria-disabled="true"
+                  className={`link mob ${soonTip === "Private Send" ? "is-soon" : ""}`}
+                  data-soon="Private Send"
+                  href="#"
+                  onClick={(e) => triggerSoon(e, "Private Send")}
+                >
                   Private Send
                 </a>
-                <a className="link mob" href="/dashboard.html#receive" onClick={() => setMobileMenuOpen(false)}>
+                <a
+                  aria-disabled="true"
+                  className={`link mob ${soonTip === "Stealth Receive" ? "is-soon" : ""}`}
+                  data-soon="Stealth Receive"
+                  href="#"
+                  onClick={(e) => triggerSoon(e, "Stealth Receive")}
+                >
                   Stealth Receive
                 </a>
-                <a className="link mob" href="/dashboard.html#swap" onClick={() => setMobileMenuOpen(false)}>
+                <a
+                  aria-disabled="true"
+                  className={`link mob ${soonTip === "Swaps" ? "is-soon" : ""}`}
+                  data-soon="Swaps"
+                  href="#"
+                  onClick={(e) => triggerSoon(e, "Swaps")}
+                >
                   Swaps
                 </a>
                 <a className="link mob" href="/docs.html#sdk" onClick={() => setMobileMenuOpen(false)}>
@@ -361,15 +428,7 @@ function LandingPage() {
               </div>
             </div>
             <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
-              <a
-                className="primary-button w-inline-block"
-                href="/dashboard.html"
-                style={{ flex: 1, textAlign: "center" }}
-              >
-                <div className="primary-button-wrap">
-                  <div className="primary-button-text">Open Dashboard</div>
-                </div>
-              </a>
+              <ComingSoonCta style={{ flex: 1, textAlign: "center" }} />
             </div>
           </div>
         )}
@@ -390,11 +449,7 @@ function LandingPage() {
                     <h1 className="heading-style-h1">Private payments. Non-custodial.</h1>
                   </div>
                   <div className="button-wrapper">
-                    <a className="primary-button w-inline-block" href="/dashboard.html">
-                      <div className="primary-button-wrap">
-                        <div className="primary-button-text">Privatum - Open Dashboard</div>
-                      </div>
-                    </a>
+                    <ComingSoonCta />
                     <a
                       className="primary-button w-variant-3a9f2dd0-9bc7-dc9a-a7bc-93d31eb4141a w-inline-block"
                       href="/docs.html"
@@ -645,7 +700,13 @@ function LandingPage() {
                 </div>
 
                 <div className="highlight-links_wrapper">
-                  <a className="highlight-link w-inline-block" href="/dashboard.html#send">
+                  <a
+                    aria-disabled="true"
+                    className={`highlight-link w-inline-block ${soonTip === "Private Send" ? "is-soon" : ""}`}
+                    data-soon="Private Send"
+                    href="#"
+                    onClick={(e) => triggerSoon(e, "Private Send")}
+                  >
                     <h3 className="heading-style-h5">Private Send</h3>
                     <div className="highlight-texts_wrapper">
                       <p className="text-size-regular highlight-text">
@@ -662,7 +723,13 @@ function LandingPage() {
                     </div>
                   </a>
 
-                  <a className="highlight-link w-inline-block" href="/dashboard.html#receive">
+                  <a
+                    aria-disabled="true"
+                    className={`highlight-link w-inline-block ${soonTip === "Stealth Receive" ? "is-soon" : ""}`}
+                    data-soon="Stealth Receive"
+                    href="#"
+                    onClick={(e) => triggerSoon(e, "Stealth Receive")}
+                  >
                     <h3 className="heading-style-h5">Stealth Receive</h3>
                     <div className="highlight-texts_wrapper">
                       <p className="text-size-regular highlight-text">
@@ -1009,16 +1076,10 @@ function LandingPage() {
                     </div>
 
                     <div className="button-wrapper">
-                      <a
+                      <ComingSoonCta
                         className="primary-button w-variant-1f9277f6-d978-6891-434e-df9bad743ce3 w-inline-block"
-                        href="/dashboard.html"
-                      >
-                        <div className="primary-button-wrap">
-                          <div className="primary-button-text w-variant-1f9277f6-d978-6891-434e-df9bad743ce3">
-                            Open Dashboard
-                          </div>
-                        </div>
-                      </a>
+                        textClassName="primary-button-text w-variant-1f9277f6-d978-6891-434e-df9bad743ce3"
+                      />
                     </div>
                   </div>
 
@@ -1144,12 +1205,11 @@ function LandingPage() {
                     </h3>
                     <div className="form-wrapper w-form">
                       <form
-                        action="/dashboard.html"
                         className="demo-form"
-                        method="get"
                         onSubmit={(e) => {
+                          // Nowhere to submit to until the dashboard ships.
                           e.preventDefault();
-                          window.location.href = "/dashboard.html";
+                          triggerSoon(e, "Dashboard");
                         }}
                       >
                         <div className="fields-wrapper">
@@ -1190,7 +1250,7 @@ function LandingPage() {
                             />
                           </div>
                         </div>
-                        <input className="primary-form-button black w-button" type="submit" value="Open Dashboard" />
+                        <input className="primary-form-button black w-button" type="submit" value="Coming soon" />
                       </form>
                     </div>
                   </div>
@@ -2295,17 +2355,41 @@ function LandingPage() {
                     <div className="footer-link_wrapper">
                       <div className="footer_link_heading">Product</div>
                       <div className="dropdown-links">
-                        <a className="inner-link w-inline-block" href="/dashboard.html">
-                          <div>Dashboard</div>
+                        <a
+                            aria-disabled="true"
+                            className={`inner-link w-inline-block ${soonTip === "Dashboard" ? "is-soon" : ""}`}
+                            data-soon="Dashboard"
+                            href="#"
+                            onClick={(e) => triggerSoon(e, "Dashboard")}
+                          >
+                            <div>Dashboard</div>
                         </a>
-                        <a className="inner-link w-inline-block" href="/dashboard.html#send">
-                          <div>Private Send</div>
+                        <a
+                            aria-disabled="true"
+                            className={`inner-link w-inline-block ${soonTip === "Private Send" ? "is-soon" : ""}`}
+                            data-soon="Private Send"
+                            href="#"
+                            onClick={(e) => triggerSoon(e, "Private Send")}
+                          >
+                            <div>Private Send</div>
                         </a>
-                        <a className="inner-link w-inline-block" href="/dashboard.html#receive">
-                          <div>Stealth Receive</div>
+                        <a
+                            aria-disabled="true"
+                            className={`inner-link w-inline-block ${soonTip === "Stealth Receive" ? "is-soon" : ""}`}
+                            data-soon="Stealth Receive"
+                            href="#"
+                            onClick={(e) => triggerSoon(e, "Stealth Receive")}
+                          >
+                            <div>Stealth Receive</div>
                         </a>
-                        <a className="inner-link w-inline-block" href="/dashboard.html#swap">
-                          <div>Swaps</div>
+                        <a
+                            aria-disabled="true"
+                            className={`inner-link w-inline-block ${soonTip === "Swaps" ? "is-soon" : ""}`}
+                            data-soon="Swaps"
+                            href="#"
+                            onClick={(e) => triggerSoon(e, "Swaps")}
+                          >
+                            <div>Swaps</div>
                         </a>
                         <a className="inner-link w-inline-block" href="/docs.html#sdk">
                           <div>Open SDK</div>
