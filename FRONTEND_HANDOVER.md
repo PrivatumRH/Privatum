@@ -136,7 +136,7 @@ Production output is a single `assets/styles-*.css` bundle, **288 KB / 45 KB gzi
 
 Measured with both pages fully loaded at a 1600px viewport:
 
-| Metric | `public/index.html` (Webflow original) | `/` (React port) |
+| Metric | Webflow original (now `reference/webflow-index.html`) | `/` (React port) |
 | :--- | :--- | :--- |
 | `webflow.css` rules parsed | 919 | 919 |
 | `document.documentElement.scrollHeight` | 13647 | 13647 |
@@ -177,6 +177,37 @@ Two things will waste your time if you hit them cold:
    config mismatch, unrelated to the styling work. Use the Nitro output directly
    (`.output/server/index.mjs`) or `npx nitro deploy --prebuilt` instead.
 
+### 6.3 `public/index.html` silently shadowed the app's root route in production ⚠️
+
+> [!CAUTION]
+> **Never put a file named `index.html` in `public/`.** It will not break anything locally, and it
+> will break the deployed site completely.
+
+Everything in `public/` is copied to `.output/public/`, which Cloudflare Workers mounts as the
+static-asset directory (`assets.directory` in `.output/server/wrangler.json`). Assets are matched
+**before** the SSR worker runs, and `html_handling` maps `/` to `/index.html`. So a request for `/`
+was answered with the stale Webflow export and the React route never executed.
+
+Vite's dev server resolves routes before `publicDir`, so `bun run dev` served the React app at `/`
+the whole time. Dev and production disagreed, which is what made this hard to see: the code was
+correct and deploying cleanly, while the live URL served a completely different, months-old page —
+old CTAs, old Open Graph tags, none of the styling fixes.
+
+Reproduce the old failure from any build:
+
+```bash
+cd .output/public && python -m http.server 4999
+curl -s http://localhost:4999/ | grep -c "Open Dashboard"   # was 5, must now be 0
+```
+
+**Fixed by** moving the file to `reference/webflow-index.html` (outside `public/`, so it is never
+copied into the build) and rewriting the 9 `href="index.html"` back-links in `case-study.html`,
+`dashboard.html` and `docs.html` to `href="/"`.
+
+The same trap applies to any future route: a file at `public/<name>.html` will shadow a React route
+at `/<name>`. The static pages that remain — `docs.html`, `case-study.html`, `dashboard.html` — are
+served deliberately and have no competing React route, so they are fine.
+
 ---
 
 ## 7. Project Constraints
@@ -200,7 +231,7 @@ Two things will waste your time if you hit them cold:
 | `src/styles.css` | Tailwind v4 theme + Webflow imports | ✅ Documented import order |
 | `src/styles/webflow.css` | Webflow layout stylesheet (~217 KB) | ✅ Selector fixed |
 | `src/styles/privatum.css` | PRIVATUM brand overrides (~41 KB) | ✅ Unchanged |
-| `public/index.html` | Original Webflow export | ✅ Now renders correctly (reference only) |
+| `reference/webflow-index.html` | Original Webflow export | Reference only — **moved out of `public/`**, see §6.3 |
 | `public/dashboard.html` | Web3 dashboard | Static page, intact |
 | `public/case-study.html` | Case studies | Static page, intact |
 | `public/docs.html` | Documentation | Static page, intact |
@@ -280,6 +311,8 @@ rendered a card reading **"Callium – AI Call Agent Website"** — an unrelated
 - [ ] Consider optimising `assets/privatum-gradient-clean.png` (1.9 MB, 2172×724) — it is the largest
       asset on the landing page and noticeably slows first paint.
 - [ ] Fix the `vite preview` / Nitro output-path mismatch (§6.2).
+- [ ] Add a CI guard that fails the build if `public/index.html` reappears (§6.3) — this one cost a
+      full debugging cycle and is trivial to reintroduce from a Webflow re-export.
 - [ ] Set `VITE_SITE_URL` in the deploy environment so share cards carry an image (§9.2).
 - [ ] Point the X and Telegram links at real accounts — still `href="#"` placeholders.
 - [ ] When the dashboard ships, restore the CTAs listed in §9.1 to real links.
@@ -295,5 +328,7 @@ bun run build        # production build (Nitro → .output/)
 bun run lint         # eslint
 ```
 
-Compare `http://localhost:8080/` against `http://localhost:8080/index.html` — they should be visually
-identical, and the metrics in §5 should match.
+To compare against the original Webflow export, copy `reference/webflow-index.html` into `public/`
+under a name other than `index.html` (e.g. `public/_ref.html`) and open it alongside
+`http://localhost:8080/`. Delete the copy afterwards — anything named `index.html` in `public/`
+shadows the app's root route in production (§6.3).
