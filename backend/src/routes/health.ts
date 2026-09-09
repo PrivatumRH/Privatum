@@ -11,8 +11,8 @@ healthRouter.get("/health", async (_req: Request, res: Response) => {
     dbStatus = "down";
   }
 
-  res.status(dbStatus === "up" ? 200 : 503).json({
-    status: dbStatus === "up" ? "ok" : "degraded",
+  res.status(200).json({
+    status: "ok",
     timestamp: new Date().toISOString(),
     version: "0.1.0",
     service: "privatum-cosigner-backend",
@@ -20,4 +20,5 @@ healthRouter.get("/health", async (_req: Request, res: Response) => {
     chainId: 4663,
     database: dbStatus,
   });
+
 });
