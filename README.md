@@ -18,7 +18,7 @@
 
 ## What It Does
 
-**PRIVATUM** is a self-custodial smart wallet and open developer toolkit engineered for **Robinhood Chain** (Arbitrum-powered EVM L2, Chain ID `4663`). It enables individuals and automated workflows to hold, send, and swap frontier assets—specifically **USDG** and native **ETH**—with zero single points of failure. Your private key is mathematically split into three independent shards (2-of-3 quorum): one on your local device, one with the automated co-signer service, and one in hardware passkey recovery. No single party, not even PRIVATUM, can ever move your funds.
+**PRIVATUM** is a self-custodial smart wallet and open developer toolkit engineered for **Robinhood Chain** (Arbitrum-powered EVM L2, Chain ID `4663`). It enables individuals and automated workflows to hold, send, and swap frontier assets (specifically **USDG** and native **ETH**) with zero single points of failure. Your private key is mathematically split into three independent shards (2-of-3 quorum): one on your local device, one with the automated co-signer service, and one in hardware passkey recovery. No single party, not even PRIVATUM, can ever move your funds.
 
 ---
 
@@ -30,7 +30,7 @@
 | **Frontier Asset Settlement** | Multi-surface | Native settlement and routing for **USDG** stablecoin and **ETH** on Robinhood Chain | Active |
 | **Co-Signer Service** | Backend | High-availability policy evaluation engine enforcing daily spend limits and velocity rules | Active |
 | **Tauri v2 Desktop Client** | Desktop | Native OS client (macOS, Windows, Linux) storing Shard A encrypted in OS keystores | Scaffolded |
-| **Viem Open SDK** | SDK (`@privatum/robinhood-chain-sdk`) | Developer library to programmatically assemble threshold wallets and dispatch transactions | Active |
+| **Viem Open SDK** | SDK (`@privatumrh/robinhood-chain-sdk`) | Developer library to programmatically assemble threshold wallets and dispatch transactions | Active |
 | **ERC-5564 Stealth Addresses** | Privacy Plane | One-time destination addresses derived from public `.privatum` meta-addresses | In Progress |
 | **Screened Privacy Pools** | Privacy Plane | Association-set cryptographic proofs verifying clean asset provenance | Roadmap |
 
@@ -90,7 +90,7 @@ privatum/
 ├── desktop/                  # Tauri v2 native desktop application
 │   ├── src/                  # React UI (balances, shard health monitor)
 │   └── src-tauri/            # Rust core & OS keychain integration
-├── sdk/                      # @privatum/robinhood-chain-sdk (Viem-based)
+├── sdk/                      # @privatumrh/robinhood-chain-sdk (Viem-based)
 │   └── src/                  # Shard lifecycle, PrivatumWallet, transfer helpers
 ├── src/                      # TanStack React web frontend (Vite + Tailwind + shadcn)
 │   ├── routes/               # TanStack router routes (__root, index)
@@ -164,7 +164,7 @@ Phase 1: Robinhood Chain Custody MVP (Current)
 ├── ERC-4337 threshold contracts (Robinhood Chain ID: 4663)
 ├── Co-signer service with automated spending policies
 ├── Tauri v2 desktop application scaffold
-└── Open SDK @privatum/robinhood-chain-sdk
+└── Open SDK @privatumrh/robinhood-chain-sdk
 
 Phase 2: Open SDK & Developer Ecosystem
 Phase 3: DEX Aggregation & USDG/ETH Swaps

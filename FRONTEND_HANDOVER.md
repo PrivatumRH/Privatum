@@ -1,7 +1,7 @@
-# PRIVATUM Frontend Handover — Webflow → TanStack Start Migration
+# PRIVATUM Frontend Handover: Webflow -> TanStack Start Migration
 
 **Last updated**: September 9, 2026
-**Status**: ✅ **Resolved.** The landing page renders at full visual parity with the original Webflow export.
+**Status**: Resolved. The landing page renders at full visual parity with the original Webflow export.
 **Fix commit**: `dd72a77`
 
 ---
@@ -12,7 +12,7 @@ The **PRIVATUM** website (private payments, non-custodial, on Robinhood Chain) h
 static Webflow export to a native **TanStack Start (React 19 + TanStack Router + Vite + Nitro + Tailwind
 CSS v4)** application.
 
-The landing page route (`/`) previously rendered completely unstyled — white background, navbar links
+The landing page route (`/`) previously rendered completely unstyled: white background, navbar links
 stacked vertically, and the hero gradient displaying inline at its natural 2172px width instead of as a
 positioned background cover.
 
@@ -20,8 +20,8 @@ positioned background cover.
 not a MIME-type problem, and not a specificity problem. All three of those were previously suspected and
 have now been ruled out with evidence (see §3).
 
-Crucially, the same defect also broke `public/index.html` — the file this document previously called the
-"source of truth for original visual design." It was rendering just as badly as the React port. Any
+Crucially, the same defect also broke `public/index.html` (the file this document previously called the
+"source of truth for original visual design"). It was rendering just as badly as the React port. Any
 comparison against it was therefore comparing two broken pages, which is why the migration seemed
 "weirdly hard": the reference itself was broken.
 
@@ -34,15 +34,15 @@ comparison against it was therefore comparing two broken pages, which is why the
 `webflow.css` contained three selectors with an unclosed `:not(` parenthesis:
 
 ```css
-/* line 1106, 1128, 1141 — BROKEN */
+/* line 1106, 1128, 1141: BROKEN */
 .w-widget-twitter-count-shim:not(.w--vertical.w--large        { ... }
 .w-widget-twitter-count-shim:not(.w--vertical.w--large:before { ... }
 .w-widget-twitter-count-shim:not(.w--vertical.w--large:after  { ... }
 ```
 
 The `(` is never closed. Per the CSS Syntax spec, `(` opens a simple block that the parser consumes until
-it finds a matching `)`. Everything after line 1106 — roughly 200 KB, including every layout, colour,
-flex, and positioning rule the design depends on — got swallowed into that unterminated block and
+it finds a matching `)`. Everything after line 1106 (roughly 200 KB, including every layout, colour,
+flex, and positioning rule the design depends on) got swallowed into that unterminated block and
 discarded.
 
 **Measured impact:** the browser parsed only **158 of ~919 rules** from a 216 KB stylesheet. Every rule
@@ -50,7 +50,7 @@ defining the actual PRIVATUM design lives after line 1106, so effectively none o
 survived was Webflow's generic normalize/base block, which is exactly why the page looked like raw
 unstyled HTML.
 
-The three affected selectors govern a Twitter share-button widget that this site does not use — so the
+The three affected selectors govern a Twitter share-button widget that this site does not use, so the
 fix carries no visual risk.
 
 **The fix** (restore the closing parenthesis):

@@ -1,13 +1,13 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><base href="/"/><meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>PRIVATUM Docs — Threshold custody on Robinhood Chain</title>
+<title>PRIVATUM Docs: Threshold custody on Robinhood Chain</title>
 <meta content="Architecture, shard model, signing pipeline, security and privacy framework, and the open SDK." name="description"/>
-<meta content="PRIVATUM Docs — Threshold custody on Robinhood Chain" property="og:title"/>
+<meta content="PRIVATUM Docs: Threshold custody on Robinhood Chain" property="og:title"/>
 <meta content="Architecture, shard model, signing pipeline, security and privacy framework, and the open SDK." property="og:description"/>
 <meta content="website" property="og:type"/><meta content="summary_large_image" name="twitter:card"/>
 <link href="6a5d4e514d1e968239079f7a/css/callium.webflow.shared.cd6b91f9a.css" rel="stylesheet" type="text/css"/>
 <link href="fonts/fonts.css" rel="stylesheet" type="text/css"/>
 <link href="privatum.css" rel="stylesheet" type="text/css"/>
-<link href="favicon.ico" rel="shortcut icon" type="image/x-icon"/><meta content="/assets/og-image.jpg" property="og:image"/><meta content="PRIVATUM" property="og:site_name"/><meta content="PRIVATUM Docs — Threshold custody on Robinhood Chain" name="twitter:title"/><meta content="Architecture, shard model, signing pipeline, security and privacy framework, and the open SDK." name="twitter:description"/><meta content="/assets/og-image.jpg" name="twitter:image"/></head><body class="pv-docs-page"><div class="page-wrapper"><div class="navbar w-nav" data-animation="default" data-collapse="medium" data-duration="400" data-easing="ease" data-easing2="ease" role="banner"><div class="nav-wrapper"><div class="container-large nav"><a aria-current="page" class="brand-link w-inline-block w--current" href="/"><img alt="PRIVATUM logo" loading="lazy" src="assets/privatum-mark-black.png"/></a><nav class="nav-menu w-nav-menu" role="navigation"><div class="dropdown w-dropdown" data-delay="450" data-hover="true"><div class="dropdown-toggle w-dropdown-toggle"><div class="link">Product</div><svg class="dropdown-icon" fill="none" viewbox="0 0 11 6" width="100%" xmlns="http://www.w3.org/2000/svg"><path d="M9.87223 1.12278L5.49723 5.49778C5.43626 5.55896 5.36382 5.6075 5.28405 5.64062C5.20428 5.67375 5.11876 5.6908 5.03239 5.6908C4.94602 5.6908 4.86049 5.67375 4.78073 5.64062C4.70096 5.6075 4.62851 5.55896 4.56754 5.49778L0.192545 1.12278C0.0692604 0.999495 -1.83708e-09 0.832285 0 0.657935C1.83708e-09 0.483585 0.0692604 0.316376 0.192545 0.193091C0.315829 0.0698072 0.483038 0.000546994 0.657388 0.000546992C0.831739 0.00054699 0.998948 0.0698072 1.12223 0.193091L5.03294 4.10379L8.94364 0.192545C9.06692 0.0692606 9.23413 0 9.40848 0C9.58283 0 9.75004 0.0692606 9.87333 0.192545C9.99661 0.315829 10.0659 0.483038 10.0659 0.657389C10.0659 0.831739 9.99661 0.998948 9.87333 1.12223L9.87223 1.12278Z" fill="currentColor"></path></svg></div><nav class="dropdown-list w-dropdown-list"><div class="dropdown-list_inner_wrapper"><div class="dropdown-cards_wrapper"><div class="heading-style-h4">Join with<br/>Privatum</div><div class="dropdown-card_texts"><p class="text-size-small">Why choose Privatum for private self-custody?</p><a class="primary-button w-variant-fb78eba0-dd3e-a77a-385e-cc8838022b83 w-inline-block" data-wf--primary-button--variant="small" href="dashboard.html" primary-button=""><div class="primary-button-wrap"><div class="primary-button-text" primary-button-text="">Open Dashboard</div></div></a></div></div><div class="drop-down_links"><div class="dropdown-links_wrapper"><div class="nav-heading">Main Pages</div><div class="dropdown-links"><a aria-current="page" class="inner-link w-inline-block w--current" href="index.html#overview"><div>Overview</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="index.html#security"><div>Security</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="index.html#roadmap"><div>Roadmap</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="case-study.html"><div>Case Studies</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="docs.html"><div>Docs</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a></div></div><div class="dropdown-links_wrapper"><div class="nav-heading">Product</div><div class="dropdown-links"><a class="inner-link w-inline-block" href="dashboard.html"><div>Dashboard</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="dashboard.html#send"><div>Private Send</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="dashboard.html#receive"><div>Stealth Receive</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="dashboard.html#swap"><div>Swaps</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="docs.html#sdk"><div>Open SDK</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a></div></div><div class="dropdown-links_wrapper"><div class="nav-heading">Research</div><div class="dropdown-links"><a class="inner-link w-inline-block" href="case-study/higher-lead-conversion.html"><div>Research</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="docs.html#sdk"><div>SDK Docs</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a></div></div></div><div class="dropdown-socials_wrapper"><a aria-label="PRIVATUM on X" class="w-inline-block" href="#" data-soon="X" target="_blank"><div class="social"><svg fill="none" viewbox="0 0 24 24" width="100%" xmlns="http://www.w3.org/2000/svg"><path d="M18.9 2H22L15.2 9.8L23.3 22H17L12.1 15.6L6.5 22H3.3L10.6 13.7L2.8 2H9.2L13.6 7.9L18.9 2ZM17.8 20.1H19.5L7.1 3.8H5.3L17.8 20.1Z" fill="currentColor"></path></svg></div></a><a aria-label="PRIVATUM on Telegram" class="w-inline-block" href="#" data-soon="Telegram" target="_blank"><div class="social"><svg fill="none" viewbox="0 0 24 24" width="100%" xmlns="http://www.w3.org/2000/svg"><path d="M21.9 3.1L2.7 10.7C1.4 11.2 1.5 12.6 2.5 13L7.3 14.5L9.1 20C9.3 20.7 10.1 20.9 10.6 20.4L13.2 18L18.2 21.7C18.9 22.2 19.8 21.9 20 21L23.2 4.2C23.4 3 22.6 2.2 21.9 3.1ZM8.6 14L18.7 6.2C19 6 19.2 6.4 19 6.6L10.2 15.1L10 18.1L8.6 14Z" fill="currentColor"></path></svg></div></a></div></div></nav></div><a class="link on-desktop" href="index.html#roadmap" nav-link="">Roadmap</a><a class="link on-desktop" href="case-study.html" nav-link="">Case Studies</a><a class="link on-desktop" href="docs.html" nav-link="">Docs</a><div class="tab-menus"><div class="pages-items"><div class="nav-items"><div class="dropdown-header">Pages</div></div><div class="nav-items dropdown-lists"><div class="nav-pages"><a aria-current="page" class="link mob w--current" href="index.html#overview" nav-link="">Overview</a><a class="link mob" href="index.html#security" nav-link="">Security</a><a class="link mob" href="case-study.html" nav-link="">Case Studies</a><a class="link mob" href="docs.html" nav-link="">Docs</a><a class="link mob" href="index.html#roadmap" nav-link="">Roadmap</a><a class="link mob" href="dashboard.html" nav-link="">Connect Wallet</a></div><div class="nav-pages"><a class="link mob" href="dashboard.html" nav-link="">Dashboard</a><a class="link mob" href="dashboard.html#send" nav-link="">Private Send</a><a class="link mob" href="dashboard.html#receive" nav-link="">Stealth Receive</a><a class="link mob" href="dashboard.html#swap" nav-link="">Swaps</a><a class="link mob" href="docs.html#sdk" nav-link="">Open SDK</a></div></div></div><div class="pages-items"><div class="dropdown-header">Research</div><div class="nav-items dropdown-lists"><div class="nav-pages"></div><div class="nav-pages"><a class="link mob" href="case-study/higher-lead-conversion.html" nav-link="">Research</a><a class="link mob" href="docs.html#sdk" nav-link="">SDK Docs</a></div></div></div></div></nav><div class="nav-right-content"><div class="menu w-nav-button"><div class="hamburger-lines"><div class="hamburger-line top"></div><div class="hamburger-line middle"></div><div class="hamburger-line bottom"></div></div></div><div class="nav-buttons-wrap"><a class="link" href="dashboard.html" nav-link="">Connect Wallet</a><a class="primary-button w-variant-c2dc9de4-8772-9172-2dd8-cda2f9121fc9 w-inline-block" data-wf--primary-button--variant="black-nav-button" href="dashboard.html" primary-button=""><div class="primary-button-wrap"><div class="primary-button-text w-variant-c2dc9de4-8772-9172-2dd8-cda2f9121fc9" primary-button-text="">Open Dashboard</div></div></a></div></div></div></div></div><div class="main-wrapper"><main class="pv-docs">
+<link href="favicon.ico" rel="shortcut icon" type="image/x-icon"/><meta content="/assets/og-image.jpg" property="og:image"/><meta content="PRIVATUM" property="og:site_name"/><meta content="PRIVATUM Docs: Threshold custody on Robinhood Chain" name="twitter:title"/><meta content="Architecture, shard model, signing pipeline, security and privacy framework, and the open SDK." name="twitter:description"/><meta content="/assets/og-image.jpg" name="twitter:image"/></head><body class="pv-docs-page"><div class="page-wrapper"><div class="navbar w-nav" data-animation="default" data-collapse="medium" data-duration="400" data-easing="ease" data-easing2="ease" role="banner"><div class="nav-wrapper"><div class="container-large nav"><a aria-current="page" class="brand-link w-inline-block w--current" href="/"><img alt="PRIVATUM logo" loading="lazy" src="assets/privatum-mark-black.png"/></a><nav class="nav-menu w-nav-menu" role="navigation"><div class="dropdown w-dropdown" data-delay="450" data-hover="true"><div class="dropdown-toggle w-dropdown-toggle"><div class="link">Product</div><svg class="dropdown-icon" fill="none" viewbox="0 0 11 6" width="100%" xmlns="http://www.w3.org/2000/svg"><path d="M9.87223 1.12278L5.49723 5.49778C5.43626 5.55896 5.36382 5.6075 5.28405 5.64062C5.20428 5.67375 5.11876 5.6908 5.03239 5.6908C4.94602 5.6908 4.86049 5.67375 4.78073 5.64062C4.70096 5.6075 4.62851 5.55896 4.56754 5.49778L0.192545 1.12278C0.0692604 0.999495 -1.83708e-09 0.832285 0 0.657935C1.83708e-09 0.483585 0.0692604 0.316376 0.192545 0.193091C0.315829 0.0698072 0.483038 0.000546994 0.657388 0.000546992C0.831739 0.00054699 0.998948 0.0698072 1.12223 0.193091L5.03294 4.10379L8.94364 0.192545C9.06692 0.0692606 9.23413 0 9.40848 0C9.58283 0 9.75004 0.0692606 9.87333 0.192545C9.99661 0.315829 10.0659 0.483038 10.0659 0.657389C10.0659 0.831739 9.99661 0.998948 9.87333 1.12223L9.87223 1.12278Z" fill="currentColor"></path></svg></div><nav class="dropdown-list w-dropdown-list"><div class="dropdown-list_inner_wrapper"><div class="dropdown-cards_wrapper"><div class="heading-style-h4">Join with<br/>Privatum</div><div class="dropdown-card_texts"><p class="text-size-small">Why choose Privatum for private self-custody?</p><a class="primary-button w-variant-fb78eba0-dd3e-a77a-385e-cc8838022b83 w-inline-block" data-wf--primary-button--variant="small" href="dashboard.html" primary-button=""><div class="primary-button-wrap"><div class="primary-button-text" primary-button-text="">Open Dashboard</div></div></a></div></div><div class="drop-down_links"><div class="dropdown-links_wrapper"><div class="nav-heading">Main Pages</div><div class="dropdown-links"><a aria-current="page" class="inner-link w-inline-block w--current" href="index.html#overview"><div>Overview</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="index.html#security"><div>Security</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="index.html#roadmap"><div>Roadmap</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="case-study.html"><div>Case Studies</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="docs.html"><div>Docs</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a></div></div><div class="dropdown-links_wrapper"><div class="nav-heading">Product</div><div class="dropdown-links"><a class="inner-link w-inline-block" href="dashboard.html"><div>Dashboard</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="dashboard.html#send"><div>Private Send</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="dashboard.html#receive"><div>Stealth Receive</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="dashboard.html#swap"><div>Swaps</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="docs.html#sdk"><div>Open SDK</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a></div></div><div class="dropdown-links_wrapper"><div class="nav-heading">Research</div><div class="dropdown-links"><a class="inner-link w-inline-block" href="case-study/higher-lead-conversion.html"><div>Research</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a><a class="inner-link w-inline-block" href="docs.html#sdk"><div>SDK Docs</div><img alt="Young woman watering a small plant on a windowsill with sunlight coming through the window." class="link_image" loading="lazy" src="6a5d4e514d1e968239079f7a/6a5f6598840b4673b209a5ab_Frame%2011.webp"/></a></div></div></div><div class="dropdown-socials_wrapper"><a aria-label="PRIVATUM on X" class="w-inline-block" href="#" data-soon="X" target="_blank"><div class="social"><svg fill="none" viewbox="0 0 24 24" width="100%" xmlns="http://www.w3.org/2000/svg"><path d="M18.9 2H22L15.2 9.8L23.3 22H17L12.1 15.6L6.5 22H3.3L10.6 13.7L2.8 2H9.2L13.6 7.9L18.9 2ZM17.8 20.1H19.5L7.1 3.8H5.3L17.8 20.1Z" fill="currentColor"></path></svg></div></a><a aria-label="PRIVATUM on Telegram" class="w-inline-block" href="#" data-soon="Telegram" target="_blank"><div class="social"><svg fill="none" viewbox="0 0 24 24" width="100%" xmlns="http://www.w3.org/2000/svg"><path d="M21.9 3.1L2.7 10.7C1.4 11.2 1.5 12.6 2.5 13L7.3 14.5L9.1 20C9.3 20.7 10.1 20.9 10.6 20.4L13.2 18L18.2 21.7C18.9 22.2 19.8 21.9 20 21L23.2 4.2C23.4 3 22.6 2.2 21.9 3.1ZM8.6 14L18.7 6.2C19 6 19.2 6.4 19 6.6L10.2 15.1L10 18.1L8.6 14Z" fill="currentColor"></path></svg></div></a></div></div></nav></div><a class="link on-desktop" href="index.html#roadmap" nav-link="">Roadmap</a><a class="link on-desktop" href="case-study.html" nav-link="">Case Studies</a><a class="link on-desktop" href="docs.html" nav-link="">Docs</a><div class="tab-menus"><div class="pages-items"><div class="nav-items"><div class="dropdown-header">Pages</div></div><div class="nav-items dropdown-lists"><div class="nav-pages"><a aria-current="page" class="link mob w--current" href="index.html#overview" nav-link="">Overview</a><a class="link mob" href="index.html#security" nav-link="">Security</a><a class="link mob" href="case-study.html" nav-link="">Case Studies</a><a class="link mob" href="docs.html" nav-link="">Docs</a><a class="link mob" href="index.html#roadmap" nav-link="">Roadmap</a><a class="link mob" href="dashboard.html" nav-link="">Connect Wallet</a></div><div class="nav-pages"><a class="link mob" href="dashboard.html" nav-link="">Dashboard</a><a class="link mob" href="dashboard.html#send" nav-link="">Private Send</a><a class="link mob" href="dashboard.html#receive" nav-link="">Stealth Receive</a><a class="link mob" href="dashboard.html#swap" nav-link="">Swaps</a><a class="link mob" href="docs.html#sdk" nav-link="">Open SDK</a></div></div></div><div class="pages-items"><div class="dropdown-header">Research</div><div class="nav-items dropdown-lists"><div class="nav-pages"></div><div class="nav-pages"><a class="link mob" href="case-study/higher-lead-conversion.html" nav-link="">Research</a><a class="link mob" href="docs.html#sdk" nav-link="">SDK Docs</a></div></div></div></div></nav><div class="nav-right-content"><div class="menu w-nav-button"><div class="hamburger-lines"><div class="hamburger-line top"></div><div class="hamburger-line middle"></div><div class="hamburger-line bottom"></div></div></div><div class="nav-buttons-wrap"><a class="link" href="dashboard.html" nav-link="">Connect Wallet</a><a class="primary-button w-variant-c2dc9de4-8772-9172-2dd8-cda2f9121fc9 w-inline-block" data-wf--primary-button--variant="black-nav-button" href="dashboard.html" primary-button=""><div class="primary-button-wrap"><div class="primary-button-text w-variant-c2dc9de4-8772-9172-2dd8-cda2f9121fc9" primary-button-text="">Open Dashboard</div></div></a></div></div></div></div></div><div class="main-wrapper"><main class="pv-docs">
 <aside class="pv-docs-side">
   <div class="pv-docs-side_title">Documentation</div>
   <nav class="pv-docs-nav">
@@ -30,7 +30,7 @@
   <header class="pv-docs-hero">
     <div class="pv-docs-eyebrow">Technical overview · Version 0.4 · September 2026</div>
     <h1>PRIVATUM documentation</h1>
-    <p class="pv-docs-lead">A self-custodial wallet and open developer toolkit on Robinhood Chain. Send, receive, and swap USDC and USDT privately. Your key is split into three shards, so no single party — not even PRIVATUM — can move your funds.</p>
+    <p class="pv-docs-lead">A self-custodial wallet and open developer toolkit on Robinhood Chain. Send, receive, and swap USDC and USDT privately. Your key is split into three shards, so no single party, not even PRIVATUM, can move your funds.</p>
     <div class="pv-docs-herochips"><span>Non-custodial</span><span>2-of-3 threshold</span><span>Robinhood Chain</span><span>Tauri v2 desktop</span><span>Open TypeScript SDK</span></div>
   </header>
 
@@ -38,7 +38,7 @@
     <div class="pv-docs-num">01</div>
     <h2>Executive summary</h2>
     <p>Storing crypto today forces an unacceptable compromise. Hot wallets hold your entire private key in one place, so one malware infection drains everything. Hardware wallets cost $150+, run proprietary firmware, and add real friction. Neither gives you privacy: every transaction, balance, and counterparty stays permanently exposed on a public ledger.</p>
-    <p>PRIVATUM splits the private key mathematically across three independent shards with a 2-of-3 quorum. No single device or server can spend your funds, and transactions are shielded by default. It ships on two surfaces: a cross-platform native desktop app built on Tauri v2 for macOS, Windows and Linux, and <code>@privatum/robinhood-chain-sdk</code>, an audited Viem-based TypeScript SDK that lets any developer embed 2-of-3 threshold self-custody.</p>
+    <p>PRIVATUM splits the private key mathematically across three independent shards with a 2-of-3 quorum. No single device or server can spend your funds, and transactions are shielded by default. It ships on two surfaces: a cross-platform native desktop app built on Tauri v2 for macOS, Windows and Linux, and <code>@privatumrh/robinhood-chain-sdk</code>, an audited Viem-based TypeScript SDK that lets any developer embed 2-of-3 threshold self-custody.</p>
     <h3>Why Robinhood Chain</h3>
     <p>Robinhood Chain is a permissionless, Ethereum-compatible Layer-2 built on Arbitrum Dedicated Blockchains, with ETH as its native gas token. It targets onchain financial infrastructure and tokenized real-world assets while supporting standard EVM tooling and ERC-4337 account abstraction.</p>
   </section>
@@ -59,7 +59,7 @@
         </tbody>
       </table>
     </div>
-    <div class="pv-docs-callout"><strong>The opportunity.</strong> No existing solution combines non-custodial security, graceful multi-party recovery, and cryptographic privacy out of the box on standard consumer hardware — without asking users to manage raw keys or seed phrases.</div>
+    <div class="pv-docs-callout"><strong>The opportunity.</strong> No existing solution combines non-custodial security, graceful multi-party recovery, and cryptographic privacy out of the box on standard consumer hardware, without asking users to manage raw keys or seed phrases.</div>
   </section>
 
   <section class="pv-docs-sec" id="what">
@@ -70,7 +70,7 @@
       <div class="pv-docs-card"><h4>Stealth receive</h4><p>Share your handle publicly. Payments arrive at dynamic, unlinkable one-time addresses via ERC-5564 stealth addresses.</p></div>
       <div class="pv-docs-card"><h4>In-wallet swaps</h4><p>Swap between supported stablecoins and tokens natively through Robinhood Chain DEX aggregation.</p></div>
       <div class="pv-docs-card"><h4>2-of-3 custody</h4><p>The signing key is split into three independent shards. Any two must cooperate to spend; one shard alone is powerless.</p></div>
-      <div class="pv-docs-card"><h4>Graceful recovery</h4><p>Lose your machine or drive shard and the remaining two — co-signer plus passkey — restore full access.</p></div>
+      <div class="pv-docs-card"><h4>Graceful recovery</h4><p>Lose your machine or drive shard and the remaining two (co-signer plus passkey) restore full access.</p></div>
       <div class="pv-docs-card"><h4>Two surfaces only</h4><p>A hardened native desktop client and an open SDK. No browser extension, no custodial web app.</p></div>
     </div>
   </section>
@@ -78,7 +78,7 @@
   <section class="pv-docs-sec" id="architecture">
     <div class="pv-docs-num">04</div>
     <h2>Architecture</h2>
-    <p>PRIVATUM separates core shard and cryptographic lifecycle management from chain-specific execution. Supporting a future L2 or L1 means authoring one adapter — the desktop UI and co-signing infrastructure never change.</p>
+    <p>PRIVATUM separates core shard and cryptographic lifecycle management from chain-specific execution. Supporting a future L2 or L1 means authoring one adapter: the desktop UI and co-signing infrastructure never change.</p>
     <pre class="pv-docs-pre"><code>User surfaces
   Desktop App (Tauri v2)   |   Open SDK
 
@@ -109,9 +109,9 @@ Execution layer
     <h2>The shard model</h2>
     <p>At wallet initialization three shards are generated independently in a secure key-generation ceremony. The full private key is never assembled or stored anywhere.</p>
     <div class="pv-docs-shards">
-      <div class="pv-docs-shard"><span class="pv-docs-shardtag">Shard A</span><h4>Client</h4><p>Encrypted local file on the desktop filesystem or OS keychain. Defends against server-side compromise — PRIVATUM cannot sign without local confirmation.</p></div>
-      <div class="pv-docs-shard"><span class="pv-docs-shardtag">Shard B</span><h4>Co-signer</h4><p>PRIVATUM secure co-signer service (isolated HSM / encrypted store). Defends against a stolen laptop — possession alone cannot drain funds.</p></div>
-      <div class="pv-docs-shard"><span class="pv-docs-shardtag">Shard C</span><h4>Recovery</h4><p>Passkey via WebAuthn / Secure Enclave. Defends against disk failure — B + C combine to rotate keys or recover access.</p></div>
+      <div class="pv-docs-shard"><span class="pv-docs-shardtag">Shard A</span><h4>Client</h4><p>Encrypted local file on the desktop filesystem or OS keychain. Defends against server-side compromise: PRIVATUM cannot sign without local confirmation.</p></div>
+      <div class="pv-docs-shard"><span class="pv-docs-shardtag">Shard B</span><h4>Co-signer</h4><p>PRIVATUM secure co-signer service (isolated HSM / encrypted store). Defends against a stolen laptop: possession alone cannot drain funds.</p></div>
+      <div class="pv-docs-shard"><span class="pv-docs-shardtag">Shard C</span><h4>Recovery</h4><p>Passkey via WebAuthn / Secure Enclave. Defends against disk failure: B + C combine to rotate keys or recover access.</p></div>
     </div>
     <ul class="pv-docs-list">
       <li><strong>Compromise of 1 shard:</strong> zero attacker spend authority.</li>
@@ -142,7 +142,7 @@ Execution layer
         <thead><tr><th>Threat</th><th>Outcome</th><th>Defense</th></tr></thead>
         <tbody>
           <tr><td>Physical theft of laptop</td><td><span class="pv-ok">Prevented</span></td><td>Attacker has Shard A only; the co-signer rejects requests without valid session auth and a secondary challenge.</td></tr>
-          <tr><td>Device malware infection</td><td><span class="pv-ok">Contained</span></td><td>Co-signer validates outbound parameters against safety policies — rate limits and anomaly detection.</td></tr>
+          <tr><td>Device malware infection</td><td><span class="pv-ok">Contained</span></td><td>Co-signer validates outbound parameters against safety policies: rate limits and anomaly detection.</td></tr>
           <tr><td>PRIVATUM server breach</td><td><span class="pv-ok">Prevented</span></td><td>Attacker obtains Shard B only, which cannot authorize anything alone.</td></tr>
           <tr><td>Hard drive failure or loss</td><td><span class="pv-ok">Recovered</span></td><td>Passkey (Shard C) combines with Shard B to restore access.</td></tr>
           <tr><td>Malicious operator</td><td><span class="pv-ok">Neutralized</span></td><td>PRIVATUM holds exactly 1 of 3 shards and has zero unilateral authority.</td></tr>
@@ -157,8 +157,8 @@ Execution layer
     <h2>Privacy framework</h2>
     <p>Privacy is handled in two sequential planes: making the wallet setup indistinguishable on-chain, then keeping financial activity confidential.</p>
     <div class="pv-docs-cards two">
-      <div class="pv-docs-card"><h4>Plane one — invisible setup</h4><p><strong>Threshold ECDSA:</strong> the 2-of-3 scheme aggregates off-chain into a standard single ECDSA signature, so the account looks like an ordinary single-key wallet.</p><p><strong>Blind co-signing:</strong> the co-signer validates against policy using zero-knowledge proofs, verifying limits without recording or profiling the transaction graph.</p></div>
-      <div class="pv-docs-card"><h4>Plane two — confidential activity</h4><p><strong>Stealth addresses (ERC-5564):</strong> senders derive one-time addresses from your public meta-address, so explorers cannot correlate incoming payments.</p><p><strong>Screened privacy pools:</strong> association-set proofs verify assets come from clean, non-illicit sources before entering or exiting pools.</p></div>
+      <div class="pv-docs-card"><h4>Plane one: invisible setup</h4><p><strong>Threshold ECDSA:</strong> the 2-of-3 scheme aggregates off-chain into a standard single ECDSA signature, so the account looks like an ordinary single-key wallet.</p><p><strong>Blind co-signing:</strong> the co-signer validates against policy using zero-knowledge proofs, verifying limits without recording or profiling the transaction graph.</p></div>
+      <div class="pv-docs-card"><h4>Plane two: confidential activity</h4><p><strong>Stealth addresses (ERC-5564):</strong> senders derive one-time addresses from your public meta-address, so explorers cannot correlate incoming payments.</p><p><strong>Screened privacy pools:</strong> association-set proofs verify assets come from clean, non-illicit sources before entering or exiting pools.</p></div>
     </div>
     <div class="pv-docs-callout"><strong>Compliance.</strong> PRIVATUM is a self-custodial privacy tool, not a tumbler. Pairing threshold cryptography with provable clean provenance keeps it listable and usable on standard Robinhood Chain infrastructure.</div>
   </section>
@@ -184,27 +184,41 @@ Execution layer
   <section class="pv-docs-sec" id="sdk">
     <div class="pv-docs-num">10</div>
     <h2>The open SDK</h2>
-    <p><code>@privatum/robinhood-chain-sdk</code> is an open-source TypeScript SDK built on Viem. Developers generate shards, assemble 2-of-3 wallets, and submit threshold transactions programmatically.</p>
-    <pre class="pv-docs-pre"><code>npm install @privatum/robinhood-chain-sdk</code></pre>
-    <pre class="pv-docs-pre"><code>import { createShards, createWallet, sendTransfer } from "@privatum/robinhood-chain-sdk";
+    <p><code>@privatumrh/robinhood-chain-sdk</code> is an open-source TypeScript SDK built on Viem. Developers generate shards, assemble 2-of-3 wallets, and submit threshold transactions programmatically.</p>
+    <pre class="pv-docs-pre"><code>npm install @privatumrh/robinhood-chain-sdk viem</code></pre>
+    <pre class="pv-docs-pre"><code>import {
+  generateShardA,
+  registerWalletWithCosigner,
+  RemoteCosigner,
+  buildFactoryInitCode,
+  buildUserOperation,
+  signUserOpHash,
+  combineSignatures,
+  PRIVATUM_FACTORY_ADDRESS,
+} from "@privatumrh/robinhood-chain-sdk";
 
-// 1. Generate the three shards (client, co-signer, passkey)
-const shards = await createShards({ passkey: true });
+// 1. Generate client Shard A locally
+const shardA = generateShardA();
 
-// 2. Compose the 2-of-3 wallet on Robinhood Chain
-const wallet = await createWallet({
-  chainId: 4663,
-  shards: [shards.client, shards.cosigner, shards.recovery],
-  threshold: 2,
+// 2. Register with co-signer to receive Shard B and recovery Shard C
+const cosigner = new RemoteCosigner({ apiUrl: "https://api.privatumrh.com" });
+const registration = await registerWalletWithCosigner(cosigner, {
+  shardAPubKey: shardA.publicKey,
 });
 
-// 3. Send USDC privately — signing is orchestrated for you
-const receipt = await sendTransfer(wallet, {
-  token: "USDC",
-  to: "ops.privatum",
-  amount: "620.00",
-});</code></pre>
-    <p class="pv-docs-note">The SDK is in progress and ships with audited cryptographic primitives. Package name and repository are provisional.</p>
+// 3. Compute deterministic account address via PrivatumFactory
+const factoryInitCode = buildFactoryInitCode(
+  shardA.publicKey,
+  registration.shardBPublicKey,
+  registration.shardCPublicKey,
+  0n
+);
+
+// 4. Build and dual-sign UserOp (2-of-3 threshold)
+const sigA = signUserOpHash(userOpHash, shardA.privateKey);
+const sigB = await cosigner.signUserOp(userOpHash, registration.walletId);
+const finalSignature = combineSignatures(sigA, sigB);</code></pre>
+    <p class="pv-docs-note">Published on npm as <code>@privatumrh/robinhood-chain-sdk</code>. Supports custom co-signer URLs, headers, and pluggable cosign callbacks.</p>
   </section>
 
   <section class="pv-docs-sec" id="network">
@@ -220,6 +234,9 @@ const receipt = await sendTransfer(wallet, {
           <tr><td>Chain ID</td><td><code>4663</code></td></tr>
           <tr><td>Block explorer</td><td><code>robinhoodchain.blockscout.com</code></td></tr>
           <tr><td>Account abstraction</td><td>ERC-4337 supported</td></tr>
+          <tr><td>PrivatumFactory</td><td><code>0x5308e6f5faafa7ef6fff948994bd396a982be0d0</code></td></tr>
+          <tr><td>EntryPoint v0.6</td><td><code>0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789</code></td></tr>
+          <tr><td>USDG Token</td><td><code>0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168</code></td></tr>
         </tbody>
       </table>
     </div>
@@ -227,10 +244,10 @@ const receipt = await sendTransfer(wallet, {
       <table>
         <thead><tr><th>Surface</th><th>Detail</th></tr></thead>
         <tbody>
-          <tr><td>Desktop application</td><td>macOS, Windows, Linux — Tauri v2 native client</td></tr>
-          <tr><td>Open SDK</td><td><code>@privatum/robinhood-chain-sdk</code> — repository to be announced</td></tr>
-          <tr><td>Co-signer API</td><td>Endpoint to be announced</td></tr>
-          <tr><td>Security reports</td><td>Contact to be announced</td></tr>
+          <tr><td>Desktop application</td><td>macOS, Windows, Linux: Tauri v2 native client</td></tr>
+          <tr><td>Open SDK</td><td><code>@privatumrh/robinhood-chain-sdk</code> on npm</td></tr>
+          <tr><td>Co-signer API</td><td><code>https://api.privatumrh.com</code></td></tr>
+          <tr><td>Security reports</td><td><code>security@privatumrh.com</code></td></tr>
         </tbody>
       </table>
     </div>
@@ -243,10 +260,10 @@ const receipt = await sendTransfer(wallet, {
       <table>
         <thead><tr><th>Capability</th><th>State</th><th>Detail</th></tr></thead>
         <tbody>
-          <tr><td>Co-signer service</td><td><span class="pv-ok">Live</span></td><td>Non-custodial, encrypted shard at rest, automated policy enforcement</td></tr>
+          <tr><td>Co-signer service</td><td><span class="pv-ok">Live</span></td><td>Non-custodial, encrypted shard at rest, automated policy enforcement (api.privatumrh.com)</td></tr>
           <tr><td>Desktop wallet</td><td><span class="pv-ok">Live</span></td><td>Native macOS, Windows and Linux client on Tauri v2</td></tr>
-          <tr><td>Robinhood Chain adapter</td><td><span class="pv-wip">In progress</span></td><td>ERC-4337 smart accounts, 2-of-3 verification, passkey recovery</td></tr>
-          <tr><td>Open SDK</td><td><span class="pv-wip">In progress</span></td><td>TypeScript, Viem-based, audited cryptographic primitives</td></tr>
+          <tr><td>Robinhood Chain adapter</td><td><span class="pv-ok">Live</span></td><td>PrivatumFactory deployed at 0x5308e6f5faafa7ef6fff948994bd396a982be0d0</td></tr>
+          <tr><td>Open SDK</td><td><span class="pv-ok">Live</span></td><td>Published as @privatumrh/robinhood-chain-sdk on npm</td></tr>
           <tr><td>Swaps</td><td><span class="pv-wip">In progress</span></td><td>DEX aggregation for low-slippage USDC &amp; USDT routing</td></tr>
           <tr><td>Threshold privacy</td><td><span class="pv-next">Roadmap</span></td><td>Threshold ECDSA, blind co-signing via ZK proofs, ERC-5564 stealth addresses</td></tr>
         </tbody>
