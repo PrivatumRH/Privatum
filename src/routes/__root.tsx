@@ -13,7 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { absoluteUrl, OG_IMAGE } from "../lib/site";
 
-const SITE_TITLE = "PRIVATUM — Private payments. Non-custodial.";
+const SITE_TITLE = "PRIVATUM: Private payments. Non-custodial.";
 const SITE_DESCRIPTION =
   "Private payments on Robinhood Chain. Non-custodial 2-of-3 threshold custody, stealth addresses, and no seed phrase to lose.";
 
@@ -110,7 +110,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       // Single entry point for all styles. src/styles.css bundles, in order:
       // fonts.css -> webflow.css -> privatum.css, then the Tailwind theme.
       // Do NOT also link /webflow.css, /fonts/fonts.css or /privatum.css from
-      // public/ — those copies exist only for the static pages under public/
+      // public/: those copies exist only for the static pages under public/
       // (docs.html, case-study.html, dashboard.html) and linking them here
       // loads ~260 KB of CSS a second time with unpredictable cascade order.
       {

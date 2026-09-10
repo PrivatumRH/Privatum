@@ -2,7 +2,7 @@
  * Canonical site origin, used to build absolute URLs for social metadata.
  *
  * Open Graph and Twitter card crawlers (X, Slack, Discord, iMessage, LinkedIn)
- * ignore relative image paths — og:image and og:url must be fully qualified or
+ * ignore relative image paths: og:image and og:url must be fully qualified or
  * the card renders without an image. Set VITE_SITE_URL per environment so
  * preview deploys advertise their own origin rather than production's.
  *

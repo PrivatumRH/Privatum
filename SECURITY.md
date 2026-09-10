@@ -32,7 +32,7 @@ We will keep you informed of our progress throughout remediation.
 |---|---|---|
 | **Smart Contracts (`contracts/`)** | `PrivatumAccount.sol`, `PrivatumFactory.sol` | Quorum bypass, signature malleability, ERC-4337 entry point reentrancy, unauthorized execution |
 | **Co-Signer Backend (`backend/`)** | Express + Bun Co-Signer API | Spending policy bypass, rate-limit circumvention, encrypted Shard B exposure, replay attacks |
-| **Open SDK (`sdk/`)** | `@privatum/robinhood-chain-sdk` | Cryptographic key leakage, weak randomness in ephemeral key generation |
+| **Open SDK (`sdk/`)** | `@privatumrh/robinhood-chain-sdk` | Cryptographic key leakage, weak randomness in ephemeral key generation |
 | **Desktop Client (`desktop/`)** | Tauri v2 (Rust Core + React) | OS Keychain credential leakage, memory extraction of Shard A |
 
 ### Out of Scope

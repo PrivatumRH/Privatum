@@ -9,7 +9,7 @@ React port in `src/routes/index.tsx`.
 
 It used to live at `public/index.html`. It was moved here because Cloudflare Workers (and
 every other static-asset-first host) serves `public/index.html` at `/` **before** invoking
-the SSR worker — so this file silently shadowed the app's root route in production, and the
+the SSR worker, so this file silently shadowed the app's root route in production, and the
 live site served the stale Webflow page instead of the React app. Vite's dev server
 prioritises the route over `publicDir`, so the problem was invisible locally.
 

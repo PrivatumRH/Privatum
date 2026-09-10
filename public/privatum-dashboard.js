@@ -17,7 +17,7 @@
     { id: 'PV-9038', type: 'Swap', asset: 'USDT → USDC', amount: '1,850.00', counterparty: 'Route: DEX aggregate', time: '08:17', status: 'Settled' },
     { id: 'PV-9031', type: 'Send', asset: 'USDC', amount: '-620.00', counterparty: 'ops.privatum', time: 'Yesterday', status: 'Settled' },
     { id: 'PV-9027', type: 'Recovery', asset: 'Shard C', amount: 'Rotation', counterparty: 'Passkey verified', time: 'Yesterday', status: 'Settled' },
-    { id: 'PV-9021', type: 'SDK', asset: 'Integration', amount: 'Copied', counterparty: '@privatum/robinhood-chain-sdk', time: 'Yesterday', status: 'Settled' }
+    { id: 'PV-9021', type: 'SDK', asset: 'Integration', amount: 'Copied', counterparty: '@privatumrh/robinhood-chain-sdk', time: 'Yesterday', status: 'Settled' }
   ];
 
   const state = {
@@ -430,7 +430,7 @@
       'PRIVATUM SDK Integration Guide',
       '',
       'Install:',
-      'npm install @privatum/robinhood-chain-sdk viem',
+      'npm install @privatumrh/robinhood-chain-sdk viem',
       '',
       'Network:',
       'Robinhood Chain mainnet, chain ID 4663, ETH gas, ERC-4337 support.',
@@ -442,7 +442,7 @@
       'Build payload, sign with Shard A, validate policy, sign with Shard B, combine partial signatures, settle through ERC-4337.',
       '',
       'Status:',
-      'Proposed package target from PRD version 0.4. Production endpoint is not specified.'
+      'Published on npm registry (@privatumrh/robinhood-chain-sdk). Production co-signer: https://api.privatumrh.com'
     ].join('\n');
     const blob = new Blob([guide], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -685,8 +685,8 @@
       }
     });
     $('#copy-install')?.addEventListener('click', () => {
-      copyText('npm install @privatum/robinhood-chain-sdk viem', 'Install command copied', 'The SDK install command is on your clipboard.');
-      addActivity({ type: 'SDK', asset: 'Install', amount: 'Copied', counterparty: '@privatum/robinhood-chain-sdk' });
+      copyText('npm install @privatumrh/robinhood-chain-sdk viem', 'Install command copied', 'The SDK install command is on your clipboard.');
+      addActivity({ type: 'SDK', asset: 'Install', amount: 'Copied', counterparty: '@privatumrh/robinhood-chain-sdk' });
     });
     $('#copy-sdk')?.addEventListener('click', () => copyText($('#sdk-code').textContent, 'SDK code copied', 'The integration example is on your clipboard.'));
     $('#download-guide')?.addEventListener('click', downloadGuide);
