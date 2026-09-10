@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Wallet,
   ShieldCheck,
@@ -19,6 +19,9 @@ import {
   KeyRound,
   Server,
   QrCode,
+  Coins,
+  ArrowRight,
+  ArrowLeftRight,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -188,7 +191,7 @@ function TokenAvatar({ symbol, name, iconUrl, size = "md", className = "" }: Tok
 
 export function App() {
   const [showSplash, setShowSplash] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<"wallet" | "shards" | "recovery">("wallet");
+  const [activeTab, setActiveTab] = useState<"wallet" | "tokens" | "shards" | "recovery">("wallet");
   const [wallet, setWallet] = useState<PrivatumWallet | null>(null);
   const [walletAddress, setWalletAddress] = useState<string>("");
   const [shardAPrivKey, setShardAPrivKey] = useState<string>("");
@@ -200,6 +203,24 @@ export function App() {
   const [usdgBalance, setUsdgBalance] = useState<string>("0.00");
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<number>(Date.now());
+
+  // CoinGecko Ethereum Price (smart cached for 30s)
+  const [ethPrice, setEthPrice] = useState<number>(() => {
+    try {
+      const cached = localStorage.getItem("privatum_eth_price");
+      return cached ? parseFloat(cached) : 2450;
+    } catch {
+      return 2450;
+    }
+  });
+  const [lastPriceFetchTime, setLastPriceFetchTime] = useState<number>(() => {
+    try {
+      const cached = localStorage.getItem("privatum_eth_price_time");
+      return cached ? parseInt(cached, 10) : 0;
+    } catch {
+      return 0;
+    }
+  });
 
   // Modals
   const [showSendModal, setShowSendModal] = useState<boolean>(false);
@@ -214,12 +235,18 @@ export function App() {
   const [isSending, setIsSending] = useState<boolean>(false);
   const [txSuccessHash, setTxSuccessHash] = useState<string | null>(null);
 
-  // Recovery / TOTP state
+  // Recovery / TOTP state with localStorage persistence
   const [totpSecret, setTotpSecret] = useState<string | null>(null);
   const [totpUri, setTotpUri] = useState<string | null>(null);
   const [totpQrCode, setTotpQrCode] = useState<string | null>(null);
   const [totpCode, setTotpCode] = useState<string>("");
-  const [totpVerified, setTotpVerified] = useState<boolean>(false);
+  const [totpVerified, setTotpVerified] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("privatum_totp_enrolled") === "true";
+    } catch {
+      return false;
+    }
+  });
   const [isConfirmingTotp, setIsConfirmingTotp] = useState<boolean>(false);
 
   // Transactions list
@@ -244,6 +271,48 @@ export function App() {
     navigator.clipboard.writeText(text);
     addToast("success", "Copied", `${label} copied to clipboard`);
   };
+
+  // CoinGecko Price Fetcher with 30s smart cache
+  const fetchEthPrice = useCallback(async (force = false) => {
+    const now = Date.now();
+    if (!force && now - lastPriceFetchTime < 30000 && ethPrice > 0) {
+      return ethPrice;
+    }
+    try {
+      const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd");
+      if (res.ok) {
+        const data = await res.json();
+        const p = data?.ethereum?.usd;
+        if (typeof p === "number" && p > 0) {
+          setEthPrice(p);
+          setLastPriceFetchTime(now);
+          try {
+            localStorage.setItem("privatum_eth_price", String(p));
+            localStorage.setItem("privatum_eth_price_time", String(now));
+          } catch {}
+          return p;
+        }
+      }
+    } catch (err) {
+      console.warn("CoinGecko price fetch error:", err);
+    }
+    return ethPrice;
+  }, [ethPrice, lastPriceFetchTime]);
+
+  useEffect(() => {
+    fetchEthPrice();
+    const interval = setInterval(() => {
+      fetchEthPrice();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchEthPrice]);
+
+  // Total USD portfolio value
+  const totalUsdValue = useMemo(() => {
+    const usdg = parseFloat(usdgBalance) || 0;
+    const eth = parseFloat(ethBalance) || 0;
+    return usdg + eth * (ethPrice || 0);
+  }, [usdgBalance, ethBalance, ethPrice]);
 
   // Splash Screen 1.5s
   useEffect(() => {
@@ -345,6 +414,7 @@ export function App() {
       });
       setUsdgBalance(Number(formatUnits(rawUsdg, 6)).toFixed(2));
       setLastSyncTime(Date.now());
+      fetchEthPrice(true);
     } catch (err) {
       console.warn("Balance fetch error (counterfactual wallet or network):", err);
     } finally {
@@ -561,6 +631,9 @@ export function App() {
       const success = await wallet.confirmTotpRecovery(totpCode);
       if (success) {
         setTotpVerified(true);
+        try {
+          localStorage.setItem("privatum_totp_enrolled", "true");
+        } catch {}
         addToast("success", "2FA Enabled", "Emergency recovery with TOTP is now active.");
       }
     } catch (err: any) {
@@ -572,10 +645,10 @@ export function App() {
 
 
   return (
-    <div className="min-h-screen h-screen flex bg-[#0b0e14] text-slate-100 font-sans overflow-hidden selection:bg-white/20">
+    <div className="min-h-screen h-screen flex bg-[#13151b] text-slate-100 font-sans overflow-hidden selection:bg-white/20">
       {/* 1.5s Splash Screen with Privatum Logo */}
       {showSplash && (
-        <div className="fixed inset-0 z-50 bg-[#0b0e14] flex flex-col items-center justify-center select-none">
+        <div className="fixed inset-0 z-50 bg-[#13151b] flex flex-col items-center justify-center select-none">
           <div className="flex flex-col items-center gap-4">
             <img
               src="/logo.png"
@@ -591,12 +664,12 @@ export function App() {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-xl border backdrop-blur-md shadow-2xl transition-all duration-300 animate-in fade-in slide-in-from-top-2 ${
+            className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-xl border backdrop-blur-md shadow-xl transition-all duration-300 animate-in fade-in slide-in-from-top-2 ${
               t.type === "success"
-                ? "bg-[#0c1914]/95 border-emerald-500/30 text-emerald-100"
+                ? "bg-[#131d17]/95 border-emerald-500/30 text-emerald-100"
                 : t.type === "error"
-                ? "bg-[#1f1013]/95 border-rose-500/30 text-rose-100"
-                : "bg-[#0d1424]/95 border-blue-500/30 text-blue-100"
+                ? "bg-[#201214]/95 border-rose-500/30 text-rose-100"
+                : "bg-[#141926]/95 border-blue-500/30 text-blue-100"
             }`}
           >
             <div className="mt-0.5 shrink-0">
@@ -623,7 +696,7 @@ export function App() {
       </div>
 
       {/* Left Rail */}
-      <aside className="w-16 shrink-0 bg-[#07090e] border-r border-white/[0.06] flex flex-col items-center py-4 justify-between select-none z-20">
+      <aside className="w-16 shrink-0 bg-[#0e1015] border-r border-white/[0.06] flex flex-col items-center py-4 justify-between select-none z-20">
         <div className="flex flex-col items-center w-full">
           {/* Window dots */}
           <div className="flex items-center gap-1.5 mb-6">
@@ -648,7 +721,7 @@ export function App() {
               title="Wallet"
               className={`w-10 h-10 rounded-xl flex items-center justify-center transition ${
                 activeTab === "wallet"
-                  ? "bg-white/10 text-white shadow-sm border border-white/15"
+                  ? "bg-white/10 text-white border border-white/15"
                   : "text-slate-400 hover:text-white hover:bg-white/5"
               }`}
             >
@@ -656,11 +729,23 @@ export function App() {
             </button>
 
             <button
+              onClick={() => setActiveTab("tokens")}
+              title="Tokens"
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition ${
+                activeTab === "tokens"
+                  ? "bg-white/10 text-white border border-white/15"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <Coins className="w-5 h-5" />
+            </button>
+
+            <button
               onClick={() => setActiveTab("shards")}
               title="Shard Health"
               className={`w-10 h-10 rounded-xl flex items-center justify-center transition ${
                 activeTab === "shards"
-                  ? "bg-white/10 text-white shadow-sm border border-white/15"
+                  ? "bg-white/10 text-white border border-white/15"
                   : "text-slate-400 hover:text-white hover:bg-white/5"
               }`}
             >
@@ -672,7 +757,7 @@ export function App() {
               title="2FA Recovery"
               className={`w-10 h-10 rounded-xl flex items-center justify-center transition ${
                 activeTab === "recovery"
-                  ? "bg-white/10 text-white shadow-sm border border-white/15"
+                  ? "bg-white/10 text-white border border-white/15"
                   : "text-slate-400 hover:text-white hover:bg-white/5"
               }`}
             >
@@ -690,7 +775,7 @@ export function App() {
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400" />
               {wallet && (
-                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-[#07090e]"></span>
+                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-[#0e1015]"></span>
               )}
             </div>
           </div>
@@ -698,10 +783,10 @@ export function App() {
       </aside>
 
       {/* Main Canvas */}
-      <main className="flex-1 flex flex-col h-full overflow-y-auto bg-[#0b0e14]">
-        {/* Top bar matching inspo */}
-        <header className="flex items-center justify-between px-8 py-4 border-b border-white/[0.04]">
-          {/* Left: Sync status & Network */}
+      <main className="flex-1 flex flex-col h-full overflow-y-auto bg-[#13151b]">
+        {/* Top bar */}
+        <header className="flex items-center justify-between px-8 py-4 border-b border-white/[0.06]">
+          {/* Left: Sync status & Robinhood Network */}
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-2 text-slate-400">
               <span>Last sync <strong className="font-semibold text-slate-200">{formatRelativeTime(lastSyncTime)}</strong></span>
@@ -717,10 +802,9 @@ export function App() {
 
             <div className="h-4 w-px bg-white/10"></div>
 
-            <div className="flex items-center gap-1.5 text-slate-400 text-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="text-slate-300 font-medium">Robinhood Chain</span>
-              <span className="text-[10px] text-slate-500 font-mono">4663</span>
+            <div className="flex items-center gap-2 text-slate-300 text-xs font-medium">
+              <img src="/rh-icon.png" alt="Robinhood" className="w-4 h-4 rounded-full object-contain" />
+              <span>Robinhood Chain</span>
             </div>
           </div>
 
@@ -740,7 +824,7 @@ export function App() {
             ) : (
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-slate-950 hover:bg-slate-200 transition flex items-center gap-1.5 shadow-sm"
+                className="px-4 py-1.5 rounded-full text-xs font-semibold bg-[#f64943] hover:bg-[#e03d38] text-white transition flex items-center gap-1.5"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
                 <span>Create Account</span>
@@ -751,17 +835,26 @@ export function App() {
 
         {/* Tab 1: Wallet View */}
         {activeTab === "wallet" && (
-          <div className="p-8 max-w-5xl space-y-8">
-            {/* Hero Section matching inspo */}
+          <div className="p-8 max-w-5xl space-y-7">
+            {/* Hero Section */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-2">
               <div>
-                <div className="text-4xl sm:text-5xl font-semibold tracking-tight text-white flex items-baseline gap-2.5 font-mono">
-                  <span>{parseFloat(usdgBalance).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  <span className="text-xl sm:text-2xl font-normal text-slate-400 font-sans tracking-normal">USDG</span>
+                <div className="text-4xl sm:text-5xl font-semibold tracking-tight text-white flex items-baseline gap-2 font-mono">
+                  <span>${totalUsdValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span className="text-xl sm:text-2xl font-normal text-slate-400 font-sans tracking-normal">USD</span>
                 </div>
-                <div className="text-xs text-slate-400 mt-1.5 flex items-center gap-2 font-sans">
-                  <span>Gas reserve:</span>
+                <div className="text-xs text-slate-400 mt-2 flex items-center gap-2 font-sans">
+                  <span className="font-mono text-slate-300">{usdgBalance} USDG</span>
+                  <span>•</span>
                   <span className="font-mono text-slate-300">{ethBalance} ETH</span>
+                  {ethPrice > 0 && (
+                    <>
+                      <span>•</span>
+                      <span className="text-[11px] text-slate-400 font-mono">
+                        ETH ${ethPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -772,7 +865,7 @@ export function App() {
                     setTxSuccessHash(null);
                     setShowSendModal(true);
                   }}
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs flex items-center gap-2 transition shadow-lg shadow-blue-600/20 disabled:opacity-40"
+                  className="px-5 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-medium text-xs flex items-center gap-2 transition disabled:opacity-40"
                 >
                   <ArrowUpRight className="w-4 h-4" />
                   <span>Send</span>
@@ -780,7 +873,7 @@ export function App() {
                 <button
                   disabled={!wallet}
                   onClick={() => setShowReceiveModal(true)}
-                  className="px-5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white font-medium text-xs border border-white/10 flex items-center gap-2 transition disabled:opacity-40"
+                  className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs border border-white/15 flex items-center gap-2 transition disabled:opacity-40"
                 >
                   <ArrowDownLeft className="w-4 h-4" />
                   <span>Receive</span>
@@ -788,53 +881,38 @@ export function App() {
               </div>
             </div>
 
-            {/* Frontier Assets Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {/* USDG */}
-              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between hover:bg-white/[0.04] transition">
-                <div className="flex items-center gap-3">
-                  <TokenAvatar symbol="USDG" name="USDG Global Dollar" iconUrl="/usdg_logo.png" size="md" />
-                  <div>
-                    <div className="text-sm font-semibold text-white flex items-center gap-2">
-                      <span>USDG</span>
-                      <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        Stablecoin
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-400 mt-0.5">Robinhood Global Dollar</div>
+            {/* Tokens link row */}
+            <button
+              onClick={() => setActiveTab("tokens")}
+              className="flex items-center justify-between w-full p-4 rounded-2xl bg-[#181a22] hover:bg-[#1d202a] border border-white/[0.08] text-xs transition group cursor-pointer text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-slate-300 group-hover:text-white transition">
+                  <Coins className="w-4 h-4 text-[#f64943]" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-white flex items-center gap-2">
+                    <span>Tokens</span>
+                    <span className="text-[11px] font-mono text-slate-400 font-normal">2 Assets</span>
+                  </div>
+                  <div className="text-xs text-slate-400 mt-0.5 font-mono">
+                    {usdgBalance} USDG • {ethBalance} ETH
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm font-semibold text-white font-mono">{usdgBalance} USDG</div>
-                  <div className="text-xs text-slate-400 mt-0.5">${usdgBalance}</div>
-                </div>
               </div>
-
-              {/* ETH */}
-              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between hover:bg-white/[0.04] transition">
-                <div className="flex items-center gap-3">
-                  <TokenAvatar symbol="ETH" name="Ethereum" iconUrl="/eth.jpeg" size="md" />
-                  <div>
-                    <div className="text-sm font-semibold text-white flex items-center gap-2">
-                      <span>ETH</span>
-                      <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-white/10 text-slate-300 border border-white/10">
-                        Gas
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-400 mt-0.5">Robinhood Chain Gas</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-semibold text-white font-mono">{ethBalance} ETH</div>
-                  <div className="text-xs text-slate-400 mt-0.5">Native Gas</div>
-                </div>
+              <div className="flex items-center gap-1.5 text-slate-400 group-hover:text-white transition text-xs font-medium">
+                <span>View all</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </div>
-            </div>
+            </button>
 
-            {/* Latest Transactions Table matching inspo */}
+            {/* Latest Transactions Table */}
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-white">Latest transactions</h2>
+                <div className="flex items-center gap-2">
+                  <ArrowLeftRight className="w-4 h-4 text-slate-400" />
+                  <h2 className="text-sm font-semibold text-white">Latest transactions</h2>
+                </div>
                 <a
                   href={walletAddress ? `https://robinhoodchain.blockscout.com/address/${walletAddress}` : "https://robinhoodchain.blockscout.com"}
                   target="_blank"
@@ -846,8 +924,8 @@ export function App() {
                 </a>
               </div>
 
-              <div className="rounded-2xl border border-white/[0.06] overflow-hidden bg-white/[0.01]">
-                <div className="divide-y divide-white/[0.04]">
+              <div className="rounded-2xl border border-white/[0.08] overflow-hidden bg-[#181a22]">
+                <div className="divide-y divide-white/[0.06]">
                   {transactions.length === 0 ? (
                     <div className="p-6 text-center text-xs text-slate-500">
                       No transactions recorded yet.
@@ -888,7 +966,7 @@ export function App() {
                                 href={`https://robinhoodchain.blockscout.com/tx/${tx.hash}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-400 hover:text-blue-300 inline-flex items-center gap-1 font-medium transition"
+                                className="text-slate-400 hover:text-white inline-flex items-center gap-1 font-medium transition"
                               >
                                 <span>View in explorer</span>
                                 <ExternalLink className="w-3 h-3" />
@@ -907,7 +985,70 @@ export function App() {
           </div>
         )}
 
-        {/* Tab 2: Shard Health */}
+        {/* Tab: Tokens View */}
+        {activeTab === "tokens" && (
+          <div className="p-8 max-w-4xl space-y-6">
+            <div className="flex items-center justify-between pb-2">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <Coins className="w-5 h-5 text-[#f64943]" />
+                  <h2 className="text-lg font-semibold text-white">Tokens</h2>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  Assets held on Robinhood Chain
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setTxSuccessHash(null);
+                  setShowSendModal(true);
+                }}
+                disabled={!wallet}
+                className="px-4 py-2 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white text-xs font-medium transition flex items-center gap-1.5 disabled:opacity-40"
+              >
+                <ArrowUpRight className="w-3.5 h-3.5" />
+                <span>Send Token</span>
+              </button>
+            </div>
+
+            {/* Token list in vertical format */}
+            <div className="rounded-2xl border border-white/[0.08] overflow-hidden bg-[#181a22] divide-y divide-white/[0.06]">
+              {/* USDG Row */}
+              <div className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition">
+                <div className="flex items-center gap-3.5">
+                  <TokenAvatar symbol="USDG" name="USDG Global Dollar" iconUrl="/usdg_logo.png" size="md" />
+                  <div>
+                    <div className="text-sm font-semibold text-white">USDG</div>
+                    <div className="text-xs text-slate-400 mt-0.5">Robinhood Global Dollar</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-semibold text-white font-mono">{usdgBalance} USDG</div>
+                  <div className="text-xs text-slate-400 mt-0.5 font-mono">${parseFloat(usdgBalance || "0").toFixed(2)} USD</div>
+                </div>
+              </div>
+
+              {/* ETH Row */}
+              <div className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition">
+                <div className="flex items-center gap-3.5">
+                  <TokenAvatar symbol="ETH" name="Ethereum" iconUrl="/eth.jpeg" size="md" />
+                  <div>
+                    <div className="text-sm font-semibold text-white">ETH</div>
+                    <div className="text-xs text-slate-400 mt-0.5">Robinhood Chain Native Gas</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-semibold text-white font-mono">{ethBalance} ETH</div>
+                  <div className="text-xs text-slate-400 mt-0.5 font-mono">
+                    ${(parseFloat(ethBalance || "0") * (ethPrice || 0)).toFixed(2)} USD
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab: Shard Health */}
         {activeTab === "shards" && (
           <div className="p-8 max-w-4xl space-y-5">
             <div className="flex items-center justify-between pb-2">
@@ -924,7 +1065,7 @@ export function App() {
             </div>
 
             {/* Shard A */}
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-[#181a22] border border-white/[0.08] flex items-center justify-between">
               <div className="flex items-center gap-3.5">
                 <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white">
                   <KeyRound className="w-4 h-4 text-emerald-400" />
@@ -943,7 +1084,7 @@ export function App() {
             </div>
 
             {/* Shard B */}
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-[#181a22] border border-white/[0.08] flex items-center justify-between">
               <div className="flex items-center gap-3.5">
                 <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white">
                   <Server className="w-4 h-4 text-emerald-400" />
@@ -962,7 +1103,7 @@ export function App() {
             </div>
 
             {/* Shard C */}
-            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-[#181a22] border border-white/[0.08] flex items-center justify-between">
               <div className="flex items-center gap-3.5">
                 <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white">
                   <Fingerprint className="w-4 h-4 text-slate-300" />
@@ -970,7 +1111,7 @@ export function App() {
                 <div>
                   <div className="text-sm font-medium text-white">Shard C: Emergency Recovery Key</div>
                   <div className="text-xs text-slate-400 mt-0.5 font-mono">
-                    {shardCAddress ? `Recovery: ${shortenAddress(shardCAddress)}` : "Secp256k1 key + RFC 6238 TOTP"}
+                    {shardCAddress ? `Recovery: ${shortenAddress(shardCAddress)}` : "Secp256k1 key + 6-digit 2FA"}
                   </div>
                 </div>
               </div>
@@ -1003,28 +1144,54 @@ export function App() {
           </div>
         )}
 
-        {/* Tab 3: 2FA Recovery */}
+        {/* Tab: 2FA Recovery */}
         {activeTab === "recovery" && (
           <div className="p-8 max-w-2xl space-y-6">
-            <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-sm">
-              <h2 className="text-sm font-semibold text-white mb-2">RFC 6238 TOTP Two-Factor Recovery</h2>
-              <p className="text-xs text-slate-400 mb-5 leading-relaxed">
-                Pair your wallet with Google Authenticator or Authy. If your local device key (Shard A) is lost, you can recover full account access and rotate keys using Shard C and your 6-digit TOTP code.
-              </p>
+            <div className="p-6 rounded-2xl bg-[#181a22] border border-white/[0.08] backdrop-blur-sm space-y-4">
+              <div>
+                <h2 className="text-base font-semibold text-white">Emergency Two-Factor (2FA)</h2>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Protect your wallet with an authenticator app. If you ever lose access on this computer, your 6-digit code and backup key let you recover your account safely.
+                </p>
+              </div>
 
-              {!totpSecret ? (
+              {totpVerified ? (
+                <div className="space-y-4 pt-2">
+                  <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                    <div>
+                      <div className="text-xs font-semibold text-emerald-300">Two-factor protection is active</div>
+                      <div className="text-[11px] text-emerald-200/80 mt-0.5">
+                        Your wallet is paired with your authenticator app for emergency recovery.
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setTotpSecret(null);
+                      setTotpQrCode(null);
+                      setTotpCode("");
+                      handleStartTotpSetup();
+                    }}
+                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs border border-white/10 transition"
+                  >
+                    Re-pair Authenticator
+                  </button>
+                </div>
+              ) : !totpSecret ? (
                 <button
                   disabled={!wallet}
                   onClick={handleStartTotpSetup}
-                  className="px-4 py-2 rounded-xl bg-white text-slate-950 font-semibold text-xs hover:bg-slate-200 transition shadow-sm disabled:opacity-40"
+                  className="px-5 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-medium text-xs transition disabled:opacity-40"
                 >
-                  Start Authenticator Pairing
+                  Set Up Authenticator
                 </button>
               ) : (
                 <div className="space-y-4 pt-3 border-t border-white/10">
                   {totpQrCode && (
-                    <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl w-fit mx-auto shadow-md space-y-2">
-                      <img src={totpQrCode} alt="TOTP Authenticator QR Code" className="w-40 h-40 rounded-lg" />
+                    <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl w-fit mx-auto space-y-2">
+                      <img src={totpQrCode} alt="Authenticator QR Code" className="w-40 h-40 rounded-lg" />
                       <span className="text-[11px] font-medium text-slate-900">
                         Scan with Google Authenticator or Authy
                       </span>
@@ -1032,11 +1199,11 @@ export function App() {
                   )}
 
                   <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 text-xs font-mono">
-                    <div className="text-slate-400 text-[11px] mb-1">Base32 Secret:</div>
+                    <div className="text-slate-400 text-[11px] mb-1">Secret Key (if you cannot scan):</div>
                     <div className="text-white flex items-center justify-between">
                       <span>{totpSecret}</span>
                       <button
-                        onClick={() => copyToClipboard(totpSecret, "TOTP Secret")}
+                        onClick={() => copyToClipboard(totpSecret, "Secret Key")}
                         className="p-1 hover:text-white text-slate-400 transition"
                       >
                         <Copy className="w-3.5 h-3.5" />
@@ -1056,7 +1223,7 @@ export function App() {
                     <button
                       onClick={handleConfirmTotp}
                       disabled={totpCode.length !== 6 || isConfirmingTotp}
-                      className="px-4 py-2 rounded-xl bg-white text-slate-950 font-semibold text-xs hover:bg-slate-200 transition shadow-sm disabled:opacity-40 flex items-center gap-1.5"
+                      className="px-5 py-2 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-medium text-xs transition disabled:opacity-40 flex items-center gap-1.5"
                     >
                       {isConfirmingTotp ? (
                         <>
@@ -1064,7 +1231,7 @@ export function App() {
                           <span>Confirming...</span>
                         </>
                       ) : (
-                        <span>Confirm Code</span>
+                        <span>Confirm & Enable</span>
                       )}
                     </button>
                   </div>
@@ -1078,7 +1245,7 @@ export function App() {
       {/* Modal: Create Account */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="bg-[#10141f] border border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+          <div className="bg-[#181a23] border border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <h3 className="text-base font-semibold text-white">Create Self-Custody Account</h3>
             <p className="text-xs text-slate-400 leading-relaxed">
               This generates an orthogonal keypair on this client machine (Shard A) and configures a 2-of-3 threshold quorum with the co-signer (Shard B).
@@ -1095,7 +1262,7 @@ export function App() {
               <button
                 disabled={isSending}
                 onClick={handleCreateWallet}
-                className="flex-1 py-2.5 rounded-xl bg-white text-slate-950 font-semibold text-xs hover:bg-slate-200 transition shadow-sm disabled:opacity-40 flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2"
               >
                 {isSending ? (
                   <>
@@ -1114,7 +1281,7 @@ export function App() {
       {/* Modal: Send Transaction */}
       {showSendModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="bg-[#10141f] border border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+          <div className="bg-[#181a23] border border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-semibold text-white">Send</h3>
               <button
@@ -1134,7 +1301,7 @@ export function App() {
                     onClick={() => setSendAssetType("USDG")}
                     className={`py-2 px-3 rounded-xl text-xs font-semibold border transition flex items-center justify-center gap-2 ${
                       sendAssetType === "USDG"
-                        ? "bg-white text-slate-950 border-white shadow-sm"
+                        ? "bg-white text-slate-950 border-white"
                         : "bg-white/[0.03] text-slate-400 border-white/10 hover:text-white"
                     }`}
                   >
@@ -1146,7 +1313,7 @@ export function App() {
                     onClick={() => setSendAssetType("ETH")}
                     className={`py-2 px-3 rounded-xl text-xs font-semibold border transition flex items-center justify-center gap-2 ${
                       sendAssetType === "ETH"
-                        ? "bg-white text-slate-950 border-white shadow-sm"
+                        ? "bg-white text-slate-950 border-white"
                         : "bg-white/[0.03] text-slate-400 border-white/10 hover:text-white"
                     }`}
                   >
@@ -1204,7 +1371,7 @@ export function App() {
                 <button
                   type="submit"
                   disabled={isSending}
-                  className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition shadow-lg shadow-blue-600/20 disabled:opacity-40 flex items-center justify-center gap-2"
+                  className="flex-1 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2"
                 >
                   {isSending ? (
                     <>
@@ -1224,7 +1391,7 @@ export function App() {
       {/* Modal: Receive Address */}
       {showReceiveModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="bg-[#10141f] border border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+          <div className="bg-[#181a23] border border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-semibold text-white">Receive</h3>
               <button
@@ -1236,11 +1403,11 @@ export function App() {
             </div>
 
             <p className="text-xs text-slate-400 leading-relaxed">
-              Send ETH or USDG on Robinhood Chain (Chain ID 4663) to your self-custody address.
+              Send ETH or USDG on Robinhood Chain to your self-custody address.
             </p>
 
             {receiveQrCode && (
-              <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl w-fit mx-auto shadow-md">
+              <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl w-fit mx-auto">
                 <img src={receiveQrCode} alt="Wallet Address QR Code" className="w-36 h-36 rounded-lg" />
               </div>
             )}
@@ -1258,7 +1425,7 @@ export function App() {
             <div className="pt-2">
               <button
                 onClick={() => setShowReceiveModal(false)}
-                className="w-full py-2.5 rounded-xl bg-white text-slate-950 font-semibold text-xs hover:bg-slate-200 transition shadow-sm"
+                className="w-full py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-medium text-xs transition"
               >
                 Done
               </button>
