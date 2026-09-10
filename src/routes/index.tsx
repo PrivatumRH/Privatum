@@ -61,6 +61,88 @@ const FAQS = [
  * To re-enable: swap these back to <a href="/dashboard.html"> with the original
  * label. Sites are listed in the handover doc.
  */
+type PlatformKey = "windows" | "macos" | "linux";
+
+interface PlatformDetails {
+  key: PlatformKey;
+  name: string;
+  badge: string;
+  ext: string;
+  filename: string;
+  osRequirement: string;
+  downloadUrl: string;
+  commandSnippet?: string;
+  instructions: string;
+}
+
+const PLATFORM_DATA: Record<PlatformKey, PlatformDetails> = {
+  windows: {
+    key: "windows",
+    name: "Windows",
+    badge: "x64 installer",
+    ext: ".exe setup",
+    filename: "PRIVATUM_0.1.0_x64-setup.exe",
+    osRequirement: "Windows 10, 11 (64-bit)",
+    downloadUrl: "https://api.privatumrh.com/v1/downloads/windows",
+    instructions: "Run PRIVATUM_0.1.0_x64-setup.exe to install Privatum on your system.",
+  },
+  macos: {
+    key: "macos",
+    name: "macOS",
+    badge: "Apple Silicon",
+    ext: ".dmg / .app",
+    filename: "PRIVATUM_aarch64.app.tar.gz",
+    osRequirement: "macOS 11.0 Big Sur or later (Apple Silicon)",
+    downloadUrl: "https://api.privatumrh.com/v1/downloads/macos",
+    instructions: "Extract archive and drag Privatum into Applications.",
+  },
+  linux: {
+    key: "linux",
+    name: "Linux",
+    badge: "Debian & AppImage",
+    ext: ".deb / AppImage",
+    filename: "PRIVATUM_0.1.0_amd64.deb",
+    osRequirement: "Ubuntu, Debian, Fedora, Arch Linux",
+    downloadUrl: "https://api.privatumrh.com/v1/downloads/linux",
+    commandSnippet: "sudo dpkg -i PRIVATUM_0.1.0_amd64.deb",
+    instructions: "Install package using dpkg or execute AppImage directly.",
+  },
+};
+
+function WindowsIcon({ className = "pv-icon" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+      <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.902-1.849" />
+    </svg>
+  );
+}
+
+function AppleIcon({ className = "pv-icon" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.62-.75 1.04-1.8 0.92-2.85-.9.04-1.98.6-2.61 1.34-.56.64-1.04 1.69-.91 2.71 1 .08 2-.45 2.6-1.2z" />
+    </svg>
+  );
+}
+
+function LinuxIcon({ className = "pv-icon" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+      <path d="M12.002 0c-2.88 0-4.78 1.99-4.78 4.96 0 1.25.39 2.55.93 3.48-.12.35-.2.72-.2 1.11 0 .28.05.54.12.8-1.55 1.12-2.63 2.92-2.63 4.97 0 2.42 1.48 4.54 3.62 5.48-.17.65-.28 1.33-.28 2.04 0 .38.04.75.09 1.11H4.49a.75.75 0 0 0 0 1.5h15.02a.75.75 0 0 0 0-1.5h-4.38c.05-.36.09-.73.09-1.11 0-.71-.11-1.39-.28-2.04 2.14-.94 3.62-3.06 3.62-5.48 0-2.05-1.08-3.85-2.63-4.97.07-.26.12-.52.12-.8 0-.39-.08-.76-.2-1.11.54-.93.93-2.23.93-3.48C16.782 1.99 14.882 0 12.002 0zm0 1.5c2.05 0 3.28 1.42 3.28 3.46 0 1.09-.37 2.27-.88 3.09a.75.75 0 0 0-.13.43c0 .54.16 1.06.42 1.52.26.46.6.85 1.02 1.14.93.65 1.57 1.71 1.57 2.91 0 1.96-1.57 3.55-3.52 3.55a.75.75 0 0 0-.74.65c-.17.98-.6 1.87-1.22 2.6-.08.09-.16.18-.24.26-.08-.08-.16-.17-.24-.26-.62-.73-1.05-1.62-1.22-2.6a.75.75 0 0 0-.74-.65c-1.95 0-3.52-1.59-3.52-3.55 0-1.2.64-2.26 1.57-2.91.42-.29.76-.68 1.02-1.14.26-.46.42-.98.42-1.52 0-.15-.05-.3-.13-.43-.51-.82-.88-2-.88-3.09C8.722 2.92 9.952 1.5 12.002 1.5z" />
+    </svg>
+  );
+}
+
+function DownloadIcon({ className = "pv-icon" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+
 function ComingSoonCta({
   className = "primary-button w-inline-block",
   textClassName = "primary-button-text",
@@ -79,6 +161,56 @@ function ComingSoonCta({
   );
 }
 
+function DownloadCta({
+  className = "primary-button w-inline-block",
+  textClassName = "primary-button-text",
+  style,
+  label,
+  href,
+  platform,
+  onClick,
+}: {
+  className?: string;
+  textClassName?: string;
+  style?: React.CSSProperties;
+  label?: string;
+  href?: string;
+  platform?: PlatformKey;
+  onClick?: () => void;
+}) {
+  const [detectedPlatform, setDetectedPlatform] = useState<PlatformKey>("windows");
+
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const ua = (navigator.userAgent || "").toLowerCase();
+    if (/mac|iphone|ipad|ipod/.test(ua)) {
+      setDetectedPlatform("macos");
+    } else if (/linux/.test(ua)) {
+      setDetectedPlatform("linux");
+    } else {
+      setDetectedPlatform("windows");
+    }
+  }, []);
+
+  const activePlat = platform || detectedPlatform;
+  const targetHref = href || PLATFORM_DATA[activePlat].downloadUrl;
+  const displayLabel = label || `Download for ${PLATFORM_DATA[activePlat].name}`;
+
+  return (
+    <a
+      className={className}
+      href={targetHref}
+      style={style}
+      onClick={onClick}
+    >
+      <div className="primary-button-wrap" style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+        <DownloadIcon />
+        <div className={textClassName}>{displayLabel}</div>
+      </div>
+    </a>
+  );
+}
+
 function LandingPage() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -91,8 +223,36 @@ function LandingPage() {
   const [soonTip, setSoonTip] = useState<string | null>(null);
   const [timelineProgress, setTimelineProgress] = useState("0.500");
   const [timelineVisible, setTimelineVisible] = useState(false);
+  const [detectedPlatform, setDetectedPlatform] = useState<PlatformKey>("windows");
+  const [releaseInfo, setReleaseInfo] = useState<{
+    version: string;
+    downloads?: Record<string, { filename: string; size?: number }>;
+  } | null>(null);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    const ua = (navigator.userAgent || "").toLowerCase();
+    if (/mac|iphone|ipad|ipod/.test(ua)) {
+      setDetectedPlatform("macos");
+    } else if (/linux/.test(ua)) {
+      setDetectedPlatform("linux");
+    } else {
+      setDetectedPlatform("windows");
+    }
+  }, []);
+
+  useEffect(() => {
+    fetch("https://api.privatumrh.com/v1/downloads/latest")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && data.version) {
+          setReleaseInfo(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -183,7 +343,12 @@ function LandingPage() {
                       </div>
                       <div className="dropdown-card_texts">
                         <p className="text-size-small">Why choose Privatum for private self-custody?</p>
-                        <ComingSoonCta className="primary-button w-variant-fb78eba0-dd3e-a77a-385e-cc8838022b83 w-inline-block" />
+                        <DownloadCta
+                          className="primary-button w-variant-fb78eba0-dd3e-a77a-385e-cc8838022b83 w-inline-block"
+                          label="Download App"
+                          href="#download"
+                          onClick={() => setDropdownOpen(false)}
+                        />
                       </div>
                     </div>
 
@@ -191,6 +356,9 @@ function LandingPage() {
                       <div className="dropdown-links_wrapper">
                         <div className="nav-heading">Main Pages</div>
                         <div className="dropdown-links">
+                          <a className="inner-link w-inline-block" href="#download" onClick={() => setDropdownOpen(false)}>
+                            <div>Download</div>
+                          </a>
                           <a className="inner-link w-inline-block" href="#overview" onClick={() => setDropdownOpen(false)}>
                             <div>Overview</div>
                           </a>
@@ -306,6 +474,9 @@ function LandingPage() {
               </div>
 
               {/* Desktop Direct Links */}
+              <a className="link on-desktop" href="#download">
+                Download
+              </a>
               <a className="link on-desktop" href="#roadmap">
                 Roadmap
               </a>
@@ -334,12 +505,14 @@ function LandingPage() {
               </div>
 
               <div className="nav-buttons-wrap">
-                <a aria-disabled="true" className="link" style={{ cursor: "default" }}>
-                  Coming soon
+                <a className="link" href="/dashboard.html">
+                  Web App
                 </a>
-                <ComingSoonCta
+                <DownloadCta
                   className="primary-button w-variant-c2dc9de4-8772-9172-2dd8-cda2f9121fc9 w-inline-block"
                   textClassName="primary-button-text w-variant-c2dc9de4-8772-9172-2dd8-cda2f9121fc9"
+                  label="Download"
+                  href="#download"
                 />
               </div>
             </div>
@@ -422,13 +595,20 @@ function LandingPage() {
                 >
                   Swaps
                 </a>
+                <a className="link mob" href="#download" onClick={() => setMobileMenuOpen(false)}>
+                  Download App
+                </a>
                 <a className="link mob" href="/docs.html#sdk" onClick={() => setMobileMenuOpen(false)}>
                   Open SDK
                 </a>
               </div>
             </div>
             <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
-              <ComingSoonCta style={{ flex: 1, textAlign: "center" }} />
+              <DownloadCta
+                style={{ flex: 1, textAlign: "center" }}
+                href="#download"
+                onClick={() => setMobileMenuOpen(false)}
+              />
             </div>
           </div>
         )}
@@ -449,7 +629,7 @@ function LandingPage() {
                     <h1 className="heading-style-h1">Private payments. Non-custodial.</h1>
                   </div>
                   <div className="button-wrapper">
-                    <ComingSoonCta />
+                    <DownloadCta />
                     <a
                       className="primary-button w-variant-3a9f2dd0-9bc7-dc9a-a7bc-93d31eb4141a w-inline-block"
                       href="/docs.html"
@@ -457,6 +637,21 @@ function LandingPage() {
                       <div className="primary-button-wrap">
                         <div className="primary-button-text">Read Docs</div>
                       </div>
+                    </a>
+                  </div>
+                  <div className="hero-platforms-bar">
+                    <span className="hero-platforms-label">Direct downloads:</span>
+                    <a href="https://api.privatumrh.com/v1/downloads/windows" className="hero-platform-chip">
+                      <WindowsIcon /> Windows (.exe)
+                    </a>
+                    <a href="https://api.privatumrh.com/v1/downloads/macos" className="hero-platform-chip">
+                      <AppleIcon /> macOS (.dmg)
+                    </a>
+                    <a href="https://api.privatumrh.com/v1/downloads/linux" className="hero-platform-chip">
+                      <LinuxIcon /> Linux (.deb)
+                    </a>
+                    <a href="#download" className="hero-platform-chip view-all">
+                      All formats &darr;
                     </a>
                   </div>
                 </div>
@@ -745,6 +940,157 @@ function LandingPage() {
                       </div>
                     </div>
                   </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* DOWNLOADS SECTION */}
+        <section className="section pv-downloads-section" id="download">
+          <div className="padding-global">
+            <div className="container-large">
+              <div className="pv-downloads-header">
+                <div className="pv-downloads-badge">
+                  <DownloadIcon />
+                  <span>Latest Release {releaseInfo?.version || "v0.1.0"}</span>
+                </div>
+                <h2 className="pv-downloads-title">Download Privatum Desktop</h2>
+                <p className="pv-downloads-subtitle">
+                  Threshold custody, private payments, stealth addresses, and atomic swaps natively on your desktop.
+                  Built with Tauri and Rust, connected directly to Robinhood Chain.
+                </p>
+              </div>
+
+              <div className="pv-downloads-grid">
+                {/* Windows */}
+                <div className={`pv-download-card ${detectedPlatform === "windows" ? "is-detected" : ""}`}>
+                  {detectedPlatform === "windows" && <div className="pv-detected-tag">Detected OS</div>}
+                  <div className="pv-card-top">
+                    <div className="pv-card-icon-wrap">
+                      <WindowsIcon />
+                    </div>
+                    <div className="pv-card-heading">
+                      <h3 className="pv-card-os-name">Windows</h3>
+                      <span className="pv-card-arch-badge">64-bit (x64)</span>
+                    </div>
+                  </div>
+                  <div className="pv-card-specs">
+                    <div className="pv-spec-row">
+                      <span>Platform</span>
+                      <b>Windows 10 / 11</b>
+                    </div>
+                    <div className="pv-spec-row">
+                      <span>Package</span>
+                      <b>Setup (.exe)</b>
+                    </div>
+                    <div className="pv-spec-row">
+                      <span>Target File</span>
+                      <b>{releaseInfo?.downloads?.windows?.filename || PLATFORM_DATA.windows.filename}</b>
+                    </div>
+                  </div>
+                  <a
+                    className="pv-card-btn"
+                    href="https://api.privatumrh.com/v1/downloads/windows"
+                  >
+                    <DownloadIcon />
+                    <span>Download for Windows (.exe)</span>
+                  </a>
+                  <div className="pv-card-instructions">
+                    Double-click the installer to launch Privatum setup.
+                  </div>
+                </div>
+
+                {/* macOS */}
+                <div className={`pv-download-card ${detectedPlatform === "macos" ? "is-detected" : ""}`}>
+                  {detectedPlatform === "macos" && <div className="pv-detected-tag">Detected OS</div>}
+                  <div className="pv-card-top">
+                    <div className="pv-card-icon-wrap">
+                      <AppleIcon />
+                    </div>
+                    <div className="pv-card-heading">
+                      <h3 className="pv-card-os-name">macOS</h3>
+                      <span className="pv-card-arch-badge">Apple Silicon (arm64)</span>
+                    </div>
+                  </div>
+                  <div className="pv-card-specs">
+                    <div className="pv-spec-row">
+                      <span>Platform</span>
+                      <b>macOS 11.0+</b>
+                    </div>
+                    <div className="pv-spec-row">
+                      <span>Package</span>
+                      <b>App Bundle (.tar.gz / .dmg)</b>
+                    </div>
+                    <div className="pv-spec-row">
+                      <span>Target File</span>
+                      <b>{releaseInfo?.downloads?.macos?.filename || PLATFORM_DATA.macos.filename}</b>
+                    </div>
+                  </div>
+                  <a
+                    className="pv-card-btn"
+                    href="https://api.privatumrh.com/v1/downloads/macos"
+                  >
+                    <DownloadIcon />
+                    <span>Download for macOS</span>
+                  </a>
+                  <div className="pv-card-instructions">
+                    Extract archive and move Privatum.app to Applications.
+                  </div>
+                </div>
+
+                {/* Linux */}
+                <div className={`pv-download-card ${detectedPlatform === "linux" ? "is-detected" : ""}`}>
+                  {detectedPlatform === "linux" && <div className="pv-detected-tag">Detected OS</div>}
+                  <div className="pv-card-top">
+                    <div className="pv-card-icon-wrap">
+                      <LinuxIcon />
+                    </div>
+                    <div className="pv-card-heading">
+                      <h3 className="pv-card-os-name">Linux</h3>
+                      <span className="pv-card-arch-badge">x64 / amd64</span>
+                    </div>
+                  </div>
+                  <div className="pv-card-specs">
+                    <div className="pv-spec-row">
+                      <span>Platform</span>
+                      <b>Debian / Ubuntu / Arch</b>
+                    </div>
+                    <div className="pv-spec-row">
+                      <span>Package</span>
+                      <b>Debian (.deb) &amp; AppImage</b>
+                    </div>
+                    <div className="pv-spec-row">
+                      <span>Target File</span>
+                      <b>{releaseInfo?.downloads?.linux?.filename || PLATFORM_DATA.linux.filename}</b>
+                    </div>
+                  </div>
+                  <a
+                    className="pv-card-btn"
+                    href="https://api.privatumrh.com/v1/downloads/linux"
+                  >
+                    <DownloadIcon />
+                    <span>Download for Linux (.deb)</span>
+                  </a>
+                  <div className="pv-card-instructions">
+                    Install via <code>sudo dpkg -i {releaseInfo?.downloads?.linux?.filename || PLATFORM_DATA.linux.filename}</code>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pv-downloads-footer">
+                <div>
+                  <span>Need custom build, source code, or earlier versions? </span>
+                  <a
+                    href="https://github.com/NotADeveloper7/privatum/releases"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Browse all releases on GitHub &rarr;
+                  </a>
+                </div>
+                <div>
+                  <span>Robinhood Chain Testnet ID: <code>4663</code></span>
                 </div>
               </div>
             </div>
@@ -1076,10 +1422,17 @@ function LandingPage() {
                     </div>
 
                     <div className="button-wrapper">
-                      <ComingSoonCta
+                      <DownloadCta
                         className="primary-button w-variant-1f9277f6-d978-6891-434e-df9bad743ce3 w-inline-block"
                         textClassName="primary-button-text w-variant-1f9277f6-d978-6891-434e-df9bad743ce3"
+                        label="Download Privatum Desktop"
+                        href="#download"
                       />
+                      <div className="reliability-platform-chips">
+                        <a href="https://api.privatumrh.com/v1/downloads/windows" className="reliability-chip">Windows (.exe)</a>
+                        <a href="https://api.privatumrh.com/v1/downloads/macos" className="reliability-chip">macOS (.dmg)</a>
+                        <a href="https://api.privatumrh.com/v1/downloads/linux" className="reliability-chip">Linux (.deb)</a>
+                      </div>
                     </div>
                   </div>
 
@@ -2337,6 +2690,9 @@ function LandingPage() {
                     <div className="footer-link_wrapper">
                       <div className="footer_link_heading">Main Pages</div>
                       <div className="footer-links">
+                        <a className="inner-link w-inline-block" href="#download">
+                          <div>Download App</div>
+                        </a>
                         <a className="inner-link w-inline-block" href="#overview">
                           <div>Overview</div>
                         </a>
@@ -2355,14 +2711,11 @@ function LandingPage() {
                     <div className="footer-link_wrapper">
                       <div className="footer_link_heading">Product</div>
                       <div className="dropdown-links">
-                        <a
-                            aria-disabled="true"
-                            className={`inner-link w-inline-block ${soonTip === "Dashboard" ? "is-soon" : ""}`}
-                            data-soon="Dashboard"
-                            href="#"
-                            onClick={(e) => triggerSoon(e, "Dashboard")}
-                          >
-                            <div>Dashboard</div>
+                        <a className="inner-link w-inline-block" href="#download">
+                          <div>Desktop Application</div>
+                        </a>
+                        <a className="inner-link w-inline-block" href="/dashboard.html">
+                          <div>Web Dashboard</div>
                         </a>
                         <a
                             aria-disabled="true"

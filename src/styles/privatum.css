@@ -580,3 +580,305 @@ a[data-soon].is-soon::after{opacity:1;transform:translateY(-50%) translateX(0)}
   }
 }
 
+/* Download UI Elements */
+.hero-platforms-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 12px;
+}
+
+.hero-platforms-label {
+  color: var(--pv-soft);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.hero-platform-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(14, 18, 27, 0.05);
+  border: 1px solid rgba(14, 18, 27, 0.09);
+  color: var(--pv-ink);
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 0.18s ease;
+}
+
+.hero-platform-chip:hover {
+  background: rgba(14, 18, 27, 0.1);
+  border-color: rgba(14, 18, 27, 0.18);
+  transform: translateY(-1px);
+}
+
+.hero-platform-chip.view-all {
+  color: var(--pv-coral);
+  font-weight: 600;
+}
+
+.hero-platform-chip svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+.reliability-platform-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 11px;
+}
+
+.reliability-chip {
+  color: var(--pv-soft);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-size: 11px;
+  transition: color 0.15s ease;
+}
+
+.reliability-chip:hover {
+  color: var(--pv-coral);
+}
+
+/* Dedicated Downloads Section */
+.pv-downloads-section {
+  position: relative;
+  background: #080a0f;
+  color: #fff;
+  overflow: hidden;
+  padding: 100px 0;
+}
+
+.pv-downloads-header {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 50px auto;
+}
+
+.pv-downloads-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(246, 75, 67, 0.15);
+  border: 1px solid rgba(246, 75, 67, 0.35);
+  color: #ff7872;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.pv-downloads-title {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  margin: 0 0 16px 0;
+  color: #fff;
+}
+
+.pv-downloads-subtitle {
+  color: #929ba8;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.pv-downloads-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.pv-download-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 32px 26px;
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.pv-download-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(246, 75, 67, 0.45);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.pv-download-card.is-detected {
+  border-color: rgba(246, 75, 67, 0.6);
+  background: rgba(246, 75, 67, 0.05);
+}
+
+.pv-detected-tag {
+  position: absolute;
+  top: -11px;
+  right: 22px;
+  background: #f64b43;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(246, 75, 67, 0.4);
+}
+
+.pv-card-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.pv-card-icon-wrap {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.pv-card-icon-wrap svg {
+  width: 24px;
+  height: 24px;
+}
+
+.pv-card-heading {
+  display: flex;
+  flex-direction: column;
+}
+
+.pv-card-os-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.pv-card-arch-badge {
+  font-size: 11px;
+  color: #8c97a8;
+  margin-top: 2px;
+}
+
+.pv-card-specs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 26px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+}
+
+.pv-spec-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #929ba8;
+}
+
+.pv-spec-row b {
+  color: #fff;
+  font-weight: 500;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+}
+
+.pv-card-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 12px;
+  background: #f64b43;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  margin-top: auto;
+  border: 1px solid transparent;
+}
+
+.pv-card-btn:hover {
+  background: #ff574f;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(246, 75, 67, 0.35);
+}
+
+.pv-card-instructions {
+  margin-top: 14px;
+  font-size: 11px;
+  color: #798394;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.pv-card-instructions code {
+  background: rgba(255, 255, 255, 0.07);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #d1d7e0;
+  font-family: ui-monospace, monospace;
+}
+
+.pv-downloads-footer {
+  margin-top: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 20px 28px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 13px;
+  color: #8c97a8;
+}
+
+.pv-downloads-footer a {
+  color: #ff7872;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 991px) {
+  .pv-downloads-grid {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .pv-downloads-title {
+    font-size: 32px;
+  }
+}
+
+
