@@ -290,13 +290,40 @@ rendered a card reading **"Callium – AI Call Agent Website"** — an unrelated
 - Added `og:site_name`, `og:url`, `og:image:width`/`height`/`alt`, and `twitter:image:alt`.
 - Titles and descriptions no longer carry the template's boilerplate copy.
 
+### 9.3 The standalone static pages had their own stale metadata
+
+`__root.tsx` only controls the React app. The seven standalone pages under `public/` each carry
+their own `<head>`, and none of them had been touched since the Webflow export:
+
+| Page | Was | Now |
+| :--- | :--- | :--- |
+| `case-study.html` | Callium share card; description "Showcase successful client projects…" | PRIVATUM card, real description |
+| `case-study/*.html` ×4 | og:image **404** (see below); template descriptions; og:titles from the *template's* case studies ("41% Faster Resolution", "84% Fewer Missed Calls") that did not match the actual page content | PRIVATUM card, descriptions taken from each page's own opening sentence, og:titles matching each `<h1>` |
+| `docs.html` | No og:image at all | PRIVATUM card added |
+| `dashboard.html` | No Open Graph tags at all | Full set added |
+
+All seven now also carry `og:site_name`, `og:type` and `twitter:card`.
+
+> [!NOTE]
+> The four case-study subpages referenced
+> `…/6a5d555086cf13ef3e6b73e9_Privatum-Social%20Share.webp`, but the file on disk is
+> `…_Callium-Social Share.webp`. Someone had find-replaced "Callium" → "Privatum" across the HTML
+> without renaming the asset, so that og:image had been returning **404** ever since. Both stock
+> share images were byte-identical anyway (same MD5) — the Callium template card.
+
 > [!IMPORTANT]
-> **Set `VITE_SITE_URL`** (e.g. `https://privatum.io`, no trailing slash) in each deploy
-> environment. Crawlers ignore relative `og:image` paths, so until it is set the share card renders
-> without an image. [`src/lib/site.ts`](src/lib/site.ts) builds the absolute URLs; the fallback is
-> relative paths so nothing breaks locally.
+> **`og:image` is still root-relative (`/assets/og-image.jpg`) everywhere, and crawlers ignore
+> relative paths.** Two separate things need the production domain before share cards show an image:
 >
-> Verify after deploying with the X Card Validator or `https://www.opengraph.xyz/`.
+> 1. **The React app** — set `VITE_SITE_URL` (e.g. `https://privatum.io`, no trailing slash) in the
+>    deploy environment. [`src/lib/site.ts`](src/lib/site.ts) turns it into absolute URLs. Note this
+>    is inlined at **build** time by Vite, so it must be set for the build, not as a runtime variable.
+> 2. **The seven static pages** — these have no env-var mechanism, so the origin has to be written
+>    into the HTML. Left root-relative until the domain is decided.
+>
+> Verify after deploying with the X Card Validator or `https://www.opengraph.xyz/`. Note that X,
+> Slack and Discord cache OG data aggressively — use the validator to force a re-scrape rather than
+> judging by an old link preview.
 
 ---
 
