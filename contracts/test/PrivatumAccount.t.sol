@@ -4,8 +4,14 @@ pragma solidity ^0.8.24;
 import {PrivatumAccount} from "../src/PrivatumAccount.sol";
 import {PrivatumFactory} from "../src/PrivatumFactory.sol";
 
+interface Vm {
+    function prank(address) external;
+}
+
 // Minimal forge-compatible test base interface
 abstract contract TestBase {
+    Vm internal constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
+
     function assertTrue(bool condition) internal pure {
         require(condition, "Assertion failed: expected true");
     }
@@ -65,5 +71,29 @@ contract PrivatumAccountTest is TestBase {
         bytes memory shortSig = new bytes(65);
         uint256 validation = account.validateUserOpSignature(hash, shortSig);
         assertEq(validation, 1);
+    }
+
+    function test_ShardRotation() public {
+        address newShardA = address(0x9999999999999999999999999999999999999999);
+        
+        // Impersonate entryPoint
+        vm.prank(entryPoint);
+        account.rotateShardA(newShardA);
+
+        assertEq(account.shardA(), newShardA);
+        assertTrue(account.isOwner(newShardA));
+        assertFalse(account.isOwner(shardA));
+    }
+
+    function test_ShardRotationUnauthorizedRejects() public {
+        address newShardA = address(0x9999999999999999999999999999999999999999);
+        
+        // Random unauthorized caller must revert
+        vm.prank(address(0x1234));
+        try account.rotateShardA(newShardA) {
+            assertTrue(false); // Should have reverted
+        } catch {
+            assertTrue(true);
+        }
     }
 }
