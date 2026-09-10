@@ -1,7 +1,9 @@
 import { defineChain } from "viem";
 
+export const ROBINHOOD_CHAIN_ID = 4663;
+
 export const robinhoodChain = defineChain({
-  id: 4663,
+  id: ROBINHOOD_CHAIN_ID,
   name: "Robinhood Chain",
   nativeCurrency: {
     decimals: 18,
@@ -10,7 +12,7 @@ export const robinhoodChain = defineChain({
   },
   rpcUrls: {
     default: {
-      http: ["https://rpc.robinhoodchain.com"],
+      http: ["https://rpc.mainnet.chain.robinhood.com"],
     },
   },
   blockExplorers: {
@@ -26,4 +28,6 @@ export const robinhoodChain = defineChain({
   },
 });
 
-export const USDG_ROBINHOOD_ADDRESS = "0x2D734407B184FF66b26D0cf32168e65842820579" as const;
+export const DEFAULT_API_URL = "https://api.privatumrh.com";
+export const ENTRY_POINT_ADDRESS = "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789" as const;
+export const USDG_ADDRESS = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168" as const;
