@@ -1,3 +1,5 @@
+inspo/
+
 # Environment variables
 .env
 .env.local
