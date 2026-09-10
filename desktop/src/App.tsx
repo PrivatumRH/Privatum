@@ -23,7 +23,7 @@ import {
   USDG_ADDRESS,
   erc20Abi,
   DEFAULT_API_URL,
-} from "@privatum/robinhood-chain-sdk";
+} from "@privatumrh/robinhood-chain-sdk";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
 const publicClient = createPublicClient({

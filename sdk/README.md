@@ -1,19 +1,19 @@
-# @privatum/robinhood-chain-sdk
+# @privatumrh/robinhood-chain-sdk
 
 Viem-native TypeScript SDK enabling developers to embed PRIVATUM 2-of-3 threshold self-custody directly into applications on Robinhood Chain (Chain ID: 4663).
 
 ## Installation
 
 ```bash
-bun add @privatum/robinhood-chain-sdk viem
+bun add @privatumrh/robinhood-chain-sdk viem
 # or
-npm install @privatum/robinhood-chain-sdk viem
+npm install @privatumrh/robinhood-chain-sdk viem
 ```
 
 ## Quick Start: Create Wallet
 
 ```typescript
-import { PrivatumWallet, LocalShard } from "@privatum/robinhood-chain-sdk";
+import { PrivatumWallet, LocalShard } from "@privatumrh/robinhood-chain-sdk";
 
 // 1. Generate local device key (Shard A)
 const shardA = LocalShard.create("device");
@@ -58,7 +58,7 @@ console.log("Submitted UserOp hash:", usdgReceipt.userOpHash);
 If Shard A is lost, recover the account by rotating Shard A using Shard C and standard RFC 6238 TOTP 2FA:
 
 ```typescript
-import { PrivatumWallet, LocalShard } from "@privatum/robinhood-chain-sdk";
+import { PrivatumWallet, LocalShard } from "@privatumrh/robinhood-chain-sdk";
 
 // Generate new device key
 const newShardA = LocalShard.create("device");
