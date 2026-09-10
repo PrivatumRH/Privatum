@@ -6,7 +6,13 @@ import {
   type Address,
   type Hex,
 } from "viem";
-import { DEFAULT_API_URL, ENTRY_POINT_ADDRESS, ROBINHOOD_CHAIN_ID, USDG_ADDRESS } from "./chain.js";
+import {
+  DEFAULT_API_URL,
+  ENTRY_POINT_ADDRESS,
+  PRIVATUM_FACTORY_ADDRESS,
+  ROBINHOOD_CHAIN_ID,
+  USDG_ADDRESS,
+} from "./chain.js";
 import type {
   BundlerSubmissionResponse,
   SendAssetOptions,
@@ -79,6 +85,58 @@ export const erc20Abi = [
     stateMutability: "view",
   },
 ] as const;
+
+export const privatumFactoryAbi = [
+  {
+    type: "function",
+    name: "createAccount",
+    inputs: [
+      { name: "shardA", type: "address" },
+      { name: "shardB", type: "address" },
+      { name: "shardC", type: "address" },
+      { name: "salt", type: "bytes32" },
+    ],
+    outputs: [{ name: "ret", type: "address" }],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "getAddress",
+    inputs: [
+      { name: "shardA", type: "address" },
+      { name: "shardB", type: "address" },
+      { name: "shardC", type: "address" },
+      { name: "salt", type: "bytes32" },
+    ],
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "entryPoint",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
+  },
+] as const;
+
+/**
+ * Builds standard ERC-4337 initCode (factory address + createAccount calldata)
+ */
+export function buildFactoryInitCode(
+  shardA: Address,
+  shardB: Address,
+  shardC: Address,
+  salt: Hex = "0x0000000000000000000000000000000000000000000000000000000000000001",
+  factoryAddress: Address = PRIVATUM_FACTORY_ADDRESS
+): Hex {
+  const callData = encodeFunctionData({
+    abi: privatumFactoryAbi,
+    functionName: "createAccount",
+    args: [shardA, shardB, shardC, salt],
+  });
+  return `${factoryAddress}${callData.slice(2)}` as Hex;
+}
 
 /**
  * Encodes calldata for sending ETH or USDG through PrivatumAccount.execute
