@@ -109,8 +109,11 @@ export function App() {
     setTimeout(() => setCopied(null), 2000);
   };
 
-  // Load wallet on mount
+  // Load wallet on mount and warm up co-signer service
   useEffect(() => {
+    // Ping co-signer health endpoint in background to wake up cold-start instances
+    fetch(`${DEFAULT_API_URL}/health`).catch(() => {});
+
     async function loadSavedWallet() {
       try {
         let savedShardA: string | null = null;
@@ -177,35 +180,59 @@ export function App() {
   const handleCreateWallet = async () => {
     setIsSending(true);
     setSendError(null);
-    try {
-      const { wallet: newWallet, shardC } = await PrivatumWallet.create();
 
-      // Save Shard A to OS keystore / localStorage
-      if (isTauri()) {
-        await invoke("save_shard_a", { key: newWallet.shardA.privateKey });
-      } else {
-        localStorage.setItem("privatum_shard_a", newWallet.shardA.privateKey);
+    let lastError: any = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        if (attempt > 1) {
+          setSendError(`Connecting to co-signer service (waking up server instance, attempt ${attempt} of 3)...`);
+        }
+
+        const { wallet: newWallet, shardC } = await PrivatumWallet.create();
+
+        // Save Shard A to OS keystore / localStorage
+        if (isTauri()) {
+          await invoke("save_shard_a", { key: newWallet.shardA.privateKey });
+        } else {
+          localStorage.setItem("privatum_shard_a", newWallet.shardA.privateKey);
+        }
+
+        localStorage.setItem("privatum_wallet_address", newWallet.address);
+        localStorage.setItem("privatum_api_key", newWallet.apiKey);
+        localStorage.setItem("privatum_shard_b_address", newWallet.shardB.address);
+        localStorage.setItem("privatum_shard_c_address", shardC.address);
+
+        setWallet(newWallet);
+        setWalletAddress(newWallet.address);
+        setShardAPrivKey(newWallet.shardA.privateKey);
+        setApiKey(newWallet.apiKey);
+        setShardCAddress(shardC.address);
+        setShardCPrivKey(shardC.privateKey);
+
+        setSendError(null);
+        setShowCreateModal(false);
+        fetchBalances(newWallet.address as Address);
+        setIsSending(false);
+        return;
+      } catch (err: any) {
+        lastError = err;
+        const msg = String(err?.message || "");
+        const isNetworkErr = msg.includes("Load failed") || msg.includes("Failed to fetch") || msg.includes("NetworkError");
+        if (isNetworkErr && attempt < 3) {
+          await new Promise((r) => setTimeout(r, 2500));
+          continue;
+        }
+        break;
       }
-
-      localStorage.setItem("privatum_wallet_address", newWallet.address);
-      localStorage.setItem("privatum_api_key", newWallet.apiKey);
-      localStorage.setItem("privatum_shard_b_address", newWallet.shardB.address);
-      localStorage.setItem("privatum_shard_c_address", shardC.address);
-
-      setWallet(newWallet);
-      setWalletAddress(newWallet.address);
-      setShardAPrivKey(newWallet.shardA.privateKey);
-      setApiKey(newWallet.apiKey);
-      setShardCAddress(shardC.address);
-      setShardCPrivKey(shardC.privateKey);
-
-      setShowCreateModal(false);
-      fetchBalances(newWallet.address);
-    } catch (err: any) {
-      setSendError(err.message || "Failed to create wallet");
-    } finally {
-      setIsSending(false);
     }
+
+    const rawMessage = lastError?.message || "Failed to create wallet";
+    if (rawMessage.includes("Load failed") || rawMessage.includes("Failed to fetch")) {
+      setSendError("Co-signer service at api.privatumrh.com is waking up from sleep. Please wait a few seconds and try again.");
+    } else {
+      setSendError(rawMessage);
+    }
+    setIsSending(false);
   };
 
   const handleSendTransaction = async (e: React.FormEvent) => {
@@ -244,7 +271,12 @@ export function App() {
       setSendAmount("");
       setSendRecipient("");
     } catch (err: any) {
-      setSendError(err.message || "Transaction submission failed");
+      const rawMsg = err.message || "Transaction submission failed";
+      if (rawMsg.includes("Load failed") || rawMsg.includes("Failed to fetch")) {
+        setSendError("Co-signer service at api.privatumrh.com is currently waking up or temporarily unreachable. Please retry.");
+      } else {
+        setSendError(rawMsg);
+      }
     } finally {
       setIsSending(false);
     }
