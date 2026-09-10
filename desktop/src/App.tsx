@@ -25,6 +25,9 @@ import {
   ArrowLeftRight,
   Fuel,
   LogOut,
+  ChevronDown,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -129,28 +132,6 @@ function shortenAddress(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-const INITIAL_TRANSACTIONS: TransactionRecord[] = [
-  {
-    id: "tx-init-1",
-    hash: "0x28637b76f9ccbcdc93304de57442f0757b89649a9d5b90d3568cd902541f8e0f",
-    type: "send",
-    counterparty: "0x3da0dc105bf389e34185077eca821bbd91aadeba",
-    amount: "0.50",
-    asset: "USDG",
-    timestamp: Date.now() - 3600000,
-    status: "confirmed",
-  },
-  {
-    id: "tx-init-2",
-    hash: "0x0000000000000000000000000000000000000000000000000000000000000000",
-    type: "receive",
-    counterparty: "0x3da0dc105bf389e34185077eca821bbd91aadeba",
-    amount: "1.00",
-    asset: "USDG",
-    timestamp: Date.now() - 7200000,
-    status: "confirmed",
-  },
-];
 
 
 interface TokenAvatarProps {
@@ -269,6 +250,9 @@ export function App() {
     }
   });
   const [isConfirmingTotp, setIsConfirmingTotp] = useState<boolean>(false);
+  const [showShardCSecret, setShowShardCSecret] = useState<boolean>(false);
+  const [showShardCAccordion, setShowShardCAccordion] = useState<boolean>(false);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   // Transactions list
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
@@ -388,20 +372,24 @@ export function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Load transaction history
+  // Load transaction history for the active wallet
   useEffect(() => {
+    if (!walletAddress) {
+      setTransactions([]);
+      return;
+    }
     try {
-      const stored = localStorage.getItem("privatum_transactions");
+      const key = `privatum_transactions_${walletAddress.toLowerCase()}`;
+      const stored = localStorage.getItem(key);
       if (stored) {
         setTransactions(JSON.parse(stored));
       } else {
-        setTransactions(INITIAL_TRANSACTIONS);
-        localStorage.setItem("privatum_transactions", JSON.stringify(INITIAL_TRANSACTIONS));
+        setTransactions([]);
       }
     } catch {
-      setTransactions(INITIAL_TRANSACTIONS);
+      setTransactions([]);
     }
-  }, []);
+  }, [walletAddress]);
 
   // Generate QR for receive modal
   useEffect(() => {
@@ -522,6 +510,12 @@ export function App() {
         setShardCAddress(shardC.address);
         setShardCPrivKey(shardC.privateKey);
 
+        try {
+          localStorage.removeItem("privatum_transactions");
+          localStorage.setItem(`privatum_transactions_${newWallet.address.toLowerCase()}`, JSON.stringify([]));
+        } catch {}
+
+        setTransactions([]);
         setShowCreateModal(false);
         setShowBackupModal(true);
         fetchBalances(newWallet.address as Address);
@@ -550,14 +544,7 @@ export function App() {
       if (isTauri()) {
         await invoke("delete_shard_a");
       }
-      localStorage.removeItem("privatum_shard_a");
-      localStorage.removeItem("privatum_wallet_address");
-      localStorage.removeItem("privatum_api_key");
-      localStorage.removeItem("privatum_shard_b_address");
-      localStorage.removeItem("privatum_shard_c_address");
-      localStorage.removeItem("privatum_shard_c_key");
-      localStorage.removeItem("privatum_totp_enrolled");
-      localStorage.removeItem("privatum_transactions");
+      localStorage.clear();
 
       setWallet(null);
       setWalletAddress("");
@@ -873,9 +860,11 @@ export function App() {
       };
       const updatedList = [newRecord, ...transactions];
       setTransactions(updatedList);
-      try {
-        localStorage.setItem("privatum_transactions", JSON.stringify(updatedList));
-      } catch {}
+      if (wallet?.address) {
+        try {
+          localStorage.setItem(`privatum_transactions_${wallet.address.toLowerCase()}`, JSON.stringify(updatedList));
+        } catch {}
+      }
 
       addToast("success", "Transfer Complete", `Sent ${sendAmount} ${sendAssetType} to ${shortenAddress(sendRecipient)}`);
 
@@ -1041,27 +1030,76 @@ export function App() {
             </button>
           </div>
 
-          {/* 2 FAQs */}
-          <div className="w-full space-y-3 pt-2 text-left">
-            <div className="p-4 rounded-xl bg-[#181a22] border border-white/[0.08] space-y-1.5">
-              <div className="text-xs font-semibold text-white flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#f64943]"></span>
-                <span>What is a self-custody wallet?</span>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed pl-3.5">
-                A self-custody wallet gives you exclusive ownership of your digital assets. You directly control the cryptographic keys, meaning no centralized bank, exchange, or third party can freeze, confiscate, or control your funds.
-              </p>
+          {/* FAQ Accordion */}
+          <div className="w-full space-y-2.5 pt-2 text-left">
+            <div className="rounded-xl bg-[#181a22] border border-white/[0.08] overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setOpenFaqIndex(openFaqIndex === 0 ? null : 0)}
+                className="w-full p-4 flex items-center justify-between text-left hover:bg-white/[0.02] transition cursor-pointer"
+              >
+                <div className="text-xs font-semibold text-white flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#f64943]"></span>
+                  <span>What is a self-custody wallet?</span>
+                </div>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${
+                    openFaqIndex === 0 ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+              {openFaqIndex === 0 && (
+                <div className="px-4 pb-4 text-xs text-slate-400 leading-relaxed pl-7.5 border-t border-white/5 pt-2.5">
+                  A self-custody wallet gives you exclusive ownership of your digital assets. You directly control the cryptographic keys, meaning no centralized bank, exchange, or third party can freeze, confiscate, or control your funds.
+                </div>
+              )}
             </div>
 
-            <div className="p-4 rounded-xl bg-[#181a22] border border-white/[0.08] space-y-1.5">
-              <div className="text-xs font-semibold text-white flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#f64943]"></span>
-                <span>How is Privatum different from regular wallets?</span>
-              </div>
-              <p className="text-xs text-slate-400 leading-relaxed pl-3.5">
-                Regular wallets rely on a single, vulnerable 12-word seed phrase that presents a single point of failure. Privatum splits protection into a 2-of-3 threshold quorum: your local device key (Shard A), an automated co-signer (Shard B), and an emergency backup (Shard C) protected by 2FA. No single key can ever steal your assets.
-              </p>
+            <div className="rounded-xl bg-[#181a22] border border-white/[0.08] overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setOpenFaqIndex(openFaqIndex === 1 ? null : 1)}
+                className="w-full p-4 flex items-center justify-between text-left hover:bg-white/[0.02] transition cursor-pointer"
+              >
+                <div className="text-xs font-semibold text-white flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#f64943]"></span>
+                  <span>How is Privatum different from regular wallets?</span>
+                </div>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${
+                    openFaqIndex === 1 ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+              {openFaqIndex === 1 && (
+                <div className="px-4 pb-4 text-xs text-slate-400 leading-relaxed pl-7.5 border-t border-white/5 pt-2.5">
+                  Regular wallets rely on a single, vulnerable 12-word seed phrase that presents a single point of failure. Privatum splits protection into a 2-of-3 threshold quorum: your local device key (Shard A), an automated co-signer (Shard B), and an emergency backup (Shard C) protected by 2FA. No single key can ever steal your assets.
+                </div>
+              )}
             </div>
+          </div>
+
+          {/* External Links Footer */}
+          <div className="pt-2 flex items-center justify-center gap-6 text-xs text-slate-500">
+            <a
+              href="https://privatumrh.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-slate-300 transition flex items-center gap-1.5"
+            >
+              <span>privatumrh.com</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+            <span className="text-slate-700">•</span>
+            <a
+              href="https://x.com/privatumrh"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-slate-300 transition flex items-center gap-1.5"
+            >
+              <span>x.com/privatumrh</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </div>
         </div>
       ) : (
@@ -1978,10 +2016,7 @@ export function App() {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#181a23] border border-white/15 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-base font-semibold text-white">Emergency Backup & 2FA</h3>
-              </div>
+              <h3 className="text-base font-semibold text-white">Emergency Backup & 2FA</h3>
               <button
                 onClick={() => setShowBackupModal(false)}
                 className="text-slate-400 hover:text-white p-1 transition"
@@ -1995,26 +2030,60 @@ export function App() {
             </p>
 
             {/* Shard C Box */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-400 font-medium">Shard C (Offline Backup Key)</span>
                 <span className="text-[10px] text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
                   Save Offline
                 </span>
               </div>
-              <div className="bg-black/50 p-3.5 rounded-xl border border-white/10 font-mono text-xs text-white break-all flex items-center justify-between">
-                <span>{shardCPrivKey || shardCAddress || "0x..."}</span>
-                <button
-                  onClick={() => copyToClipboard(shardCPrivKey || shardCAddress || "", "Shard C Key")}
-                  className="p-1.5 hover:text-white text-slate-400 transition ml-2 shrink-0"
-                  title="Copy Shard C Key"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
+              <div className="bg-black/50 px-3.5 py-2.5 rounded-xl border border-white/10 flex items-center justify-between gap-2">
+                <input
+                  type={showShardCSecret ? "text" : "password"}
+                  readOnly
+                  value={shardCPrivKey || shardCAddress || ""}
+                  className="bg-transparent font-mono text-xs text-white w-full focus:outline-none select-all tracking-wider"
+                />
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setShowShardCSecret(!showShardCSecret)}
+                    className="p-1.5 hover:text-white text-slate-400 transition cursor-pointer"
+                    title={showShardCSecret ? "Hide key" : "Show key"}
+                  >
+                    {showShardCSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(shardCPrivKey || shardCAddress || "", "Shard C Key")}
+                    className="p-1.5 hover:text-white text-slate-400 transition cursor-pointer"
+                    title="Copy Shard C Key"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                What is this for? If your computer is lost, Shard C and your 2FA TOTP code allow you to recover your funds with the co-signer. Without 2FA authorization, Shard C alone cannot move any funds.
-              </p>
+
+              {/* Accordion: What is this for? */}
+              <div className="border border-white/10 rounded-xl overflow-hidden bg-white/[0.02]">
+                <button
+                  type="button"
+                  onClick={() => setShowShardCAccordion(!showShardCAccordion)}
+                  className="w-full px-3 py-2 flex items-center justify-between text-[11px] font-medium text-slate-300 hover:text-white hover:bg-white/[0.02] transition cursor-pointer"
+                >
+                  <span>What is this for?</span>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${
+                      showShardCAccordion ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                {showShardCAccordion && (
+                  <div className="px-3 pb-2.5 pt-1 text-[11px] text-slate-400 leading-relaxed border-t border-white/5">
+                    If your computer is lost, Shard C and your 2FA TOTP code allow you to recover your funds with the co-signer. Without 2FA authorization, Shard C alone cannot move any funds.
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 2FA Reminder Card */}
