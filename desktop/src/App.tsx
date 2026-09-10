@@ -22,6 +22,7 @@ import {
   Coins,
   ArrowRight,
   ArrowLeftRight,
+  Fuel,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -299,13 +300,40 @@ export function App() {
     return ethPrice;
   }, [ethPrice, lastPriceFetchTime]);
 
+  // Gas Price fetcher from Robinhood Chain RPC
+  const [gasPriceGwei, setGasPriceGwei] = useState<string>("1.06");
+
+  const fetchGasPrice = useCallback(async () => {
+    try {
+      const res = await fetch("https://rpc.mainnet.chain.robinhood.com", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", method: "eth_gasPrice", params: [], id: 1 }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.result) {
+          const wei = parseInt(json.result, 16);
+          if (!isNaN(wei)) {
+            const gwei = (wei / 1e9).toFixed(2);
+            setGasPriceGwei(gwei);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Gas price fetch error:", err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchEthPrice();
+    fetchGasPrice();
     const interval = setInterval(() => {
       fetchEthPrice();
+      fetchGasPrice();
     }, 30000);
     return () => clearInterval(interval);
-  }, [fetchEthPrice]);
+  }, [fetchEthPrice, fetchGasPrice]);
 
   // Total USD portfolio value
   const totalUsdValue = useMemo(() => {
@@ -415,6 +443,7 @@ export function App() {
       setUsdgBalance(Number(formatUnits(rawUsdg, 6)).toFixed(2));
       setLastSyncTime(Date.now());
       fetchEthPrice(true);
+      fetchGasPrice();
     } catch (err) {
       console.warn("Balance fetch error (counterfactual wallet or network):", err);
     } finally {
@@ -645,7 +674,7 @@ export function App() {
 
 
   return (
-    <div className="min-h-screen h-screen flex bg-[#13151b] text-slate-100 font-sans overflow-hidden selection:bg-white/20">
+    <div className="min-h-screen h-screen flex flex-col bg-[#13151b] text-slate-100 font-sans overflow-hidden selection:bg-white/20">
       {/* 1.5s Splash Screen with Privatum Logo */}
       {showSplash && (
         <div className="fixed inset-0 z-50 bg-[#13151b] flex flex-col items-center justify-center select-none">
@@ -695,24 +724,19 @@ export function App() {
         ))}
       </div>
 
-      {/* Left Rail */}
-      <aside className="w-16 shrink-0 bg-[#0e1015] border-r border-white/[0.06] flex flex-col items-center py-4 justify-between select-none z-20">
-        <div className="flex flex-col items-center w-full">
-          {/* Window dots */}
-          <div className="flex items-center gap-1.5 mb-6">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f56] border border-[#e0443e]/40"></span>
-            <span className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e] border border-[#dea123]/40"></span>
-            <span className="w-2.5 h-2.5 rounded-full bg-[#27c93f] border border-[#1aab29]/40"></span>
-          </div>
-
-          {/* Logo mark */}
-          <div className="mb-6">
-            <img
-              src="/logo.png"
-              alt="Privatum"
-              className="w-8 h-8 rounded-lg object-contain bg-white/5 p-1 border border-white/10"
-            />
-          </div>
+      {/* Main Workspace (Rail + Content) */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Left Rail */}
+        <aside className="w-16 shrink-0 bg-[#0e1015] border-r border-white/[0.06] flex flex-col items-center py-4 justify-between select-none z-20">
+          <div className="flex flex-col items-center w-full">
+            {/* Logo mark */}
+            <div className="mt-1 mb-6">
+              <img
+                src="/logo.png"
+                alt="Privatum"
+                className="w-8 h-8 rounded-lg object-contain bg-white/5 p-1 border border-white/10"
+              />
+            </div>
 
           {/* Vertical navigation */}
           <nav className="flex flex-col items-center gap-2.5 w-full px-2">
@@ -843,19 +867,6 @@ export function App() {
                   <span>${totalUsdValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   <span className="text-xl sm:text-2xl font-normal text-slate-400 font-sans tracking-normal">USD</span>
                 </div>
-                <div className="text-xs text-slate-400 mt-2 flex items-center gap-2 font-sans">
-                  <span className="font-mono text-slate-300">{usdgBalance} USDG</span>
-                  <span>•</span>
-                  <span className="font-mono text-slate-300">{ethBalance} ETH</span>
-                  {ethPrice > 0 && (
-                    <>
-                      <span>•</span>
-                      <span className="text-[11px] text-slate-400 font-mono">
-                        ETH ${ethPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    </>
-                  )}
-                </div>
               </div>
 
               <div className="flex items-center gap-3">
@@ -884,21 +895,11 @@ export function App() {
             {/* Tokens link row */}
             <button
               onClick={() => setActiveTab("tokens")}
-              className="flex items-center justify-between w-full p-4 rounded-2xl bg-[#181a22] hover:bg-[#1d202a] border border-white/[0.08] text-xs transition group cursor-pointer text-left"
+              className="flex items-center justify-between w-full px-5 py-3.5 rounded-xl bg-[#181a22] hover:bg-[#1d202a] border border-white/[0.08] text-xs transition group cursor-pointer text-left"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-slate-300 group-hover:text-white transition">
-                  <Coins className="w-4 h-4 text-[#f64943]" />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-white flex items-center gap-2">
-                    <span>Tokens</span>
-                    <span className="text-[11px] font-mono text-slate-400 font-normal">2 Assets</span>
-                  </div>
-                  <div className="text-xs text-slate-400 mt-0.5 font-mono">
-                    {usdgBalance} USDG • {ethBalance} ETH
-                  </div>
-                </div>
+              <div className="flex items-center gap-2.5">
+                <span className="text-sm font-semibold text-white">Tokens</span>
+                <span className="text-xs text-slate-400 font-normal">2 Assets</span>
               </div>
               <div className="flex items-center gap-1.5 text-slate-400 group-hover:text-white transition text-xs font-medium">
                 <span>View all</span>
@@ -1241,6 +1242,27 @@ export function App() {
           </div>
         )}
       </main>
+      </div>
+
+      {/* Full-width Bottom Status Bar */}
+      <footer className="w-full h-8 shrink-0 bg-[#0e1015] border-t border-white/[0.06] px-5 flex items-center justify-between text-xs text-slate-400 select-none z-20">
+        <div className="flex items-center gap-2 text-[11px]">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          <span className="text-slate-300 font-medium">Robinhood Chain</span>
+        </div>
+
+        <div className="flex items-center gap-4 text-[11px] font-mono">
+          <div className="flex items-center gap-1.5 text-slate-300" title="Estimated gas price">
+            <Fuel className="w-3.5 h-3.5 text-slate-400" />
+            <span>{gasPriceGwei} Gwei</span>
+          </div>
+          <div className="h-3 w-px bg-white/10"></div>
+          <div className="flex items-center gap-1.5 text-slate-300" title="Live Ethereum price (CoinGecko)">
+            <img src="/eth.jpeg" alt="ETH" className="w-3.5 h-3.5 rounded-full object-cover" />
+            <span>ETH ${ethPrice > 0 ? ethPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "2,469.86"}</span>
+          </div>
+        </div>
+      </footer>
 
       {/* Modal: Create Account */}
       {showCreateModal && (
