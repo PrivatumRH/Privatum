@@ -41,6 +41,13 @@ jobs:
         working-directory: ./sdk
         run: bun run build
 
+      - name: Configure NPM Authentication
+        working-directory: ./sdk
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > .npmrc
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Publish to NPM
         working-directory: ./sdk
         run: npm publish --access public
