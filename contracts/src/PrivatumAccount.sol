@@ -7,10 +7,25 @@ pragma solidity ^0.8.24;
  * @dev Settles frontier assets USDG and ETH. Requires any 2 of 3 shards to authorize execution.
  */
 contract PrivatumAccount {
+    // Standard ERC-4337 UserOperation struct
+    struct UserOperation {
+        address sender;
+        uint256 nonce;
+        bytes initCode;
+        bytes callData;
+        uint256 callGasLimit;
+        uint256 verificationGasLimit;
+        uint256 preVerificationGas;
+        uint256 maxFeePerGas;
+        uint256 maxPriorityFeePerGas;
+        bytes paymasterAndData;
+        bytes signature;
+    }
+
     // 3 Shard Owners
     address public shardA; // Client device shard
     address public shardB; // Co-signer server shard
-    address public shardC; // Recovery / Passkey shard
+    address public shardC; // Recovery / Rescue shard
 
     uint256 public constant THRESHOLD = 2;
     uint256 public constant CHAIN_ID = 4663; // Robinhood Chain Mainnet
@@ -20,6 +35,7 @@ contract PrivatumAccount {
     event Executed(address indexed target, uint256 value, bytes data);
     event BatchExecuted(uint256 operationsCount);
     event Received(address indexed sender, uint256 amount);
+    event ShardRotated(address indexed oldShard, address indexed newShard, uint8 shardIndex);
 
     error OnlyEntryPoint();
     error InvalidSignerCount();
@@ -27,8 +43,8 @@ contract PrivatumAccount {
     error SignatureVerificationFailed();
     error ExecutionFailed();
 
-    modifier onlyEntryPoint() {
-        if (msg.sender != entryPoint) revert OnlyEntryPoint();
+    modifier onlyAuthorized() {
+        if (msg.sender != entryPoint && msg.sender != address(this)) revert OnlyEntryPoint();
         _;
     }
 
@@ -44,6 +60,28 @@ contract PrivatumAccount {
 
     receive() external payable {
         emit Received(msg.sender, msg.value);
+    }
+
+    /**
+     * @notice Standard ERC-4337 EntryPoint verification hook
+     * @param userOp The packed user operation
+     * @param userOpHash Hash of the user operation
+     * @param missingAccountFunds Gas prefund amount needed by EntryPoint
+     * @return validationData 0 if valid, 1 if signature verification fails
+     */
+    function validateUserOp(
+        UserOperation calldata userOp,
+        bytes32 userOpHash,
+        uint256 missingAccountFunds
+    ) external returns (uint256 validationData) {
+        if (msg.sender != entryPoint) revert OnlyEntryPoint();
+
+        validationData = validateUserOpSignature(userOpHash, userOp.signature);
+
+        if (missingAccountFunds > 0) {
+            (bool success,) = payable(entryPoint).call{value: missingAccountFunds}("");
+            (success); // EntryPoint asserts proper prefund received
+        }
     }
 
     /**
@@ -67,8 +105,8 @@ contract PrivatumAccount {
         address signer1 = recoverSigner(ethSignedMessageHash, signature[0:65]);
         address signer2 = recoverSigner(ethSignedMessageHash, signature[65:130]);
 
-        if (signer1 == signer2) {
-            return 1; // Must be 2 distinct shards
+        if (signer1 == signer2 || signer1 == address(0) || signer2 == address(0)) {
+            return 1; // Must be 2 distinct valid shards
         }
 
         uint256 validSignatures = 0;
@@ -90,9 +128,31 @@ contract PrivatumAccount {
     }
 
     /**
+     * @notice Rotate Shard A after emergency recovery (requires 2-of-3 threshold authorization via EntryPoint)
+     */
+    function rotateShardA(address newShardA) external onlyAuthorized {
+        if (newShardA == address(0)) revert InvalidSignerCount();
+        require(newShardA != shardB && newShardA != shardC, "Duplicate shard address");
+        address oldShard = shardA;
+        shardA = newShardA;
+        emit ShardRotated(oldShard, newShardA, 1);
+    }
+
+    /**
+     * @notice Rotate Shard C recovery key (requires 2-of-3 threshold authorization via EntryPoint)
+     */
+    function rotateShardC(address newShardC) external onlyAuthorized {
+        if (newShardC == address(0)) revert InvalidSignerCount();
+        require(newShardC != shardA && newShardC != shardB, "Duplicate shard address");
+        address oldShard = shardC;
+        shardC = newShardC;
+        emit ShardRotated(oldShard, newShardC, 3);
+    }
+
+    /**
      * @notice Execute a single call from the account
      */
-    function execute(address target, uint256 value, bytes calldata data) external onlyEntryPoint {
+    function execute(address target, uint256 value, bytes calldata data) external onlyAuthorized {
         (bool success, bytes memory result) = target.call{value: value}(data);
         if (!success) {
             assembly {
@@ -109,7 +169,7 @@ contract PrivatumAccount {
         address[] calldata targets,
         uint256[] calldata values,
         bytes[] calldata datas
-    ) external onlyEntryPoint {
+    ) external onlyAuthorized {
         require(
             targets.length == values.length && values.length == datas.length,
             "Mismatched array lengths"
