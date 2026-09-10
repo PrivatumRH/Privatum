@@ -465,7 +465,7 @@
 
 /* Coming soon bubble on social links */
 a[data-soon]{position:relative}
-a[data-soon]::after{content:attr(data-soon) " — coming soon";position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%) translateX(-6px);white-space:nowrap;background:#0e121b;color:#fff;font-family:Figtree,Inter,sans-serif;font-size:.75rem;line-height:1;letter-spacing:.01em;padding:8px 12px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .22s ease,transform .22s ease;z-index:60}
+a[data-soon]::after{content:attr(data-soon) " - coming soon";position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%) translateX(-6px);white-space:nowrap;background:#0e121b;color:#fff;font-family:Figtree,Inter,sans-serif;font-size:.75rem;line-height:1;letter-spacing:.01em;padding:8px 12px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .22s ease,transform .22s ease;z-index:60}
 a[data-soon].is-soon::after{opacity:1;transform:translateY(-50%) translateX(0)}
 @media (max-width:767px){a[data-soon]::after{left:auto;right:calc(100% + 10px)}}
 @media (prefers-reduced-motion:reduce){a[data-soon]::after{transition:none}}

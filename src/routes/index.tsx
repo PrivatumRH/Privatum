@@ -51,7 +51,7 @@ const FAQS = [
  * The dashboard is not live yet, so every CTA that used to open it renders as
  * an inert "Coming soon" control.
  *
- * Rendered as an <a> with no href — per HTML that is a "placeholder link",
+ * Rendered as an <a> with no href - per HTML that is a "placeholder link",
  * which is exactly right here: nothing to navigate to, no history entry, and
  * nothing for a crawler to follow. It must stay an anchor rather than a span
  * because the Webflow design colours these through the bare `a { color: ... }`
@@ -902,7 +902,7 @@ function LandingPage() {
                                     <span>
                                       Passkey<small>Standby</small>
                                     </span>
-                                    <b>—</b>
+                                    <b>-</b>
                                   </div>
                                 </div>
                                 <div className="progress-track">

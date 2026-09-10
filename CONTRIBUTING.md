@@ -9,7 +9,7 @@ Thank you for your interest in contributing to **PRIVATUM**. We welcome contribu
 We are actively seeking contributions in the following specific areas:
 - **Robinhood Chain ERC-4337 Optimization**: Gas optimization in `contracts/src/PrivatumAccount.sol` and EntryPoint v0.6 compatibility.
 - **Passkey (WebAuthn / P-256) Verifier**: Solidity verification for secp256r1 signatures in recovery flows (Shard C).
-- **Stealth Address Scanning (ERC-5564)**: Ephemeral key derivation and event parsing in `@privatum/robinhood-chain-sdk`.
+- **Stealth Address Scanning (ERC-5564)**: Ephemeral key derivation and event parsing in `@privatumrh/robinhood-chain-sdk`.
 - **Co-Signer Rate Limiting & Zero-Knowledge Policy Proofs**: Anonymous limit proofs using Noir or Circom in `backend/`.
 - **Tauri v2 OS Keystore Bindings**: Enhancing native keychain access across Linux Secret Service, macOS Keychain, and Windows Credential Manager in `desktop/`.
 
