@@ -5,6 +5,7 @@ import { walletsRouter } from "./routes/wallets";
 import { cosignRouter } from "./routes/cosign";
 import { recoveryRouter } from "./routes/recovery";
 import { bundlerRouter } from "./routes/bundler";
+import { downloadsRouter } from "./routes/downloads";
 
 export function createApp(): Express {
   const app = express();
@@ -26,6 +27,7 @@ export function createApp(): Express {
   app.use(cosignRouter);
   app.use(recoveryRouter);
   app.use(bundlerRouter);
+  app.use(downloadsRouter);
 
   return app;
 }
