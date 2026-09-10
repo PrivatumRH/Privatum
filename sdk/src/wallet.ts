@@ -47,6 +47,8 @@ export class PrivatumWallet {
     apiUrl?: string;
     existingShardA?: LocalShard;
     existingShardCAddress?: Address;
+    cosignerHeaders?: Record<string, string>;
+    customSigner?: (hash: Hex, apiKey: string) => Promise<Hex>;
   }): Promise<{ wallet: PrivatumWallet; shardC: LocalShard }> {
     const apiUrl = (options?.apiUrl || DEFAULT_API_URL).replace(/\/$/, "");
 
@@ -60,10 +62,13 @@ export class PrivatumWallet {
     // 3. Temporary counterfactual address placeholder (or deterministic CREATE2 derived)
     const predictedWalletAddress = shardA.address; // Counterfactual or factory predicted
 
-    // 4. Register with live backend
+    // 4. Register with backend
     const response = await fetch(`${apiUrl}/v1/wallets`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(options?.cosignerHeaders || {}),
+      },
       body: JSON.stringify({
         address: predictedWalletAddress,
         shardAAddress: shardA.address,
@@ -78,7 +83,13 @@ export class PrivatumWallet {
 
     const reg = (await response.json()) as PrivatumWalletRegistration;
 
-    const shardB = new RemoteCosigner(reg.shardBAddress, reg.address, apiUrl);
+    const shardB = new RemoteCosigner({
+      address: reg.shardBAddress,
+      walletAddress: reg.address,
+      apiUrl,
+      headers: options?.cosignerHeaders,
+      customSigner: options?.customSigner,
+    });
 
     const wallet = new PrivatumWallet({
       address: reg.address,
