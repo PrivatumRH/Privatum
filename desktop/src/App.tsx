@@ -134,8 +134,8 @@ export function App() {
             <div className="flex items-center gap-3">
               <Fingerprint className="w-5 h-5 text-[#38B6FF]" />
               <div>
-                <div className="text-sm font-medium text-white">Shard C · Passkey Recovery</div>
-                <div className="text-[11px] text-slate-500">Hardware Touch ID / Passkey enrolled</div>
+                <div className="text-sm font-medium text-white">Shard C · Recovery Key</div>
+                <div className="text-[11px] text-slate-500">Secp256k1 key paired with RFC 6238 TOTP 2FA</div>
               </div>
             </div>
             <span className="text-xs font-mono px-2 py-0.5 rounded bg-[#38B6FF]/10 text-[#38B6FF] border border-[#38B6FF]/20">

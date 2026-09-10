@@ -1,42 +1,71 @@
 import type { Address, Hex } from "viem";
-import type { IShard, ShardRole } from "./types.js";
+import { generatePrivateKey, privateKeyToAccount, privateKeyToAddress } from "viem/accounts";
+import { hexToBytes, isHex } from "viem";
+import type { ILocalShard, IRemoteCosigner } from "./types.js";
+import { DEFAULT_API_URL } from "./chain.js";
 
-export class Shard implements IShard {
-  public role: ShardRole;
+export class LocalShard implements ILocalShard {
+  public role: "device" | "recovery";
   public address: Address;
-  public publicKey: Hex;
+  public privateKey: Hex;
 
-  constructor(role: ShardRole, address: Address, publicKey: Hex) {
+  constructor(role: "device" | "recovery", privateKey: Hex) {
     this.role = role;
-    this.address = address;
-    this.publicKey = publicKey;
+    this.privateKey = privateKey;
+    this.address = privateKeyToAddress(privateKey);
   }
 
-  static async create(role: ShardRole): Promise<Shard> {
-    // Generate an ephemeral keypair representation for the threshold shard
-    const mockAddr = `0x${role.padEnd(40, "0")}` as Address;
-    const mockPubkey = `0x04${role.padEnd(128, "a")}` as Hex;
-    return new Shard(role, mockAddr, mockPubkey);
+  static create(role: "device" | "recovery" = "device"): LocalShard {
+    const privateKey = generatePrivateKey();
+    return new LocalShard(role, privateKey);
   }
 
-  static async loadFromKeyring(role: ShardRole = "drive"): Promise<Shard> {
-    return Shard.create(role);
+  static fromPrivateKey(privateKey: Hex, role: "device" | "recovery" = "device"): LocalShard {
+    return new LocalShard(role, privateKey);
   }
 
-  static async createRemoteCosigner(cosignerUrl: string): Promise<Shard> {
-    const mockAddr = "0x2222222222222222222222222222222222222222" as Address;
-    const mockPubkey = `0x04${"2".repeat(128)}` as Hex;
-    return new Shard("server", mockAddr, mockPubkey);
+  async signHash(hash: Hex): Promise<Hex> {
+    if (!isHex(hash) || hash.length !== 66) {
+      throw new Error("Invalid hash: must be 0x-prefixed 32-byte hex");
+    }
+
+    const account = privateKeyToAccount(this.privateKey);
+    const signature = await account.signMessage({
+      message: { raw: hexToBytes(hash) },
+    });
+
+    return signature;
+  }
+}
+
+export class RemoteCosigner implements IRemoteCosigner {
+  public role: "cosigner" = "cosigner";
+  public address: Address;
+  public walletAddress: Address;
+  public apiUrl: string;
+
+  constructor(shardBAddress: Address, walletAddress: Address, apiUrl: string = DEFAULT_API_URL) {
+    this.address = shardBAddress;
+    this.walletAddress = walletAddress;
+    this.apiUrl = apiUrl.replace(/\/$/, "");
   }
 
-  static async loadPasskey(): Promise<Shard> {
-    const mockAddr = "0x3333333333333333333333333333333333333333" as Address;
-    const mockPubkey = `0x04${"3".repeat(128)}` as Hex;
-    return new Shard("recovery", mockAddr, mockPubkey);
-  }
+  async signHash(hash: Hex, apiKey: string): Promise<Hex> {
+    const response = await fetch(`${this.apiUrl}/v1/wallets/${this.walletAddress}/cosign`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ userOpHash: hash }),
+    });
 
-  async signMessage(messageHash: Hex): Promise<Hex> {
-    // Returns 65-byte ECDSA signature
-    return `0x${"11".repeat(64)}1b` as Hex;
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Co-signer failed (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json() as { signatureB: Hex };
+    return data.signatureB;
   }
 }
