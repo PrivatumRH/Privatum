@@ -24,6 +24,7 @@ import {
   ArrowLeft,
   ArrowLeftRight,
   Fuel,
+  LogOut,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -228,6 +229,7 @@ export function App() {
   const [showSendModal, setShowSendModal] = useState<boolean>(false);
   const [showReceiveModal, setShowReceiveModal] = useState<boolean>(false);
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
+  const [showBackupModal, setShowBackupModal] = useState<boolean>(false);
   const [receiveQrCode, setReceiveQrCode] = useState<string | null>(null);
 
   // Send Form & Simulation Flow
@@ -445,6 +447,11 @@ export function App() {
           setApiKey(savedApiKey);
           setShardCAddress(savedShardC);
 
+          const savedShardCKey = localStorage.getItem("privatum_shard_c_key");
+          if (savedShardCKey) {
+            setShardCPrivKey(savedShardCKey);
+          }
+
           fetchBalances(savedAddress as Address);
         }
       } catch (err) {
@@ -499,6 +506,7 @@ export function App() {
         localStorage.setItem("privatum_api_key", newWallet.apiKey);
         localStorage.setItem("privatum_shard_b_address", newWallet.shardB.address);
         localStorage.setItem("privatum_shard_c_address", shardC.address);
+        localStorage.setItem("privatum_shard_c_key", shardC.privateKey);
 
         setWallet(newWallet);
         setWalletAddress(newWallet.address);
@@ -508,6 +516,7 @@ export function App() {
         setShardCPrivKey(shardC.privateKey);
 
         setShowCreateModal(false);
+        setShowBackupModal(true);
         fetchBalances(newWallet.address as Address);
         addToast("success", "Account Initialized", "Your 2-of-3 threshold account is ready.");
         setIsSending(false);
@@ -527,6 +536,40 @@ export function App() {
     const cleanErr = simplifyErrorMessage(lastError);
     addToast("error", "Account Creation Failed", cleanErr);
     setIsSending(false);
+  };
+
+  const handleResetApp = async () => {
+    try {
+      if (isTauri()) {
+        await invoke("delete_shard_a");
+      }
+      localStorage.removeItem("privatum_shard_a");
+      localStorage.removeItem("privatum_wallet_address");
+      localStorage.removeItem("privatum_api_key");
+      localStorage.removeItem("privatum_shard_b_address");
+      localStorage.removeItem("privatum_shard_c_address");
+      localStorage.removeItem("privatum_shard_c_key");
+      localStorage.removeItem("privatum_totp_enrolled");
+      localStorage.removeItem("privatum_transactions");
+
+      setWallet(null);
+      setWalletAddress("");
+      setShardAPrivKey("");
+      setApiKey("");
+      setShardCAddress("");
+      setShardCPrivKey("");
+      setTotpVerified(false);
+      setUsdgBalance("0.00");
+      setEthBalance("0.0000");
+      setTransactions([]);
+      setShowBackupModal(false);
+      setShowSendModal(false);
+      setShowReceiveModal(false);
+      setShowCreateModal(false);
+      addToast("info", "Wallet Reset", "Local wallet state cleared. You can now create a new wallet.");
+    } catch (err) {
+      console.error("Failed to reset wallet:", err);
+    }
   };
 
   const openSendModal = (asset?: "ETH" | "USDG") => {
@@ -851,11 +894,71 @@ export function App() {
         ))}
       </div>
 
-      {/* Main Workspace (Rail + Content) */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Left Rail */}
-        <aside className="w-16 shrink-0 bg-[#0e1015] border-r border-white/[0.06] flex flex-col items-center py-4 justify-between select-none z-20">
-          <div className="flex flex-col items-center w-full">
+      {/* Main Workspace or Immersive Fullscreen Onboarding */}
+      {!wallet ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-xl mx-auto w-full space-y-7 animate-in fade-in duration-500 overflow-y-auto select-none">
+          {/* Logo & Headline */}
+          <div className="flex flex-col items-center space-y-4">
+            <div className="w-20 h-20 rounded-2xl bg-white/[0.04] border border-white/10 p-3.5 flex items-center justify-center shadow-2xl">
+              <img src="/logo.png" alt="Privatum" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight text-white">Privatum Self-Custody</h1>
+              <p className="text-sm text-slate-400 mt-2 max-w-md mx-auto leading-relaxed">
+                Institutional 2-of-3 threshold protection on Robinhood Chain. No single seed phrase to lose or expose.
+              </p>
+            </div>
+          </div>
+
+          {/* Action Button */}
+          <div className="w-full max-w-sm">
+            <button
+              onClick={handleCreateWallet}
+              disabled={isSending}
+              className="w-full py-3.5 px-6 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-sm transition flex items-center justify-center gap-2.5 shadow-xl disabled:opacity-50 cursor-pointer"
+            >
+              {isSending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Generating 2-of-3 Keystore...</span>
+                </>
+              ) : (
+                <>
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Create New Wallet</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* 2 FAQs */}
+          <div className="w-full space-y-3 pt-2 text-left">
+            <div className="p-4 rounded-xl bg-[#181a22] border border-white/[0.08] space-y-1.5">
+              <div className="text-xs font-semibold text-white flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#f64943]"></span>
+                <span>What is a self-custody wallet?</span>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed pl-3.5">
+                A self-custody wallet gives you exclusive ownership of your digital assets. You directly control the cryptographic keys, meaning no centralized bank, exchange, or third party can freeze, confiscate, or control your funds.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-[#181a22] border border-white/[0.08] space-y-1.5">
+              <div className="text-xs font-semibold text-white flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#f64943]"></span>
+                <span>How is Privatum different from regular wallets?</span>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed pl-3.5">
+                Regular wallets rely on a single, vulnerable 12-word seed phrase that presents a single point of failure. Privatum splits protection into a 2-of-3 threshold quorum: your local device key (Shard A), an automated co-signer (Shard B), and an emergency backup (Shard C) protected by 2FA. No single key can ever steal your assets.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* Left Rail */}
+          <aside className="w-16 shrink-0 bg-[#0e1015] border-r border-white/[0.06] flex flex-col items-center py-4 justify-between select-none z-20">
+            <div className="flex flex-col items-center w-full">
             {/* Logo mark */}
             <div className="mt-1 mb-6">
               <img
@@ -917,10 +1020,24 @@ export function App() {
           </nav>
         </div>
 
-        {/* Keystore Status Bottom */}
-        <div className="flex flex-col items-center">
+        {/* Keystore Status & Reset Bottom */}
+        <div className="flex flex-col items-center gap-2">
+          {wallet && (
+            <button
+              onClick={() => {
+                if (window.confirm("Are you sure you want to reset this wallet from this device? Make sure you have backed up your keys before resetting.")) {
+                  handleResetApp();
+                }
+              }}
+              title="Reset Wallet / Start Afresh"
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
+
           <div
-            title={wallet ? "Client Keystore Armed (2-of-3)" : "Wallet Standby"}
+            title="Client Keystore Armed (2-of-3)"
             className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition"
           >
             <div className="relative">
@@ -987,6 +1104,40 @@ export function App() {
         {/* Tab 1: Wallet View */}
         {activeTab === "wallet" && (
           <div className="p-8 max-w-5xl space-y-7">
+            {/* 2FA Reminder Banner */}
+            {!totpVerified && (
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <Fingerprint className="w-5 h-5 text-amber-400 shrink-0" />
+                  <div>
+                    <div className="text-xs font-semibold text-amber-300">Two-Factor Recovery Not Configured</div>
+                    <div className="text-[11px] text-amber-200/70 mt-0.5">
+                      Pair Google Authenticator or Authy to protect emergency recovery with Shard C.
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {shardCPrivKey && (
+                    <button
+                      onClick={() => setShowBackupModal(true)}
+                      className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-200 border border-white/10 transition"
+                    >
+                      View Backup Key
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setActiveTab("recovery");
+                      handleStartTotpSetup();
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-[#f64943] hover:bg-[#e03d38] text-xs font-medium text-white transition"
+                  >
+                    Set Up 2FA
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Hero Section */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-2">
               <div>
@@ -1364,6 +1515,7 @@ export function App() {
         )}
       </main>
       </div>
+      )}
 
       {/* Full-width Bottom Status Bar */}
       <footer className="w-full h-8 shrink-0 bg-[#0e1015] border-t border-white/[0.06] px-5 flex items-center justify-between text-xs text-slate-400 select-none z-20">
@@ -1705,6 +1857,86 @@ export function App() {
                 className="w-full py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-medium text-xs transition"
               >
                 Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Backup Shard C & 2FA Setup Reminder */}
+      {showBackupModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-[#181a23] border border-white/15 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-base font-semibold text-white">Emergency Backup & 2FA</h3>
+              </div>
+              <button
+                onClick={() => setShowBackupModal(false)}
+                className="text-slate-400 hover:text-white p-1 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Your 2-of-3 threshold account has been created. To protect against device loss or hardware failure, save your offline emergency key (Shard C) and enable two-factor recovery.
+            </p>
+
+            {/* Shard C Box */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400 font-medium">Shard C (Offline Backup Key)</span>
+                <span className="text-[10px] text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                  Save Offline
+                </span>
+              </div>
+              <div className="bg-black/50 p-3.5 rounded-xl border border-white/10 font-mono text-xs text-white break-all flex items-center justify-between">
+                <span>{shardCPrivKey || shardCAddress || "0x..."}</span>
+                <button
+                  onClick={() => copyToClipboard(shardCPrivKey || shardCAddress || "", "Shard C Key")}
+                  className="p-1.5 hover:text-white text-slate-400 transition ml-2 shrink-0"
+                  title="Copy Shard C Key"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                What is this for? If your computer is lost, Shard C and your 2FA TOTP code allow you to recover your funds with the co-signer. Without 2FA authorization, Shard C alone cannot move any funds.
+              </p>
+            </div>
+
+            {/* 2FA Reminder Card */}
+            <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 flex items-start gap-3">
+              <Fingerprint className="w-5 h-5 text-[#f64943] shrink-0 mt-0.5" />
+              <div className="text-xs">
+                <div className="font-semibold text-white">Enable Two-Factor Authentication</div>
+                <div className="text-slate-400 text-[11px] mt-0.5 leading-snug">
+                  Pair Google Authenticator or Authy to prevent unauthorized recovery attempts.
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowBackupModal(false)}
+                className="flex-1 py-2.5 rounded-xl bg-white/10 text-slate-300 font-semibold text-xs hover:bg-white/15 border border-white/10 transition"
+              >
+                Dismiss
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBackupModal(false);
+                  setActiveTab("recovery");
+                  handleStartTotpSetup();
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition flex items-center justify-center gap-1.5"
+              >
+                <span>Set Up 2FA Now</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
