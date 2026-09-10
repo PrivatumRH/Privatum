@@ -1,7 +1,7 @@
 import type { Address, Hex } from "viem";
 import { generatePrivateKey, privateKeyToAccount, privateKeyToAddress } from "viem/accounts";
 import { hexToBytes, isHex } from "viem";
-import type { ILocalShard, IRemoteCosigner } from "./types.js";
+import type { ILocalShard, IRemoteCosigner, RemoteCosignerConfig } from "./types.js";
 import { DEFAULT_API_URL } from "./chain.js";
 
 export class LocalShard implements ILocalShard {
@@ -43,19 +43,39 @@ export class RemoteCosigner implements IRemoteCosigner {
   public address: Address;
   public walletAddress: Address;
   public apiUrl: string;
+  public headers: Record<string, string>;
+  public customSigner?: (hash: Hex, apiKey: string) => Promise<Hex>;
 
-  constructor(shardBAddress: Address, walletAddress: Address, apiUrl: string = DEFAULT_API_URL) {
-    this.address = shardBAddress;
-    this.walletAddress = walletAddress;
-    this.apiUrl = apiUrl.replace(/\/$/, "");
+  constructor(
+    shardBAddressOrConfig: Address | RemoteCosignerConfig,
+    walletAddress?: Address,
+    apiUrl?: string
+  ) {
+    if (typeof shardBAddressOrConfig === "object") {
+      this.address = shardBAddressOrConfig.address;
+      this.walletAddress = shardBAddressOrConfig.walletAddress;
+      this.apiUrl = (shardBAddressOrConfig.apiUrl || DEFAULT_API_URL).replace(/\/$/, "");
+      this.headers = shardBAddressOrConfig.headers || {};
+      this.customSigner = shardBAddressOrConfig.customSigner;
+    } else {
+      this.address = shardBAddressOrConfig;
+      this.walletAddress = walletAddress || ("0x0000000000000000000000000000000000000000" as Address);
+      this.apiUrl = (apiUrl || DEFAULT_API_URL).replace(/\/$/, "");
+      this.headers = {};
+    }
   }
 
   async signHash(hash: Hex, apiKey: string): Promise<Hex> {
+    if (this.customSigner) {
+      return this.customSigner(hash, apiKey);
+    }
+
     const response = await fetch(`${this.apiUrl}/v1/wallets/${this.walletAddress}/cosign`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
+        ...this.headers,
       },
       body: JSON.stringify({ userOpHash: hash }),
     });
@@ -65,7 +85,7 @@ export class RemoteCosigner implements IRemoteCosigner {
       throw new Error(`Co-signer failed (${response.status}): ${errorText}`);
     }
 
-    const data = await response.json() as { signatureB: Hex };
+    const data = (await response.json()) as { signatureB: Hex };
     return data.signatureB;
   }
 }

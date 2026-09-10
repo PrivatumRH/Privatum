@@ -9,6 +9,14 @@ export interface ILocalShard {
   signHash(hash: Hex): Promise<Hex>;
 }
 
+export interface RemoteCosignerConfig {
+  address: Address;
+  walletAddress: Address;
+  apiUrl?: string;
+  headers?: Record<string, string>;
+  customSigner?: (hash: Hex, apiKey: string) => Promise<Hex>;
+}
+
 export interface IRemoteCosigner {
   role: "cosigner";
   address: Address;
