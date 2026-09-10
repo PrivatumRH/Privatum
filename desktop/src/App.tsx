@@ -230,7 +230,14 @@ export function App() {
   const [showReceiveModal, setShowReceiveModal] = useState<boolean>(false);
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [showBackupModal, setShowBackupModal] = useState<boolean>(false);
+  const [showRecoverModal, setShowRecoverModal] = useState<boolean>(false);
   const [receiveQrCode, setReceiveQrCode] = useState<string | null>(null);
+
+  // Recovery Form
+  const [recoverAddress, setRecoverAddress] = useState<string>("");
+  const [recoverShardCKey, setRecoverShardCKey] = useState<string>("");
+  const [recoverTotpCode, setRecoverTotpCode] = useState<string>("");
+  const [isRecovering, setIsRecovering] = useState<boolean>(false);
 
   // Send Form & Simulation Flow
   const [sendAssetType, setSendAssetType] = useState<"ETH" | "USDG">("USDG");
@@ -569,6 +576,102 @@ export function App() {
       addToast("info", "Wallet Reset", "Local wallet state cleared. You can now create a new wallet.");
     } catch (err) {
       console.error("Failed to reset wallet:", err);
+    }
+  };
+
+  const handleRecoverWallet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!recoverAddress || !recoverShardCKey || !recoverTotpCode) {
+      addToast("error", "Missing Details", "Please provide wallet address, Shard C key, and 6-digit TOTP code.");
+      return;
+    }
+
+    if (!isAddress(recoverAddress.trim())) {
+      addToast("error", "Invalid Address", "Wallet address must be a valid 0x-prefixed address.");
+      return;
+    }
+
+    if (!recoverShardCKey.trim().startsWith("0x")) {
+      addToast("error", "Invalid Key", "Shard C key must be a valid 0x-prefixed hex string.");
+      return;
+    }
+
+    if (!/^\d{6}$/.test(recoverTotpCode.trim())) {
+      addToast("error", "Invalid Code", "Please enter a valid 6-digit authenticator code.");
+      return;
+    }
+
+    setIsRecovering(true);
+    try {
+      const cleanAddress = recoverAddress.trim().toLowerCase() as Address;
+      const cleanShardC = recoverShardCKey.trim() as Hex;
+      const cleanTotp = recoverTotpCode.trim();
+
+      // 1. Generate new Shard A for this client machine
+      const newShardA = LocalShard.create("device");
+      const shardC = LocalShard.fromPrivateKey(cleanShardC, "recovery");
+
+      // 2. Execute 2-of-3 threshold recovery via SDK
+      await PrivatumWallet.recoverWallet({
+        walletAddress: cleanAddress,
+        shardC,
+        totpCode: cleanTotp,
+        newShardAAddress: newShardA.address,
+        apiUrl: DEFAULT_API_URL,
+      });
+
+      // 3. Save new Shard A locally in OS vault or storage
+      if (isTauri()) {
+        await invoke("save_shard_a", { key: newShardA.privateKey });
+      } else {
+        localStorage.setItem("privatum_shard_a", newShardA.privateKey);
+      }
+
+      localStorage.setItem("privatum_wallet_address", cleanAddress);
+      localStorage.setItem("privatum_shard_c_address", shardC.address);
+      localStorage.setItem("privatum_shard_c_key", cleanShardC);
+      localStorage.setItem("privatum_totp_enrolled", "true");
+
+      // 4. Fetch wallet info from cosigner to construct PrivatumWallet
+      let shardBAddress: Address = "0x0000000000000000000000000000000000000000";
+      let apiKeyVal = "";
+      try {
+        const infoRes = await fetch(`${DEFAULT_API_URL}/v1/wallets/${cleanAddress}`);
+        if (infoRes.ok) {
+          const info = await infoRes.json();
+          shardBAddress = (info.shardBAddress || shardBAddress) as Address;
+          apiKeyVal = info.apiKey || "";
+          localStorage.setItem("privatum_shard_b_address", shardBAddress);
+          localStorage.setItem("privatum_api_key", apiKeyVal);
+        }
+      } catch {}
+
+      const shardB = new RemoteCosigner(shardBAddress, cleanAddress, DEFAULT_API_URL);
+      const restoredWallet = new PrivatumWallet({
+        address: cleanAddress,
+        shardA: newShardA,
+        shardB,
+        shardCAddress: shardC.address,
+        apiKey: apiKeyVal,
+      });
+
+      setWallet(restoredWallet);
+      setWalletAddress(cleanAddress);
+      setShardAPrivKey(newShardA.privateKey);
+      setApiKey(apiKeyVal);
+      setShardCAddress(shardC.address);
+      setShardCPrivKey(cleanShardC);
+      setTotpVerified(true);
+      fetchBalances(cleanAddress);
+
+      setShowRecoverModal(false);
+      addToast("success", "Wallet Recovered", "Account recovered and authorized on this device.");
+    } catch (err: any) {
+      console.error("Recovery failed:", err);
+      const cleanErr = simplifyErrorMessage(err);
+      addToast("error", "Recovery Failed", cleanErr);
+    } finally {
+      setIsRecovering(false);
     }
   };
 
@@ -928,6 +1031,13 @@ export function App() {
                   <span>Create New Wallet</span>
                 </>
               )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowRecoverModal(true)}
+              className="w-full mt-2.5 py-1.5 text-xs text-slate-400 hover:text-white transition cursor-pointer"
+            >
+              Already have a wallet? Recover with Shard C & 2FA
             </button>
           </div>
 
@@ -1939,6 +2049,91 @@ export function App() {
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Recover Existing Wallet */}
+      {showRecoverModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+          <div className="bg-[#181a23] border border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <KeyRound className="w-5 h-5 text-[#f64943]" />
+                <h3 className="text-base font-semibold text-white">Recover Existing Wallet</h3>
+              </div>
+              <button
+                onClick={() => setShowRecoverModal(false)}
+                className="text-slate-400 hover:text-white p-1 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Restore access on this device using your offline Shard C key and your 6-digit 2FA authenticator code.
+            </p>
+
+            <form onSubmit={handleRecoverWallet} className="space-y-3.5">
+              <div>
+                <label className="text-xs text-slate-400 block mb-1">Wallet Address</label>
+                <input
+                  type="text"
+                  placeholder="0x..."
+                  value={recoverAddress}
+                  onChange={(e) => setRecoverAddress(e.target.value.trim())}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-white/30"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-400 block mb-1">Shard C Private Key</label>
+                <input
+                  type="password"
+                  placeholder="0x..."
+                  value={recoverShardCKey}
+                  onChange={(e) => setRecoverShardCKey(e.target.value.trim())}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-white/30"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-400 block mb-1">6-Digit Authenticator (2FA) Code</label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  placeholder="123456"
+                  value={recoverTotpCode}
+                  onChange={(e) => setRecoverTotpCode(e.target.value.replace(/\D/g, ""))}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-white/30"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  disabled={isRecovering}
+                  onClick={() => setShowRecoverModal(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-white/10 text-slate-300 font-semibold text-xs hover:bg-white/15 border border-white/10 transition disabled:opacity-40"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isRecovering || !recoverAddress || !recoverShardCKey || recoverTotpCode.length !== 6}
+                  className="flex-1 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2"
+                >
+                  {isRecovering ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Authorizing Device...</span>
+                    </>
+                  ) : (
+                    <span>Recover Wallet</span>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
