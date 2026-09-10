@@ -253,6 +253,7 @@ export function App() {
   const [showShardCSecret, setShowShardCSecret] = useState<boolean>(false);
   const [showShardCAccordion, setShowShardCAccordion] = useState<boolean>(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const [showHealthShardC, setShowHealthShardC] = useState<boolean>(false);
 
   // Transactions list
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
@@ -442,10 +443,8 @@ export function App() {
           setApiKey(savedApiKey);
           setShardCAddress(savedShardC);
 
-          const savedShardCKey = localStorage.getItem("privatum_shard_c_key");
-          if (savedShardCKey) {
-            setShardCPrivKey(savedShardCKey);
-          }
+          // Purge any legacy Shard C key from device storage
+          localStorage.removeItem("privatum_shard_c_key");
 
           fetchBalances(savedAddress as Address);
         }
@@ -501,7 +500,6 @@ export function App() {
         localStorage.setItem("privatum_api_key", newWallet.apiKey);
         localStorage.setItem("privatum_shard_b_address", newWallet.shardB.address);
         localStorage.setItem("privatum_shard_c_address", shardC.address);
-        localStorage.setItem("privatum_shard_c_key", shardC.privateKey);
 
         setWallet(newWallet);
         setWalletAddress(newWallet.address);
@@ -616,7 +614,6 @@ export function App() {
 
       localStorage.setItem("privatum_wallet_address", cleanAddress);
       localStorage.setItem("privatum_shard_c_address", shardC.address);
-      localStorage.setItem("privatum_shard_c_key", cleanShardC);
       localStorage.setItem("privatum_totp_enrolled", "true");
 
       // 4. Fetch wallet info from cosigner to construct PrivatumWallet
@@ -951,7 +948,7 @@ export function App() {
       )}
 
       {/* Animated Floating Toast Alerts */}
-      <div className="fixed top-5 right-6 z-50 flex flex-col gap-2.5 max-w-sm pointer-events-none">
+      <div className="fixed top-5 right-6 z-[100] flex flex-col gap-2.5 max-w-sm pointer-events-none">
         {toasts.map((t) => (
           <div
             key={t.id}
@@ -1542,24 +1539,51 @@ export function App() {
               </span>
             </div>
 
-            {shardCPrivKey && (
+            {shardCPrivKey ? (
               <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs mt-4">
                 <div className="font-semibold flex items-center gap-1.5 mb-1 text-amber-300">
                   <AlertCircle className="w-4 h-4" />
-                  <span>Backup Shard C Private Key</span>
+                  <span>Backup Shard C Private Key (In Memory Only)</span>
                 </div>
                 <p className="text-xs text-amber-200/80 mb-2">
-                  This key is only displayed once upon account initialization. Keep it offline in a secure vault.
+                  This key is never stored on this device. It is held only in memory for this session. Save it offline now.
                 </p>
-                <div className="flex items-center justify-between font-mono bg-black/50 p-2.5 rounded-lg border border-amber-500/20 break-all text-xs text-amber-100">
-                  <span>{shardCPrivKey}</span>
-                  <button
-                    onClick={() => copyToClipboard(shardCPrivKey, "Shard C key")}
-                    className="p-1 text-amber-300 hover:text-white transition ml-2"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                  </button>
+                <div className="flex items-center justify-between font-mono bg-black/50 px-3 py-2 rounded-lg border border-amber-500/20 text-xs text-amber-100 gap-2">
+                  <input
+                    type={showHealthShardC ? "text" : "password"}
+                    readOnly
+                    value={shardCPrivKey}
+                    className="bg-transparent font-mono text-xs text-amber-100 w-full focus:outline-none select-all tracking-wider"
+                  />
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowHealthShardC(!showHealthShardC)}
+                      className="p-1 hover:text-white text-amber-300/80 transition cursor-pointer"
+                      title={showHealthShardC ? "Hide key" : "Show key"}
+                    >
+                      {showHealthShardC ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(shardCPrivKey, "Shard C key")}
+                      className="p-1 text-amber-300 hover:text-white transition cursor-pointer"
+                      title="Copy Shard C key"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-white/[0.03] border border-white/10 text-slate-300 text-xs mt-4">
+                <div className="font-semibold flex items-center gap-1.5 mb-1 text-slate-200">
+                  <ShieldCheck className="w-4 h-4 text-slate-400" />
+                  <span>Offline Recovery Protection</span>
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Shard C private key is never stored on this device. It exists strictly offline in your backup to maintain true 2-of-3 threshold security.
+                </p>
               </div>
             )}
           </div>
