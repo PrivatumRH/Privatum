@@ -335,6 +335,24 @@ export function App() {
     return () => clearInterval(interval);
   }, [fetchEthPrice, fetchGasPrice]);
 
+  // Real-time UTC clock for bottom status bar
+  const getUtcTimeString = () => {
+    const now = new Date();
+    const h = String(now.getUTCHours()).padStart(2, "0");
+    const m = String(now.getUTCMinutes()).padStart(2, "0");
+    const s = String(now.getUTCSeconds()).padStart(2, "0");
+    return `${h}:${m}:${s} UTC`;
+  };
+
+  const [utcTime, setUtcTime] = useState<string>(getUtcTimeString);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setUtcTime(getUtcTimeString());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Total USD portfolio value
   const totalUsdValue = useMemo(() => {
     const usdg = parseFloat(usdgBalance) || 0;
@@ -1246,9 +1264,9 @@ export function App() {
 
       {/* Full-width Bottom Status Bar */}
       <footer className="w-full h-8 shrink-0 bg-[#0e1015] border-t border-white/[0.06] px-5 flex items-center justify-between text-xs text-slate-400 select-none z-20">
-        <div className="flex items-center gap-2 text-[11px]">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-          <span className="text-slate-300 font-medium">Robinhood Chain</span>
+        <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
+          <Clock className="w-3.5 h-3.5 text-slate-500" />
+          <span>{utcTime}</span>
         </div>
 
         <div className="flex items-center gap-4 text-[11px] font-mono">
