@@ -120,21 +120,32 @@ downloadsRouter.get("/v1/downloads/info", (_req: Request, res: Response) => {
   res.redirect(307, "/v1/downloads/latest");
 });
 
+const FALLBACK_DIRECT_URLS: Record<string, string> = {
+  windows: `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_x64-setup.exe`,
+  win: `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_x64-setup.exe`,
+  exe: `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_x64-setup.exe`,
+  msi: `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_x64-setup.exe`,
+  macos: `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest/download/PRIVATUM_aarch64.app.tar.gz`,
+  mac: `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest/download/PRIVATUM_aarch64.app.tar.gz`,
+  darwin: `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest/download/PRIVATUM_aarch64.app.tar.gz`,
+  dmg: `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest/download/PRIVATUM_aarch64.app.tar.gz`,
+  linux: `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_amd64.deb`,
+  deb: `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_amd64.deb`,
+  appimage: `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_amd64.deb`,
+};
+
 // 2. Download endpoint for a given platform
 downloadsRouter.get("/v1/downloads/:platform", async (req: Request, res: Response): Promise<void> => {
   const rawPlatform = (req.params.platform || "").toLowerCase();
   const token = getGitToken();
 
-  if (!token) {
-    res.status(500).json({ error: "Server missing GIT_TOKEN environment configuration" });
-    return;
-  }
-
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
-    Authorization: `Bearer ${token}`,
     "User-Agent": "Privatum-Backend",
   };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
   try {
     // 1. Try checking latest release assets
@@ -153,54 +164,69 @@ downloadsRouter.get("/v1/downloads/:platform", async (req: Request, res: Respons
       }
 
       if (targetAsset) {
-        // Fetch direct download redirect location from GitHub Release Asset endpoint
-        const downloadRes = await fetch(`${GITHUB_API_BASE}/releases/assets/${targetAsset.id}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/octet-stream",
-            "User-Agent": "Privatum-Backend",
-          },
-          redirect: "manual",
-        });
+        if (token) {
+          const downloadRes = await fetch(`${GITHUB_API_BASE}/releases/assets/${targetAsset.id}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/octet-stream",
+              "User-Agent": "Privatum-Backend",
+            },
+            redirect: "manual",
+          });
 
-        const redirectUrl = downloadRes.headers.get("location");
-        if (redirectUrl) {
-          res.redirect(302, redirectUrl);
+          const redirectUrl = downloadRes.headers.get("location");
+          if (redirectUrl) {
+            res.redirect(302, redirectUrl);
+            return;
+          }
+        }
+
+        if (targetAsset.browser_download_url) {
+          res.redirect(302, targetAsset.browser_download_url);
           return;
         }
       }
     }
 
-    // 2. Fallback: Check workflow run artifacts
-    const artRes = await fetch(`${GITHUB_API_BASE}/actions/artifacts?per_page=20`, { headers });
-    if (artRes.ok) {
-      const artData = (await artRes.json()) as { artifacts: ArtifactItem[] };
-      const artifacts = artData.artifacts || [];
+    // 2. Fallback: Check workflow run artifacts if token is present
+    if (token) {
+      const artRes = await fetch(`${GITHUB_API_BASE}/actions/artifacts?per_page=20`, { headers });
+      if (artRes.ok) {
+        const artData = (await artRes.json()) as { artifacts: ArtifactItem[] };
+        const artifacts = artData.artifacts || [];
 
-      let targetArtifact: ArtifactItem | undefined;
-      if (rawPlatform === "windows" || rawPlatform === "win" || rawPlatform === "exe") {
-        targetArtifact = artifacts.find((a) => a.name === "privatum-windows-x64");
-      } else if (rawPlatform === "macos" || rawPlatform === "mac" || rawPlatform === "darwin") {
-        targetArtifact = artifacts.find((a) => a.name === "privatum-macos-arm64");
-      } else if (rawPlatform === "linux" || rawPlatform === "deb" || rawPlatform === "appimage") {
-        targetArtifact = artifacts.find((a) => a.name === "privatum-linux-x64");
-      }
+        let targetArtifact: ArtifactItem | undefined;
+        if (rawPlatform === "windows" || rawPlatform === "win" || rawPlatform === "exe") {
+          targetArtifact = artifacts.find((a) => a.name === "privatum-windows-x64");
+        } else if (rawPlatform === "macos" || rawPlatform === "mac" || rawPlatform === "darwin") {
+          targetArtifact = artifacts.find((a) => a.name === "privatum-macos-arm64");
+        } else if (rawPlatform === "linux" || rawPlatform === "deb" || rawPlatform === "appimage") {
+          targetArtifact = artifacts.find((a) => a.name === "privatum-linux-x64");
+        }
 
-      if (targetArtifact) {
-        const artDownloadRes = await fetch(`${GITHUB_API_BASE}/actions/artifacts/${targetArtifact.id}/zip`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "User-Agent": "Privatum-Backend",
-          },
-          redirect: "manual",
-        });
+        if (targetArtifact) {
+          const artDownloadRes = await fetch(`${GITHUB_API_BASE}/actions/artifacts/${targetArtifact.id}/zip`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "User-Agent": "Privatum-Backend",
+            },
+            redirect: "manual",
+          });
 
-        const redirectUrl = artDownloadRes.headers.get("location");
-        if (redirectUrl) {
-          res.redirect(302, redirectUrl);
-          return;
+          const redirectUrl = artDownloadRes.headers.get("location");
+          if (redirectUrl) {
+            res.redirect(302, redirectUrl);
+            return;
+          }
         }
       }
+    }
+
+    // 3. Fallback: Redirect directly to release download URL
+    const fallbackUrl = FALLBACK_DIRECT_URLS[rawPlatform];
+    if (fallbackUrl) {
+      res.redirect(302, fallbackUrl);
+      return;
     }
 
     res.status(404).json({
@@ -208,6 +234,11 @@ downloadsRouter.get("/v1/downloads/:platform", async (req: Request, res: Respons
       supportedPlatforms: ["windows", "macos", "linux"],
     });
   } catch (error: any) {
+    const fallbackUrl = FALLBACK_DIRECT_URLS[rawPlatform];
+    if (fallbackUrl) {
+      res.redirect(302, fallbackUrl);
+      return;
+    }
     console.error("[downloads] Download error:", error);
     res.status(500).json({ error: "Failed to process download request", details: error?.message });
   }

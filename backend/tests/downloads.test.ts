@@ -13,9 +13,18 @@ describe("Downloads API Endpoints", () => {
     expect(res.body.downloads).toHaveProperty("linux");
   });
 
-  it("handles platform download redirect or resolution for windows", async () => {
+  it("handles platform download redirect for windows", async () => {
     const res = await request(app).get("/v1/downloads/windows");
-    // Should either redirect (302) to CDN or return 200/404 based on token
-    expect([200, 302, 404]).toContain(res.status);
+    expect([200, 302]).toContain(res.status);
+  });
+
+  it("handles platform download redirect for macos", async () => {
+    const res = await request(app).get("/v1/downloads/macos");
+    expect([200, 302]).toContain(res.status);
+  });
+
+  it("handles platform download redirect for linux", async () => {
+    const res = await request(app).get("/v1/downloads/linux");
+    expect([200, 302]).toContain(res.status);
   });
 });

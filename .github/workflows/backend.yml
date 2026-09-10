@@ -43,6 +43,8 @@ jobs:
       SHARD_B_ENCRYPTION_KEY: 97bc58b23128c5097358f49d5e38337f7f313b1fac2ebb43a5d96c561bc35165f939a84cc46c9520e608eb6c1a5005d9075916e080193f643e2eeacf62278fab90158a68b277706129ad3acb9e319e33ee
       ROBINHOOD_CHAIN_ID: 4663
       ROBINHOOD_RPC_URL: https://rpc.mainnet.chain.robinhood.com
+      GIT_TOKEN: ${{ secrets.GIT_TOKEN || secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
