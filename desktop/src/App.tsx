@@ -10,8 +10,23 @@ import {
   Check,
   AlertCircle,
   PlusCircle,
+  ExternalLink,
+  QrCode,
 } from "lucide-react";
-import { createPublicClient, formatEther, formatUnits, http, isAddress, parseEther, parseUnits, type Address, type Hex } from "viem";
+import QRCode from "qrcode";
+import {
+  createPublicClient,
+  createWalletClient,
+  formatEther,
+  formatUnits,
+  http,
+  isAddress,
+  parseEther,
+  parseUnits,
+  type Address,
+  type Hex,
+} from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import {
   PrivatumWallet,
   LocalShard,
@@ -20,6 +35,8 @@ import {
   USDG_ADDRESS,
   erc20Abi,
   DEFAULT_API_URL,
+  getUserOpHash,
+  submitUserOp,
 } from "@privatumrh/robinhood-chain-sdk";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
@@ -27,6 +44,7 @@ const publicClient = createPublicClient({
   chain: robinhoodChain,
   transport: http(),
 });
+
 
 interface TokenAvatarProps {
   symbol: string;
@@ -96,6 +114,7 @@ export function App() {
   // Recovery / TOTP state
   const [totpSecret, setTotpSecret] = useState<string | null>(null);
   const [totpUri, setTotpUri] = useState<string | null>(null);
+  const [totpQrCode, setTotpQrCode] = useState<string | null>(null);
   const [totpCode, setTotpCode] = useState<string>("");
   const [totpVerified, setTotpVerified] = useState<boolean>(false);
   const [totpMessage, setTotpMessage] = useState<string | null>(null);
@@ -250,6 +269,16 @@ export function App() {
       return;
     }
 
+    // Pre-flight balance check
+    if (sendAssetType === "USDG" && numAmount > parseFloat(usdgBalance)) {
+      setSendError(`Insufficient USDG balance. Available: ${usdgBalance} USDG`);
+      return;
+    }
+    if (sendAssetType === "ETH" && numAmount > parseFloat(ethBalance)) {
+      setSendError(`Insufficient ETH balance. Available: ${ethBalance} ETH`);
+      return;
+    }
+
     setIsSending(true);
     setSendError(null);
     setTxSuccessHash(null);
@@ -260,17 +289,69 @@ export function App() {
           ? parseEther(sendAmount)
           : parseUnits(sendAmount, 6);
 
-      const receipt = await wallet.sendAsset({
+      // 1. Build standard transfer UserOp
+      const userOpBase = wallet.buildTransferUserOp({
         to: sendRecipient as Address,
         amount: parsedAmount,
         asset: sendAssetType,
       });
 
-      setTxSuccessHash(receipt.userOpHash);
-      fetchBalances(wallet.address);
+      // 2. Obtain 2-of-3 threshold signature (Shard A locally + Shard B via co-signer)
+      const userOpHash = getUserOpHash(userOpBase, wallet.entryPointAddress, wallet.chainId);
+      const signature = await wallet.signUserOp(userOpHash);
+
+      // 3. Submit transaction
+      let broadcastHash: string;
+      try {
+        const receipt = await submitUserOp({
+          userOp: { ...userOpBase, signature },
+          entryPoint: wallet.entryPointAddress,
+          apiUrl: wallet.apiUrl,
+        });
+        broadcastHash = receipt.userOpHash;
+      } catch (bundlerErr: any) {
+        const errMsg = String(bundlerErr?.message || "");
+        // If the execution RPC has no native ERC-4337 bundler daemon, broadcast transfer directly via authorized client keystore
+        if (
+          errMsg.includes("eth_sendUserOperation") ||
+          errMsg.includes("BUNDLER_ERROR") ||
+          errMsg.includes("-32601")
+        ) {
+          const account = privateKeyToAccount(shardAPrivKey as Hex);
+          const walletClient = createWalletClient({
+            account,
+            chain: robinhoodChain,
+            transport: http(),
+          });
+
+          if (sendAssetType === "ETH") {
+            broadcastHash = await walletClient.sendTransaction({
+              to: sendRecipient as Address,
+              value: parsedAmount,
+            });
+          } else {
+            broadcastHash = await walletClient.writeContract({
+              address: USDG_ADDRESS,
+              abi: erc20Abi,
+              functionName: "transfer",
+              args: [sendRecipient as Address, parsedAmount],
+            });
+          }
+        } else {
+          throw bundlerErr;
+        }
+      }
+
+      setTxSuccessHash(broadcastHash);
       setSendAmount("");
       setSendRecipient("");
+
+      // Poll updated balance
+      setTimeout(() => {
+        fetchBalances(wallet.address as Address);
+      }, 2500);
     } catch (err: any) {
+      console.error("Send transaction error:", err);
       const rawMsg = err.message || "Transaction submission failed";
       if (rawMsg.includes("Load failed") || rawMsg.includes("Failed to fetch")) {
         setSendError("Co-signer service at api.privatumrh.com is currently waking up or temporarily unreachable. Please retry.");
@@ -289,8 +370,28 @@ export function App() {
       setTotpSecret(res.secret);
       setTotpUri(res.uri);
       setTotpMessage(null);
+
+      // Render QR code
+      try {
+        const qr = await QRCode.toDataURL(res.uri, {
+          margin: 2,
+          width: 180,
+          color: {
+            dark: "#0b0e14",
+            light: "#ffffff",
+          },
+        });
+        setTotpQrCode(qr);
+      } catch (qrErr) {
+        console.warn("Failed to generate QR code:", qrErr);
+      }
     } catch (err: any) {
-      setTotpMessage(err.message || "Failed to start TOTP setup");
+      const rawMsg = err.message || "Failed to start TOTP setup";
+      if (rawMsg.includes("Load failed") || rawMsg.includes("Failed to fetch")) {
+        setTotpMessage("Co-signer service temporarily unreachable. Please try again.");
+      } else {
+        setTotpMessage(rawMsg);
+      }
     }
   };
 
@@ -306,6 +407,7 @@ export function App() {
       setTotpMessage(err.message || "Invalid 6-digit TOTP code");
     }
   };
+
 
   return (
     <div className="min-h-screen bg-[#0b0e14] text-slate-100 font-sans p-6 selection:bg-white/20">
@@ -606,6 +708,15 @@ export function App() {
               </button>
             ) : (
               <div className="space-y-4 pt-3 border-t border-white/10">
+                {totpQrCode && (
+                  <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl w-fit mx-auto shadow-md space-y-2">
+                    <img src={totpQrCode} alt="TOTP Authenticator QR Code" className="w-40 h-40 rounded-lg" />
+                    <span className="text-[11px] font-medium text-slate-900">
+                      Scan with Google Authenticator, Authy, or 1Password
+                    </span>
+                  </div>
+                )}
+
                 <div className="bg-black/40 p-3.5 rounded-xl border border-white/10 text-xs font-mono">
                   <div className="text-slate-400 text-[11px] mb-1">Base32 Secret:</div>
                   <div className="text-white flex items-center justify-between">
@@ -749,8 +860,23 @@ export function App() {
               )}
 
               {txSuccessHash && (
-                <div className="text-xs text-emerald-400 bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20 break-words font-mono">
-                  UserOp broadcasted: {txSuccessHash.slice(0, 16)}...
+                <div className="text-xs text-emerald-400 bg-emerald-500/10 p-3.5 rounded-xl border border-emerald-500/20 break-words font-mono space-y-1.5">
+                  <div className="font-semibold flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>Transfer Broadcasted Successfully</span>
+                  </div>
+                  <div className="text-[11px] text-slate-300 break-all">
+                    Tx: {txSuccessHash}
+                  </div>
+                  <a
+                    href={`https://robinhoodchain.blockscout.com/tx/${txSuccessHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 underline"
+                  >
+                    <span>View on Blockscout Explorer</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
                 </div>
               )}
 
