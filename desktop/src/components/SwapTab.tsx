@@ -8,6 +8,7 @@ import {
   ExternalLink,
   Loader2,
   ChevronDown,
+  Zap,
 } from "lucide-react";
 import { formatUnits, parseUnits, type Address, type Hex, type PublicClient } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -25,7 +26,8 @@ interface SwapTabProps {
   addToast: (type: "success" | "error" | "info", title: string, message?: string) => void;
   preselectedTokenIn?: string;
   preselectedTokenOut?: string;
-  onExecuteBatch?: (targets: Address[], values: bigint[], datas: Hex[]) => Promise<Hex>;
+  onExecuteBatch?: (targets: Address[], values: bigint[], datas: Hex[], sponsor?: boolean) => Promise<Hex>;
+  isGaslessActive?: boolean;
 }
 
 export function SwapTab({
@@ -37,6 +39,7 @@ export function SwapTab({
   preselectedTokenIn = "USDG",
   preselectedTokenOut = "AAPL",
   onExecuteBatch,
+  isGaslessActive,
 }: SwapTabProps) {
   const [tokenList, setTokenList] = useState<TokenInfo[]>(TOKENS);
   const [tokenIn, setTokenIn] = useState<TokenInfo>(() => findToken(preselectedTokenIn) || TOKENS[0]);
@@ -175,7 +178,9 @@ export function SwapTab({
   const parsedBalanceIn = parseFloat(balanceIn || "0");
   const parsedNativeEth = parseFloat(nativeEthBalance || "0");
   const isInsufficientBalance = Boolean(amountIn && parsedAmountIn > parsedBalanceIn);
-  const isInsufficientGas = tokenIn.native
+  const isInsufficientGas = isGaslessActive
+    ? false
+    : tokenIn.native
     ? parsedAmountIn + 0.00003 > parsedNativeEth
     : parsedNativeEth < 0.00003;
 
@@ -227,7 +232,7 @@ export function SwapTab({
 
       // Submit atomic executeBatch transaction via 2-of-3 threshold smart account
       const txHash = onExecuteBatch
-        ? await onExecuteBatch(targets, values, datas)
+        ? await onExecuteBatch(targets, values, datas, isGaslessActive)
         : await executeAccountBatch({
             wallet,
             shardAPrivKey,
@@ -235,6 +240,7 @@ export function SwapTab({
             targets,
             values,
             datas,
+            sponsor: isGaslessActive,
           });
       setLastTxHash(txHash);
       addToast("success", "Swap Executed", `Swapped ${amountIn} ${tokenIn.symbol} for ${quote.amountOut} ${tokenOut.symbol}`);
@@ -300,6 +306,16 @@ export function SwapTab({
               <div className="text-[11px] text-red-200/80 mt-0.5 leading-relaxed">
                 The local device key ({signerAddress?.slice(0, 6)}...{signerAddress?.slice(-4)}) does not match this wallet address ({walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}). Direct on-chain transactions cannot be authorized with this key. Switch to an account with matching keys in the Account Switcher.
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* 100% Gasless Active Banner */}
+        {isGaslessActive && (
+          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-200 flex items-center gap-2.5">
+            <Zap className="w-4 h-4 text-emerald-400 fill-emerald-400/20 shrink-0 animate-pulse" />
+            <div className="flex-1">
+              <span className="font-semibold text-emerald-300">100% Gasless Active</span>: Network fees on Robinhood Chain are sponsored by the protocol pool.
             </div>
           </div>
         )}

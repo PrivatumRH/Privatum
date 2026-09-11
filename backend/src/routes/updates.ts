@@ -13,24 +13,24 @@ interface PlatformRelease {
 // Current official releases by platform
 const PLATFORM_RELEASES: Record<string, PlatformRelease> = {
   "linux-x86_64": {
-    version: "0.1.1",
+    version: "0.1.7",
     pubDate: "2026-09-15T12:00:00Z",
-    notes: "v0.1.1: In-app updating mechanism and ERC-5564 stealth send for private transfers on Robinhood Chain.",
-    downloadUrl: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.1/PRIVATUM_0.1.1_amd64.AppImage",
+    notes: "v0.1.7: Stake $PRIV to Go Gasless: 100% protocol-sponsored gas passes on Robinhood Chain.",
+    downloadUrl: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.7/PRIVATUM_0.1.7_amd64.AppImage",
     mandatory: false,
   },
   "darwin-arm64": {
-    version: "0.1.1",
+    version: "0.1.7",
     pubDate: "2026-09-15T12:00:00Z",
-    notes: "v0.1.1: In-app updating mechanism and ERC-5564 stealth send for private transfers on Robinhood Chain.",
-    downloadUrl: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.1/PRIVATUM_0.1.1_aarch64.dmg",
+    notes: "v0.1.7: Stake $PRIV to Go Gasless: 100% protocol-sponsored gas passes on Robinhood Chain.",
+    downloadUrl: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.7/PRIVATUM_0.1.7_aarch64.dmg",
     mandatory: false,
   },
   "windows-x86_64": {
-    version: "0.1.1",
+    version: "0.1.7",
     pubDate: "2026-09-15T12:00:00Z",
-    notes: "v0.1.1: In-app updating mechanism and ERC-5564 stealth send for private transfers on Robinhood Chain.",
-    downloadUrl: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.1/PRIVATUM_0.1.1_x64-setup.exe",
+    notes: "v0.1.7: Stake $PRIV to Go Gasless: 100% protocol-sponsored gas passes on Robinhood Chain.",
+    downloadUrl: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.7/PRIVATUM_0.1.7_x64-setup.exe",
     mandatory: false,
   },
 };
@@ -73,18 +73,18 @@ updatesRouter.get("/v1/updates/desktop/:platform/:version", (req: Request, res: 
 
 updatesRouter.get("/v1/updates/desktop/latest.json", (_req: Request, res: Response) => {
   return res.json({
-    version: "0.1.1",
+    version: "0.1.7",
     pub_date: "2026-09-15T12:00:00Z",
-    notes: "v0.1.1: In-app updating mechanism and ERC-5564 stealth send for private transfers on Robinhood Chain.",
+    notes: "v0.1.7: Stake $PRIV to Go Gasless: 100% protocol-sponsored gas passes on Robinhood Chain.",
     platforms: {
       "linux-x86_64": {
-        url: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.1/PRIVATUM_0.1.1_amd64.AppImage",
+        url: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.7/PRIVATUM_0.1.7_amd64.AppImage",
       },
       "darwin-aarch64": {
-        url: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.1/PRIVATUM_0.1.1_aarch64.dmg",
+        url: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.7/PRIVATUM_0.1.7_aarch64.dmg",
       },
       "windows-x86_64": {
-        url: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.1/PRIVATUM_0.1.1_x64-setup.exe",
+        url: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.7/PRIVATUM_0.1.7_x64-setup.exe",
       },
     },
   });

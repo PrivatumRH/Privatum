@@ -6,7 +6,8 @@ export type FeatureKey =
   | "cross_chain"
   | "nfts"
   | "multi_wallet"
-  | "rwa_equities";
+  | "rwa_equities"
+  | "gasless_staking";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -17,9 +18,10 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   nfts: "0.1.4",
   multi_wallet: "0.1.5",
   rwa_equities: "0.1.6",
+  gasless_staking: "0.1.7",
 };
 
-export const RELEASE_VERSIONS = ["0.1.0", "0.1.1", "0.1.2", "0.1.3", "0.1.4", "0.1.5", "0.1.6"] as const;
+export const RELEASE_VERSIONS = ["0.1.0", "0.1.1", "0.1.2", "0.1.3", "0.1.4", "0.1.5", "0.1.6", "0.1.7"] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 
 function parseSemver(v: string): number[] {
@@ -42,7 +44,7 @@ export function isFeatureActive(
   appVersion: string,
   previewVersionOverride?: string | null
 ): boolean {
-  const activeVersion = previewVersionOverride || (import.meta.env.DEV ? "0.1.6" : appVersion);
+  const activeVersion = previewVersionOverride || (import.meta.env.DEV ? "0.1.7" : appVersion);
   const milestone = FEATURE_MILESTONES[feature];
   return compareSemver(activeVersion, milestone) >= 0;
 }

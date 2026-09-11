@@ -284,6 +284,7 @@ export async function submitUserOp(params: {
   userOp: UserOperation;
   entryPoint?: Address;
   apiUrl?: string;
+  sponsor?: boolean;
 }): Promise<BundlerSubmissionResponse> {
   const apiUrl = (params.apiUrl || DEFAULT_API_URL).replace(/\/$/, "");
   const entryPoint = params.entryPoint || ENTRY_POINT_ADDRESS;
@@ -296,6 +297,7 @@ export async function submitUserOp(params: {
     body: JSON.stringify({
       userOp: rpcUserOp,
       entryPoint,
+      sponsor: params.sponsor ?? false,
     }),
   });
 

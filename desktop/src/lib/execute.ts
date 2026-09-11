@@ -27,8 +27,9 @@ export async function executeAccountCall(params: {
   target: Address;
   value: bigint;
   data: Hex;
+  sponsor?: boolean;
 }): Promise<Hex> {
-  const { wallet, shardAPrivKey, client, target, value, data } = params;
+  const { wallet, shardAPrivKey, client, target, value, data, sponsor } = params;
 
   const callData = encodeFunctionData({
     abi: PRIVATUM_ACCOUNT_ABI,
@@ -64,6 +65,7 @@ export async function executeAccountCall(params: {
       userOp: { ...userOpBase, signature },
       entryPoint: wallet.entryPointAddress,
       apiUrl: wallet.apiUrl,
+      sponsor,
     });
     return receipt.userOpHash;
   } catch (bundlerErr: any) {
@@ -96,8 +98,9 @@ export async function executeAccountBatch(params: {
   targets: Address[];
   values: bigint[];
   datas: Hex[];
+  sponsor?: boolean;
 }): Promise<Hex> {
-  const { wallet, shardAPrivKey, client, targets, values, datas } = params;
+  const { wallet, shardAPrivKey, client, targets, values, datas, sponsor } = params;
 
   const callData = encodeFunctionData({
     abi: PRIVATUM_ACCOUNT_ABI,
@@ -133,6 +136,7 @@ export async function executeAccountBatch(params: {
       userOp: { ...userOpBase, signature },
       entryPoint: wallet.entryPointAddress,
       apiUrl: wallet.apiUrl,
+      sponsor,
     });
     return receipt.userOpHash;
   } catch (bundlerErr: any) {
