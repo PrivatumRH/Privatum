@@ -33,6 +33,7 @@ import {
   Sparkles,
   TrendingUp,
   Scan,
+  AlertTriangle,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -47,7 +48,7 @@ import {
   type Address,
   type Hex,
 } from "viem";
-import { AccountSwitcher, type WalletAccount } from "./components/AccountSwitcher";
+import { AccountSwitcher, getAccountDisplayName, type WalletAccount } from "./components/AccountSwitcher";
 import { SwapTab } from "./components/SwapTab";
 import { CrossChainTab } from "./components/CrossChainTab";
 import { NftTab } from "./components/NftTab";
@@ -265,6 +266,7 @@ export function App() {
     ];
   });
   const [activeAccountId, setActiveAccountId] = useState<string>("primary");
+  const [walletToRemove, setWalletToRemove] = useState<WalletAccount | null>(null);
 
   // Private Send Mode Toggle & Stealth Inbox
   const [isStealthSend, setIsStealthSend] = useState<boolean>(false);
@@ -720,6 +722,91 @@ export function App() {
       fetchBalances(savedAddress as Address);
       const accName = accounts.find((a) => a.id === targetId)?.name || shortenAddress(savedAddress);
       addToast("info", "Account Switched", `Active account: ${accName}`);
+    }
+  };
+
+  const handleConfirmRemoveAccount = async (target: WalletAccount) => {
+    try {
+      const cleanAddress = target.address?.toLowerCase();
+      const targetIndex = accounts.findIndex((a) => a.id === target.id);
+      const displayName = getAccountDisplayName(target, targetIndex >= 0 ? targetIndex : 0);
+      const remaining = accounts.filter((a) => a.id !== target.id);
+
+      // 1. Purge local storage entries for this account
+      localStorage.removeItem(`privatum_wallet_address_${target.id}`);
+      localStorage.removeItem(`privatum_shard_a_${target.id}`);
+      if (cleanAddress) {
+        localStorage.removeItem(`privatum_shard_a_${cleanAddress}`);
+        localStorage.removeItem(`privatum_totp_enrolled_${cleanAddress}`);
+        localStorage.removeItem(`privatum_transactions_${cleanAddress}`);
+      }
+      localStorage.removeItem(`privatum_shard_b_address_${target.id}`);
+      localStorage.removeItem(`privatum_shard_c_address_${target.id}`);
+      localStorage.removeItem(`privatum_api_key_${target.id}`);
+      localStorage.removeItem(`privatum_totp_enrolled_${target.id}`);
+
+      if (target.id === "primary") {
+        localStorage.removeItem("privatum_wallet_address");
+        localStorage.removeItem("privatum_shard_a");
+        localStorage.removeItem("privatum_shard_b_address");
+        localStorage.removeItem("privatum_shard_c_address");
+        localStorage.removeItem("privatum_api_key");
+        localStorage.removeItem("privatum_totp_enrolled");
+      }
+
+      // 2. Remove from OS Keychain / Vault if in Tauri
+      if (isTauri()) {
+        try {
+          if (cleanAddress) {
+            await invoke("delete_shard_from_keychain", { accountId: cleanAddress });
+          }
+          await invoke("delete_shard_from_keychain", { accountId: target.id });
+          if (target.id === "primary") {
+            await invoke("delete_shard_a");
+          }
+        } catch {}
+      }
+
+      // 3. Update accounts state & active wallet
+      if (remaining.length === 0) {
+        setAccounts([]);
+        setActiveAccountId("");
+        setWallet(null);
+        setWalletAddress("");
+        setShardAPrivKey("");
+        setApiKey("");
+        setShardCAddress("");
+        setShardCPrivKey("");
+        setTotpVerified(false);
+        setUsdgBalance("0.00");
+        setEthBalance("0.0000");
+        setTransactions([]);
+        try {
+          localStorage.removeItem("privatum_accounts");
+          localStorage.removeItem("privatum_active_account_id");
+        } catch {}
+        addToast("info", "Wallet Removed", `${displayName} was removed. No wallets remaining on this device.`);
+      } else {
+        setAccounts(remaining);
+        try {
+          localStorage.setItem("privatum_accounts", JSON.stringify(remaining));
+        } catch {}
+
+        if (target.id === activeAccountId) {
+          const nextAccount = remaining[0];
+          await handleSelectAccount(nextAccount.id);
+          addToast(
+            "info",
+            "Wallet Removed",
+            `${displayName} was removed. Switched to ${getAccountDisplayName(nextAccount, 0)}.`
+          );
+        } else {
+          addToast("info", "Wallet Removed", `${displayName} was removed from this device.`);
+        }
+      }
+    } catch (err: any) {
+      console.error("Failed to remove account:", err);
+      addToast("error", "Failed to Remove Wallet", err?.message || String(err));
     }
   };
 
@@ -1820,6 +1907,7 @@ export function App() {
                 onSelectAccount={(acc) => handleSelectAccount(acc.id)}
                 onCreateAccount={() => setShowCreateModal(true)}
                 onCopyAddress={(addr) => copyToClipboard(addr, "Account address")}
+                onRemoveAccount={(acc) => setWalletToRemove(acc)}
               />
             )}
 
@@ -2986,6 +3074,66 @@ export function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Remove Wallet Confirmation */}
+      {walletToRemove && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-[#181a22] border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-rose-400">
+                <AlertTriangle className="w-5 h-5" />
+                <h3 className="text-base font-semibold text-white">Remove Wallet</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setWalletToRemove(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Are you sure you want to remove{" "}
+              <span className="font-semibold text-white">
+                {getAccountDisplayName(
+                  walletToRemove,
+                  accounts.findIndex((a) => a.id === walletToRemove.id)
+                )}
+              </span>{" "}
+              (<span className="text-slate-400 text-[11px]">{shortenAddress(walletToRemove.address)}</span>) from this device?
+            </p>
+
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="text-[11px] leading-relaxed">
+                Make sure you have saved your <span className="font-semibold text-amber-100">Shard C backup key</span> and have your <span className="font-semibold text-amber-100">2FA Authenticator</span> active. You can recover this wallet at any time.
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setWalletToRemove(null)}
+                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white text-xs font-semibold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = walletToRemove;
+                  setWalletToRemove(null);
+                  handleConfirmRemoveAccount(target);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white text-xs font-semibold transition cursor-pointer"
+              >
+                Remove Wallet
+              </button>
+            </div>
           </div>
         </div>
       )}

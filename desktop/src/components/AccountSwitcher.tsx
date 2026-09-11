@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, Plus, Check, Copy } from "lucide-react";
+import { ChevronDown, Plus, Check, Copy, Trash2 } from "lucide-react";
 import type { Address } from "viem";
 
 export interface WalletAccount {
@@ -16,6 +16,7 @@ interface AccountSwitcherProps {
   onSelectAccount: (account: WalletAccount) => void;
   onCreateAccount: () => void;
   onCopyAddress: (address: string) => void;
+  onRemoveAccount?: (account: WalletAccount) => void;
 }
 
 export function getAccountDisplayName(acc: WalletAccount, index: number): string {
@@ -31,6 +32,7 @@ export function AccountSwitcher({
   onSelectAccount,
   onCreateAccount,
   onCopyAddress,
+  onRemoveAccount,
 }: AccountSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -77,7 +79,7 @@ export function AccountSwitcher({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] rounded-2xl bg-[#181a22] backdrop-blur-xl border border-white/[0.08] p-2 shadow-2xl z-50 flex flex-col gap-1 text-xs">
+        <div className="absolute top-full right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-[#181a22] backdrop-blur-xl border border-white/[0.08] p-2 shadow-2xl z-50 flex flex-col gap-1 text-xs">
           <div className="max-h-56 overflow-y-auto flex flex-col gap-1 pr-1">
             {accounts.map((acc, index) => {
               const isSelected = acc.id === activeAccount?.id;
@@ -89,7 +91,7 @@ export function AccountSwitcher({
                     onSelectAccount(acc);
                     setIsOpen(false);
                   }}
-                  className={`flex items-center justify-between p-2 rounded-xl cursor-pointer transition-colors ${
+                  className={`flex items-center justify-between p-2 rounded-xl cursor-pointer transition-colors group ${
                     isSelected
                       ? "bg-white/10 text-white font-medium"
                       : "text-neutral-300 hover:bg-white/5 hover:text-white"
@@ -111,16 +113,31 @@ export function AccountSwitcher({
 
                   <div className="flex items-center gap-1 shrink-0">
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         onCopyAddress(acc.address);
                       }}
-                      className="p-1 rounded hover:bg-white/10 text-neutral-400 hover:text-white cursor-pointer"
+                      className="p-1 rounded hover:bg-white/10 text-neutral-400 hover:text-white cursor-pointer transition-colors"
                       title="Copy Address"
                     >
                       <Copy className="w-3 h-3" />
                     </button>
-                    {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400 ml-1" />}
+                    {onRemoveAccount && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsOpen(false);
+                          onRemoveAccount(acc);
+                        }}
+                        className="p-1 rounded hover:bg-rose-500/20 text-neutral-400 hover:text-rose-400 cursor-pointer transition-colors"
+                        title="Remove Wallet"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
+                    {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400 ml-0.5" />}
                   </div>
                 </div>
               );
