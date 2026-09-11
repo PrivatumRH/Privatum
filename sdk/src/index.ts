@@ -5,3 +5,4 @@ export * from "./wallet.js";
 export * from "./transfer.js";
 export * from "./staking.js";
 export * from "./bridge.js";
+export * from "./paylinks.js";
