@@ -1041,11 +1041,11 @@ function LandingPage() {
                   <div className="pv-card-specs">
                     <div className="pv-spec-row">
                       <span>Platform</span>
-                      <b>Debian / Ubuntu / Arch</b>
+                      <b>Ubuntu / Debian / Arch / Fedora</b>
                     </div>
                     <div className="pv-spec-row">
-                      <span>Package</span>
-                      <b>Debian (.deb) &amp; AppImage</b>
+                      <span>Packages</span>
+                      <b>.deb &bull; .rpm &bull; AppImage</b>
                     </div>
                     <div className="pv-spec-row">
                       <span>Target File</span>
@@ -1057,10 +1057,10 @@ function LandingPage() {
                     href="https://api.privatumrh.com/v1/downloads/linux"
                   >
                     <DownloadIcon />
-                    <span>Download for Linux (.deb)</span>
+                    <span>Download for Linux</span>
                   </a>
                   <div className="pv-card-instructions">
-                    Install via <code>sudo dpkg -i {releaseInfo?.downloads?.["linux"]?.filename || PLATFORM_DATA.linux.filename}</code>
+                    Debian/Ubuntu: <code>sudo apt install ./*.deb</code> &bull; Arch/Fedora: run AppImage or native binary
                   </div>
                 </div>
               </div>
