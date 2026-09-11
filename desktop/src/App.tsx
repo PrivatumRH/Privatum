@@ -2257,23 +2257,25 @@ export function App() {
                   {/* Private Stealth Send Toggle (v0.1.1) */}
                   {isFeatureActive("private_send", appVersion, previewVersion) && (
                     <div className="flex items-center justify-between p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                      <div className="flex items-center gap-2.5">
-                        <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
-                        <div>
-                          <div className="text-xs font-semibold text-purple-200">Private Send (ERC-5564)</div>
-                          <div className="text-[10px] text-purple-300/70">Unlinkable one-time stealth address on Robinhood Chain</div>
-                        </div>
+                      <div>
+                        <div className="text-xs font-semibold text-purple-200">Private Send (ERC-5564)</div>
+                        <div className="text-[10px] text-purple-300/70">Unlinkable one-time stealth address on Robinhood Chain</div>
                       </div>
                       <button
                         type="button"
+                        role="switch"
+                        aria-checked={isStealthSend}
                         onClick={() => setIsStealthSend(!isStealthSend)}
-                        className={`px-3 py-1 rounded-full text-xs font-semibold transition cursor-pointer ${
-                          isStealthSend
-                            ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
-                            : "bg-white/10 text-slate-400 hover:text-white"
+                        className={`w-10 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer shrink-0 ${
+                          isStealthSend ? "bg-purple-600" : "bg-white/20 hover:bg-white/30"
                         }`}
+                        title={isStealthSend ? "Private Send Active" : "Private Send Disabled"}
                       >
-                        {isStealthSend ? "Active" : "Disabled"}
+                        <div
+                          className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                            isStealthSend ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
                       </button>
                     </div>
                   )}
