@@ -1,49 +1,56 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
+import { LanguageToggle } from "@/components/LanguageToggle";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
 });
 
 const STACK_CHIPS = [
-  { name: "Robinhood Chain", sub: "Settlement layer" },
-  { name: "MPC / TSS 2-of-3", sub: "Threshold signing" },
-  { name: "ERC-5564 Stealth", sub: "One-time addresses" },
-  { name: "Passkeys / WebAuthn", sub: "Device auth" },
-  { name: "Viem + TypeScript SDK", sub: "Developer surface" },
-  { name: "USDC / USDT", sub: "Supported assets" },
-  { name: "Shamir Recovery", sub: "Shard restore" },
-  { name: "Policy Engine", sub: "Pre-signing checks" },
+  { name: "Robinhood Chain", sub: "Arbitrum L2 (Chain ID 4663)" },
+  { name: "USDG & Native ETH", sub: "Frontier settlement assets" },
+  { name: "2-of-3 Quorum", sub: "ECDSA shard aggregation" },
+  { name: "Co-Signer Engine", sub: "Automated spend & velocity policies" },
+  { name: "ERC-4337 v0.6", sub: "Smart accounts & UserOps" },
+  { name: "Passkeys / WebAuthn", sub: "Hardware recovery Shard C" },
+  { name: "Viem Open SDK", sub: "@privatumrh/robinhood-chain-sdk" },
+  { name: "Tauri v2 Desktop", sub: "Encrypted OS keystores" },
+  { name: "ERC-5564 Stealth", sub: "One-time destination addresses" },
+  { name: "Screened Pools", sub: "Association-set ZK proofs" },
 ];
 
 const FAQS = [
   {
     q: "What does Privatum do?",
-    a: "Privatum lets users and developers manage, send, receive, and swap USDC and USDT on Robinhood Chain with threshold security and privacy focused design.",
+    a: "Privatum is a self-custodial smart wallet and open developer toolkit engineered for Robinhood Chain (Arbitrum-powered EVM L2, Chain ID 4663). It enables individuals and automated workflows to hold, send, and swap frontier assets (specifically USDG and native ETH) with zero single points of failure.",
   },
   {
-    q: "How does 2-of-3 custody work?",
-    a: "The signing key is split into desktop, co-signer, and recovery passkey shards. Any two can approve or recover. One shard alone cannot spend.",
+    q: "How does 2-of-3 threshold custody work?",
+    a: "Your private key is mathematically split into three independent shards: Shard A on your local device (stored encrypted in OS keystores), Shard B with the automated co-signer policy service, and Shard C in hardware passkey recovery. Any two shards can authorize transactions or recover access. No single party, not even Privatum, can ever move your funds.",
   },
   {
-    q: "How does a transaction sign?",
-    a: "The desktop client signs with Shard A, the co-signer validates policy and signs with Shard B, then partial signatures combine and settle through ERC-4337 infrastructure.",
+    q: "How does the 5-step signing pipeline work?",
+    a: "1) Build: Desktop or SDK creates an unsigned ERC-4337 UserOperation for USDG or ETH transfer. 2) Client Sign: Local device decrypts Shard A via device credentials and signs the userOpHash. 3) Co-Sign: Dispatched over TLS to the Co-Signer API, which evaluates velocity and daily limits before signing with Shard B. 4) Combine: Two 65-byte signatures merge into an aggregate 130-byte threshold signature (sigA || sigB). 5) Settle: Broadcast to the Robinhood Chain bundler and validated by the PrivatumAccount smart contract onchain.",
   },
   {
     q: "What happens if I lose my computer?",
-    a: "The recovery passkey and co-signer can rotate the lost client shard and restore access without exposing a seed phrase.",
+    a: "If your client device is lost, Shard C (Passkey Recovery) combines with Shard B (Co-signer) to initiate emergency key rotation or fund migration without exposing a seed phrase.",
   },
   {
     q: "Does Privatum have custody of funds?",
-    a: "No. Privatum operates only the co-signer shard. Because every transaction requires two shards, Privatum cannot unilaterally move assets.",
+    a: "No. Privatum operates only the automated co-signer shard (Shard B). Because every transaction strictly requires 2-of-3 quorum signatures, Privatum cannot unilaterally move any assets.",
   },
   {
-    q: "Which network does Privatum use first?",
-    a: "Privatum is built first for Robinhood Chain, an Ethereum-compatible Layer 2 with ETH gas, ERC-4337 support, and chain ID 4663.",
+    q: "Which network and assets does Privatum support?",
+    a: "Privatum is built natively for Robinhood Chain (Arbitrum-powered EVM L2, Chain ID 4663, ETH gas token), natively settling and routing frontier assets: USDG stablecoin and native ETH.",
+  },
+  {
+    q: "What are the Co-Signer API endpoints?",
+    a: "The co-signer service exposes GET /health (service health and Chain ID 4663 check), POST /v1/wallets (registration of 2-of-3 threshold accounts), and POST /v1/cosign (policy verification and Shard B co-signing).",
   },
   {
     q: "When will native privacy launch?",
-    a: "The roadmap moves from custody MVP and SDK launch to swaps, invisible setup, confidential activity, and multichain expansion.",
+    a: "The roadmap moves from Phase 1 (Robinhood Chain Custody MVP) and Phase 2 (Open SDK) to Phase 3 (DEX Aggregation & USDG/ETH Swaps), Phase 4 (Privacy Plane One: Threshold ECDSA & Blind Co-signing), Phase 5 (Privacy Plane Two: ERC-5564 Stealth Addresses & Screened Pools), and Phase 6 (Multichain Expansion).",
   },
 ];
 
@@ -129,24 +136,6 @@ function DownloadIcon({ className = "pv-icon" }: { className?: string }) {
       <polyline points="7 10 12 15 17 10" />
       <line x1="12" y1="15" x2="12" y2="3" />
     </svg>
-  );
-}
-
-function ComingSoonCta({
-  className = "primary-button w-inline-block",
-  textClassName = "primary-button-text",
-  style,
-}: {
-  className?: string;
-  textClassName?: string;
-  style?: React.CSSProperties;
-}) {
-  return (
-    <a aria-disabled="true" className={className} style={{ cursor: "default", ...style }}>
-      <div className="primary-button-wrap">
-        <div className={textClassName}>Coming soon</div>
-      </div>
-    </a>
   );
 }
 
@@ -348,7 +337,6 @@ function LandingPage() {
   const [activeTab, setActiveTab] = useState<number>(1);
   const [productSlide, setProductSlide] = useState(0);
   const [complianceSlide, setComplianceSlide] = useState(0);
-  const [testimonialSlide, setTestimonialSlide] = useState(0);
   const [activeReliability, setActiveReliability] = useState(0);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [soonTip, setSoonTip] = useState<string | null>(null);
@@ -493,6 +481,9 @@ function LandingPage() {
                           <a className="inner-link w-inline-block" href="#overview" onClick={() => setDropdownOpen(false)}>
                             <div>Overview</div>
                           </a>
+                          <a className="inner-link w-inline-block" href="#pipeline" onClick={() => setDropdownOpen(false)}>
+                            <div>Signing Pipeline</div>
+                          </a>
                           <a className="inner-link w-inline-block" href="#security" onClick={() => setDropdownOpen(false)}>
                             <div>Security</div>
                           </a>
@@ -568,10 +559,10 @@ function LandingPage() {
                     <div className="dropdown-socials_wrapper">
                       <a
                         aria-label="PRIVATUM on X"
-                        className={`w-inline-block ${soonTip === "X" ? "is-soon" : ""}`}
-                        data-soon="X"
-                        href="#"
-                        onClick={(e) => triggerSoon(e, "X")}
+                        className="w-inline-block"
+                        href="https://x.com/privatumrh"
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
                         <div className="social">
                           <svg fill="none" viewBox="0 0 24 24" width="100%" xmlns="http://www.w3.org/2000/svg">
@@ -606,6 +597,9 @@ function LandingPage() {
               </div>
 
               {/* Desktop Direct Links */}
+              <a className="link on-desktop" href="#pipeline">
+                Pipeline
+              </a>
               <a className="link on-desktop" href="#download">
                 Download
               </a>
@@ -661,6 +655,7 @@ function LandingPage() {
               </div>
 
               <div className="nav-buttons-wrap">
+                <LanguageToggle />
                 <a
                   href="https://github.com/PrivatumRH/privatum"
                   target="_blank"
@@ -823,6 +818,8 @@ function LandingPage() {
                   <span>npm SDK</span>
                 </a>
               </div>
+
+              <LanguageToggle className="lang-toggle-block" onSelect={() => setMobileMenuOpen(false)} />
             </div>
 
             {/* Subtle Divider */}
@@ -834,6 +831,9 @@ function LandingPage() {
                 <strong style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#687182", letterSpacing: "0.05em" }}>Pages</strong>
                 <a className="link mob" href="#overview" onClick={() => setMobileMenuOpen(false)}>
                   Overview
+                </a>
+                <a className="link mob" href="#pipeline" onClick={() => setMobileMenuOpen(false)}>
+                  Pipeline
                 </a>
                 <a className="link mob" href="#security" onClick={() => setMobileMenuOpen(false)}>
                   Security
@@ -964,7 +964,7 @@ function LandingPage() {
                       <div className="text-size-small">2-of-3 Threshold Custody</div>
                     </div>
                     <p className="text-size-regular">
-                      Send, receive, and swap USDC and USDT privately with a signing key split into three independent shards.
+                      Hold, send, and swap frontier assets (USDG &amp; native ETH) privately with a signing key split into three independent shards (2-of-3 quorum).
                     </p>
                   </div>
 
@@ -997,7 +997,7 @@ function LandingPage() {
                     </div>
                     <div className="agent-card_texts">
                       <div className="text-size-small text-color">Network</div>
-                      <div className="text-size-small">Robinhood Chain</div>
+                      <div className="text-size-small">Robinhood Chain (Chain ID: 4663)</div>
                     </div>
                   </div>
                 </div>
@@ -1023,7 +1023,7 @@ function LandingPage() {
                     <h2 className="heading-style-h2">Why choose Privatum for private self-custody?</h2>
                   </div>
                   <p className="text-size-regular overview-para">
-                    A 2-of-3 wallet architecture built for private stablecoin payments, graceful recovery, and open developer tooling.
+                    A 2-of-3 smart wallet architecture engineered for Robinhood Chain: frontier asset settlement (USDG &amp; native ETH), automated policy co-signing, and passkey recovery.
                   </p>
                 </div>
 
@@ -1159,10 +1159,179 @@ function LandingPage() {
                       </div>
                     </div>
                     <div className="why-card_texts">
-                      <h3 className="heading-style-h6">2-of-3 Threshold Wallet</h3>
+                      <h3 className="heading-style-h6">2-of-3 Threshold Quorum</h3>
                       <p className="why-card_text">
-                        Splits signing authority across desktop, co-signer, and passkey shards so no single party can move funds.
+                        Splits signing authority mathematically across client Shard A (OS Keystore), Shard B (Co-signer policy engine), and Shard C (Hardware passkey). No single party can move funds.
                       </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 5-STEP SIGNING PIPELINE & ARCHITECTURE SECTION */}
+        <section className="section pipeline-section" id="pipeline">
+          <div className="padding-global">
+            <div className="container-large">
+              <div className="padding-section-large padding-bottom">
+                <div className="section-heading_wrapper">
+                  <div className="heading_wrapper home-heading-two">
+                    <div className="text-size-tiny brand-color">Architecture</div>
+                    <h2 className="heading-style-h2">The 5-Step Signing Pipeline</h2>
+                  </div>
+                  <p className="text-size-regular highlight-heading_para">
+                    Zero single points of failure. Every transaction requires off-chain ECDSA shard aggregation
+                    from two independent parties before executing on Robinhood Chain.
+                  </p>
+                </div>
+
+                <div className="pipeline-grid">
+                  {/* Step 1 */}
+                  <div className="pipeline-card">
+                    <div className="pipeline-card-num">1</div>
+                    <h3 className="pipeline-card-title">Build</h3>
+                    <span className="pipeline-card-surface">Desktop or SDK</span>
+                    <p className="pipeline-card-desc">
+                      Prepares an unsigned ERC-4337 UserOperation for USDG stablecoin or native ETH transfer.
+                    </p>
+                    <div className="pipeline-card-badge">unsigned userOpHash</div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="pipeline-card">
+                    <div className="pipeline-card-num">2</div>
+                    <h3 className="pipeline-card-title">Client Sign</h3>
+                    <span className="pipeline-card-surface">Local OS Keystore (Shard A)</span>
+                    <p className="pipeline-card-desc">
+                      Client decrypts Shard A via device credentials (Keychain, DPAPI) and signs the userOpHash.
+                    </p>
+                    <div className="pipeline-card-badge">sigA (65 bytes)</div>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className="pipeline-card">
+                    <div className="pipeline-card-num">3</div>
+                    <h3 className="pipeline-card-title">Co-Sign</h3>
+                    <span className="pipeline-card-surface">Co-Signer API (Shard B)</span>
+                    <p className="pipeline-card-desc">
+                      Payload dispatched over TLS. Engine evaluates daily spend limits and velocity rules, then signs with Shard B.
+                    </p>
+                    <div className="pipeline-card-badge">sigB (65 bytes)</div>
+                  </div>
+
+                  {/* Step 4 */}
+                  <div className="pipeline-card">
+                    <div className="pipeline-card-num">4</div>
+                    <h3 className="pipeline-card-title">Combine</h3>
+                    <span className="pipeline-card-surface">Aggregation Engine</span>
+                    <p className="pipeline-card-desc">
+                      The two 65-byte signatures merge into an aggregate 130-byte threshold payload without assembling the root key.
+                    </p>
+                    <div className="pipeline-card-badge">sigA || sigB (130B)</div>
+                  </div>
+
+                  {/* Step 5 */}
+                  <div className="pipeline-card">
+                    <div className="pipeline-card-num">5</div>
+                    <h3 className="pipeline-card-title">Settle</h3>
+                    <span className="pipeline-card-surface">Robinhood Chain</span>
+                    <p className="pipeline-card-desc">
+                      Dispatched to Robinhood Chain bundler. PrivatumAccount contract validates 2-of-3 quorum and executes.
+                    </p>
+                    <div className="pipeline-card-badge">EntryPoint (Chain 4663)</div>
+                  </div>
+                </div>
+
+                {/* Emergency Passkey Recovery Callout */}
+                <div className="pipeline-recovery-card">
+                  <div className="pipeline-recovery-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4" />
+                      <path d="m21 2-9.6 9.6" />
+                      <circle cx="7.5" cy="15.5" r="5.5" />
+                    </svg>
+                  </div>
+                  <div className="pipeline-recovery-text">
+                    <strong>Emergency Recovery Quorum (Shard C + Shard B):</strong> If your client device is lost or compromised,
+                    Shard C (Hardware Passkey / WebAuthn) combines with Shard B (Co-signer) to initiate emergency key rotation or
+                    fund migration without exposing a seed phrase.
+                  </div>
+                </div>
+
+                {/* Technical Specifications & Co-Signer API Section */}
+                <div style={{ marginTop: "44px" }} id="specs">
+                  <div className="section-heading_wrapper">
+                    <div className="heading_wrapper">
+                      <div className="text-size-tiny brand-color">Protocol Specs</div>
+                      <h2 className="heading-style-h3" style={{ fontSize: "22px" }}>Robinhood Chain Specifications &amp; Endpoints</h2>
+                    </div>
+                  </div>
+
+                  <div className="specs-grid">
+                    <div className="spec-item">
+                      <div className="spec-label">Execution Network</div>
+                      <div className="spec-value">Robinhood Chain Mainnet</div>
+                    </div>
+                    <div className="spec-item">
+                      <div className="spec-label">Network Stack</div>
+                      <div className="spec-value">Arbitrum Dedicated L2</div>
+                    </div>
+                    <div className="spec-item">
+                      <div className="spec-label">Chain ID</div>
+                      <div className="spec-value"><code>4663</code></div>
+                    </div>
+                    <div className="spec-item">
+                      <div className="spec-label">Native Gas Token</div>
+                      <div className="spec-value">ETH</div>
+                    </div>
+                    <div className="spec-item">
+                      <div className="spec-label">Frontier Settlement Assets</div>
+                      <div className="spec-value">USDG &amp; Native ETH</div>
+                    </div>
+                    <div className="spec-item">
+                      <div className="spec-label">Account Abstraction</div>
+                      <div className="spec-value">ERC-4337 v0.6</div>
+                    </div>
+                  </div>
+
+                  {/* Co-Signer API Endpoints Table */}
+                  <div style={{ marginTop: "22px" }}>
+                    <div className="text-size-small" style={{ fontWeight: 700, color: "#0e121b", marginBottom: "8px" }}>
+                      Co-Signer Engine API Endpoints
+                    </div>
+                    <div style={{ overflowX: "auto" }}>
+                      <table className="api-endpoints-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: "80px" }}>Method</th>
+                            <th style={{ width: "160px" }}>Endpoint</th>
+                            <th>Description</th>
+                            <th>Payload / Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td><span className="api-method-get">GET</span></td>
+                            <td><code>/health</code></td>
+                            <td>Service health, version, and Robinhood Chain ID check</td>
+                            <td><code>{`{ status: "ok", chainId: 4663 }`}</code></td>
+                          </tr>
+                          <tr>
+                            <td><span className="api-method-post">POST</span></td>
+                            <td><code>/v1/wallets</code></td>
+                            <td>Registers a new 2-of-3 threshold smart account</td>
+                            <td><code>{`{ address, shardAPubkey, shardBEncrypted, shardCPasskeyPubkey }`}</code></td>
+                          </tr>
+                          <tr>
+                            <td><span className="api-method-post">POST</span></td>
+                            <td><code>/v1/cosign</code></td>
+                            <td>Submits UserOp for policy validation and Shard B co-signing</td>
+                            <td><code>{`{ walletAddress, asset, amount, userOpHash, recipient }`}</code></td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
@@ -1180,10 +1349,10 @@ function LandingPage() {
                   <div className="section-heading_wrapper flex-down home-header-two">
                     <div className="heading_wrapper home-heading-two">
                       <div className="text-size-tiny brand-color">Highlights</div>
-                      <h2 className="heading-style-h2">Private stablecoin payments built for real financial activity</h2>
+                      <h2 className="heading-style-h2">Private frontier asset payments built for Robinhood Chain</h2>
                     </div>
                     <p className="text-size-regular highlight-heading_para">
-                      Privatum delivers non-custodial USDC and USDT payments with threshold security, passkey recovery, and a privacy focused roadmap.
+                      Privatum delivers non-custodial USDG and native ETH settlement with 2-of-3 threshold security, automated policy co-signing, and passkey recovery.
                     </p>
                   </div>
                   <div className="highlight-header_image_wrapper">
@@ -1207,7 +1376,7 @@ function LandingPage() {
                     <h3 className="heading-style-h5">Private Send</h3>
                     <div className="highlight-texts_wrapper">
                       <p className="text-size-regular highlight-text">
-                        Transfer USDC or USDT to any .privatum handle or Robinhood Chain address through a threshold-signed flow.
+                        Transfer USDG or native ETH to any .privatum handle or Robinhood Chain address through a threshold-signed flow.
                       </p>
                       <div className="highlight-icon_wrapper">
                         <svg className="highlight-icon" fill="none" viewBox="0 0 24 24" width="100%" xmlns="http://www.w3.org/2000/svg">
@@ -1230,7 +1399,7 @@ function LandingPage() {
                     <h3 className="heading-style-h5">Stealth Receive</h3>
                     <div className="highlight-texts_wrapper">
                       <p className="text-size-regular highlight-text">
-                        Share a public handle while incoming payments arrive at dynamic one-time addresses designed for unlinkability.
+                        Share a public .privatum meta-address while incoming payments arrive at dynamic ERC-5564 stealth destinations for unlinkability.
                       </p>
                       <div className="highlight-icon_wrapper">
                         <svg className="highlight-icon" fill="none" viewBox="0 0 24 24" width="100%" xmlns="http://www.w3.org/2000/svg">
@@ -1259,8 +1428,8 @@ function LandingPage() {
                 </div>
                 <h2 className="pv-downloads-title">Download Privatum Desktop</h2>
                 <p className="pv-downloads-subtitle">
-                  Threshold custody, private payments, stealth addresses, and atomic swaps natively on your desktop.
-                  Built with Tauri and Rust, connected directly to Robinhood Chain.
+                  Threshold custody, frontier asset settlement (USDG &amp; native ETH), stealth addresses, and atomic swaps natively on your desktop.
+                  Built with Tauri v2 and Rust, connected directly to Robinhood Chain.
                 </p>
               </div>
 
@@ -1400,7 +1569,7 @@ function LandingPage() {
                   </a>
                 </div>
                 <div>
-                  <span>Robinhood Chain Testnet ID: <code>4663</code></span>
+                  <span>Robinhood Chain Mainnet &bull; Chain ID: <code>4663</code> &bull; Arbitrum L2 &bull; Native Gas: <code>ETH</code></span>
                 </div>
               </div>
             </div>
@@ -1445,7 +1614,7 @@ function LandingPage() {
                                 <div className="payment-compose">
                                   <small>Send</small>
                                   <strong>
-                                    2,500.00 <em>USDC</em>
+                                    2,500.00 <em>USDG</em>
                                   </strong>
                                   <div className="recipient-pill">
                                     <i>@</i>
@@ -1468,7 +1637,7 @@ function LandingPage() {
                             <div className="overview-card_texts">
                               <h3 className="heading-style-h5">Private send and stealth receive</h3>
                               <p className="text-size-regular">
-                                Send USDC and USDT to handles or raw addresses, then receive payments through one-time stealth destinations.
+                                Send USDG and native ETH to handles or raw addresses, then receive payments through one-time stealth destinations.
                               </p>
                             </div>
                           </div>
@@ -1478,7 +1647,7 @@ function LandingPage() {
                         <div className="slide w-slide" style={{ minWidth: "100%", flex: "0 0 100%" }}>
                           <div className="overview-card">
                             <div className="overview-card-image_wrapper">
-                              <div aria-label="In-wallet stablecoin swap interface" className="flow-scene swap-scene" role="img">
+                              <div aria-label="In-wallet USDG and ETH swap interface" className="flow-scene swap-scene" role="img">
                                 <div className="flow-top">
                                   <span>Swap route</span>
                                   <b>Best price</b>
@@ -1486,39 +1655,39 @@ function LandingPage() {
                                 <div className="swap-stack">
                                   <div>
                                     <span>
-                                      <i>$</i> USDC
+                                      <i>$</i> USDG
                                     </span>
-                                    <strong>1,850.00</strong>
+                                    <strong>2,500.00</strong>
                                   </div>
                                   <div className="swap-arrow">↓</div>
                                   <div>
                                     <span>
-                                      <i>₮</i> USDT
+                                      <i>Ξ</i> ETH
                                     </span>
-                                    <strong>1,849.42</strong>
+                                    <strong>1.082</strong>
                                   </div>
                                 </div>
                                 <div className="route-line">
-                                  <span>USDC</span>
+                                  <span>USDG</span>
                                   <i></i>
                                   <b>Robinhood Chain</b>
                                   <i></i>
-                                  <span>USDT</span>
+                                  <span>ETH</span>
                                 </div>
                                 <div className="metric-row">
                                   <span>
                                     Slippage <b>0.10%</b>
                                   </span>
                                   <span>
-                                    Fee <b>$0.18</b>
+                                    Gas <b>0.00004 ETH ($0.10)</b>
                                   </span>
                                 </div>
                               </div>
                             </div>
                             <div className="overview-card_texts">
-                              <h3 className="heading-style-h5">In-wallet swaps</h3>
+                              <h3 className="heading-style-h5">In-wallet USDG &amp; ETH swaps</h3>
                               <p className="text-size-regular">
-                                Route supported stablecoin swaps through Robinhood Chain liquidity with clear quote and slippage controls.
+                                Route USDG and native ETH swaps through Robinhood Chain liquidity with clear quote and slippage controls.
                               </p>
                             </div>
                           </div>
@@ -1535,28 +1704,28 @@ function LandingPage() {
                                 </div>
                                 <div className="signing-total">
                                   <small>Transfer intent</small>
-                                  <strong>620.00 USDC</strong>
+                                  <strong>620.00 USDG</strong>
                                   <span>ops.privatum</span>
                                 </div>
                                 <div className="signing-steps">
                                   <div className="signed">
                                     <i>A</i>
                                     <span>
-                                      Desktop<small>Partial signed</small>
+                                      Desktop<small>Partial signed (65B)</small>
                                     </span>
                                     <b>✓</b>
                                   </div>
                                   <div className="signed">
                                     <i>B</i>
                                     <span>
-                                      Co-signer<small>Policy approved</small>
+                                      Co-signer<small>Policy approved (65B)</small>
                                     </span>
                                     <b>✓</b>
                                   </div>
                                   <div>
                                     <i>C</i>
                                     <span>
-                                      Passkey<small>Standby</small>
+                                      Passkey<small>Standby (Recovery)</small>
                                     </span>
                                     <b>-</b>
                                   </div>
@@ -1569,7 +1738,7 @@ function LandingPage() {
                             <div className="overview-card_texts">
                               <h3 className="heading-style-h5">2-of-3 threshold signing</h3>
                               <p className="text-size-regular">
-                                The desktop client signs locally, the co-signer validates policy, and partial signatures combine without assembling the full key.
+                                The desktop client signs locally with Shard A, the co-signer validates policy and signs with Shard B, and signatures merge into an aggregate 130-byte threshold payload.
                               </p>
                             </div>
                           </div>
@@ -1593,7 +1762,7 @@ function LandingPage() {
                                     <b>All systems ready</b>
                                   </div>
                                   <strong className="mini-balance">$24,806.42</strong>
-                                  <small>Shielded portfolio</small>
+                                  <small>Shielded portfolio (USDG &amp; ETH)</small>
                                   <div className="mini-stats">
                                     <span>
                                       <small>Quorum</small>
@@ -1608,7 +1777,7 @@ function LandingPage() {
                                     <span>
                                       <i>↓</i> Stealth receive
                                     </span>
-                                    <b>+4,200 USDC</b>
+                                    <b>+4,200 USDG</b>
                                   </div>
                                 </div>
                               </div>
@@ -1616,7 +1785,7 @@ function LandingPage() {
                             <div className="overview-card_texts">
                               <h3 className="heading-style-h5">Native desktop command center</h3>
                               <p className="text-size-regular">
-                                Manage balances, shard health, recovery, policy controls, swaps, and private payment activity from one desktop surface.
+                                Manage USDG and native ETH balances, shard health, recovery passkeys, spending policy controls, swaps, and private payment activity from one desktop surface.
                               </p>
                             </div>
                           </div>
@@ -1912,7 +2081,12 @@ function LandingPage() {
                             />
                           </div>
                         </div>
-                        <input className="primary-form-button black w-button" type="submit" value="Coming soon" />
+                        <DownloadCta
+                          className="primary-form-button black w-button"
+                          textClassName=""
+                          label="Download"
+                          href="#download"
+                        />
                       </form>
                     </div>
                   </div>
@@ -2290,7 +2464,7 @@ function LandingPage() {
                     <h2 className="heading-style-h2">Reach users across every payment surface</h2>
                   </div>
                   <p className="text-size-regular">
-                    Privatum connects desktop, SDK, Robinhood Chain, stablecoin swaps, stealth receive, and recovery surfaces in one custody model.
+                    Privatum connects desktop, Viem SDK, Robinhood Chain, USDG &amp; ETH swaps, stealth receive, and recovery surfaces in one 2-of-3 custody model.
                   </p>
                 </div>
 
@@ -2364,7 +2538,7 @@ function LandingPage() {
                             />
                           </svg>
                         </div>
-                        <div className="text-size-tiny">USDC</div>
+                        <div className="text-size-tiny">USDG</div>
                       </a>
 
                       <a
@@ -2385,7 +2559,7 @@ function LandingPage() {
                             <path d="M15 20H9.7549C8.99715 20 8.2704 19.699 7.7346 19.1632L0.83684 12.2654C0.30102 11.7296 0 11.0029 0 10.2451V5L15 20Z" fill="currentColor" />
                           </svg>
                         </div>
-                        <div className="text-size-tiny">USDT</div>
+                        <div className="text-size-tiny">ETH</div>
                       </a>
 
                       <a
@@ -2474,7 +2648,7 @@ function LandingPage() {
                           <div className="tab-image_wrapper two">
                             <div aria-label="Open SDK sending threshold payment" className="connected-scene sdk-connected" role="img">
                               <div className="connected-top">
-                                <span>TypeScript SDK</span>
+                                <span>TypeScript SDK (@privatumrh/robinhood-chain-sdk)</span>
                                 <a
                                   href="https://www.npmjs.com/package/@privatumrh/robinhood-chain-sdk"
                                   target="_blank"
@@ -2488,22 +2662,30 @@ function LandingPage() {
                               </div>
                               <div className="code-lines">
                                 <span>
-                                  <em>const</em> wallet = PrivatumWallet.<b>twoOfThree</b>(&#123;
+                                  <em>import</em> &#123; PrivatumWallet, LocalShard &#125; <em>from</em> <strong style={{ color: "#91d5b2" }}>"@privatumrh/robinhood-chain-sdk"</strong>;
                                 </span>
-                                <span>&nbsp;&nbsp;shards: [desktop, policy, passkey],</span>
                                 <span>
-                                  &nbsp;&nbsp;threshold: <strong>2</strong>
+                                  <em>import</em> &#123; parseUnits &#125; <em>from</em> <strong style={{ color: "#91d5b2" }}>"viem"</strong>;
                                 </span>
+                                <span style={{ marginTop: "4px" }}>
+                                  <small style={{ color: "#64748b" }}>// Send USDG on Robinhood Chain via 2-of-3 threshold quorum</small>
+                                </span>
+                                <span>
+                                  <em>const</em> receipt = <em>await</em> wallet.<b>sendAsset</b>(&#123;
+                                </span>
+                                <span>&nbsp;&nbsp;to: <strong style={{ color: "#ffd36a" }}>"0x742d...f44e"</strong>,</span>
+                                <span>&nbsp;&nbsp;amount: parseUnits(<strong style={{ color: "#ffd36a" }}>"250.0"</strong>, 6),</span>
+                                <span>&nbsp;&nbsp;asset: <strong style={{ color: "#ffd36a" }}>"USDG"</strong>,</span>
                                 <span>&#125;);</span>
                                 <span className="code-run">
-                                  <em>await</em> wallet.<b>sendPrivate</b>(payment);
+                                  console.log(<strong style={{ color: "#ffd36a" }}>"Submitted UserOp hash:"</strong>, receipt.userOpHash);
                                 </span>
                               </div>
                               <div className="sdk-result">
                                 <i>✓</i>
                                 <span>
-                                  <b>Signature aggregated</b>
-                                  <small>Transaction submitted privately</small>
+                                  <b>Threshold signature aggregated</b>
+                                  <small>130-byte payload submitted to Robinhood Chain</small>
                                 </span>
                               </div>
                             </div>
@@ -2511,22 +2693,22 @@ function LandingPage() {
                         </div>
                       )}
 
-                      {/* Tab 3: USDC */}
+                      {/* Tab 3: USDG */}
                       {activeTab === 3 && (
                         <div className="tab-pane w-tab-pane w--tab-active">
                           <div className="tab-image_wrapper">
-                            <div aria-label="USDC private payment routed through custody" className="connected-scene coin-connected" role="img">
+                            <div aria-label="USDG private payment routed through custody" className="connected-scene coin-connected" role="img">
                               <div className="connected-top">
-                                <span>Private stablecoin rail</span>
+                                <span>Frontier Stablecoin Rail</span>
                                 <b>
-                                  <i></i> USDC ready
+                                  <i></i> USDG ready
                                 </b>
                               </div>
                               <div className="coin-route">
-                                <div className="coin usdc">$</div>
+                                <div className="coin usdg">$</div>
                                 <span className="route-copy">
-                                  <small>Private send</small>
-                                  <strong>2,500.00 USDC</strong>
+                                  <small>Frontier send</small>
+                                  <strong>2,500.00 USDG</strong>
                                   <em>treasury.privatum</em>
                                 </span>
                                 <div className="route-nodes">
@@ -2537,36 +2719,36 @@ function LandingPage() {
                               </div>
                               <div className="settlement-line">
                                 <span></span>
-                                <b>Threshold signed</b>
+                                <b>Robinhood Chain EntryPoint settled</b>
                               </div>
                             </div>
                           </div>
                         </div>
                       )}
 
-                      {/* Tab 4: USDT */}
+                      {/* Tab 4: ETH */}
                       {activeTab === 4 && (
                         <div className="tab-pane w-tab-pane w--tab-active">
                           <div className="tab-image_wrapper">
-                            <div aria-label="USDT liquidity swap protected by policy" className="connected-scene coin-connected" role="img">
+                            <div aria-label="Native ETH settlement and gas liquidity" className="connected-scene coin-connected" role="img">
                               <div className="connected-top">
-                                <span>Swap liquidity</span>
+                                <span>Native Gas &amp; Settlement</span>
                                 <b>
-                                  <i></i> USDT active
+                                  <i></i> ETH active
                                 </b>
                               </div>
                               <div className="coin-route">
-                                <div className="coin usdt">₮</div>
+                                <div className="coin eth">Ξ</div>
                                 <span className="route-copy">
-                                  <small>Protected swap</small>
-                                  <strong>1,849.42 USDT</strong>
-                                  <em>Policy + slippage checked</em>
+                                  <small>Native settlement</small>
+                                  <strong>1.450 ETH</strong>
+                                  <em>Arbitrum L2 gas &amp; transfers</em>
                                 </span>
                                 <div className="swap-loop">↕</div>
                               </div>
                               <div className="settlement-line">
                                 <span></span>
-                                <b>Best route found</b>
+                                <b>Instant L2 settlement &bull; Chain ID 4663</b>
                               </div>
                             </div>
                           </div>
@@ -2579,9 +2761,9 @@ function LandingPage() {
                           <div className="tab-image_wrapper">
                             <div aria-label="Robinhood Chain settlement" className="connected-scene chain-connected" role="img">
                               <div className="connected-top">
-                                <span>Robinhood Chain</span>
+                                <span>Robinhood Chain Mainnet</span>
                                 <b>
-                                  <i></i> Block live
+                                  <i></i> Chain ID: 4663
                                 </b>
                               </div>
                               <div className="chain-map">
@@ -2663,9 +2845,9 @@ function LandingPage() {
                         <div className="text-size-tiny pv-tl-phase">Phase 2</div>
                         <div className="pv-tl-status">in progress</div>
                       </div>
-                      <h3 className="pv-tl-title">Open SDK launch</h3>
+                      <h3 className="pv-tl-title">Open SDK &amp; Developer Ecosystem</h3>
                       <p className="pv-tl-desc">
-                        A public, typed TypeScript toolkit built on viem, with guides, sample apps and audit-ready threshold primitives under MIT licensing.
+                        A public, typed TypeScript toolkit built on Viem (@privatumrh/robinhood-chain-sdk), with guides, sample apps and audit-ready threshold primitives under MIT licensing.
                       </p>
                       <div className="pv-tl-chips">
                         <a
@@ -2677,7 +2859,7 @@ function LandingPage() {
                         >
                           npm SDK &rarr;
                         </a>
-                        <span className="pv-tl-chip">viem APIs</span>
+                        <span className="pv-tl-chip">Viem APIs</span>
                         <span className="pv-tl-chip">Developer guides</span>
                         <span className="pv-tl-chip">MIT licensed</span>
                       </div>
@@ -2694,15 +2876,15 @@ function LandingPage() {
                         <div className="text-size-tiny pv-tl-phase">Phase 3</div>
                         <div className="pv-tl-status">in progress</div>
                       </div>
-                      <h3 className="pv-tl-title">DEX swap aggregation</h3>
+                      <h3 className="pv-tl-title">DEX Aggregation &amp; USDG/ETH Swaps</h3>
                       <p className="pv-tl-desc">
-                        Low-slippage USDC and USDT routing with transparent quotes, slippage controls and policy-checked execution across desktop and SDK.
+                        Low-slippage USDG and native ETH routing with transparent quotes, slippage controls and policy-checked execution across desktop and SDK.
                       </p>
                       <div className="pv-tl-chips">
+                        <span className="pv-tl-chip">USDG / ETH swaps</span>
                         <span className="pv-tl-chip">Aggregated routes</span>
                         <span className="pv-tl-chip">Quote previews</span>
                         <span className="pv-tl-chip">Slippage controls</span>
-                        <span className="pv-tl-chip">SDK swaps</span>
                       </div>
                     </div>
                   </div>
@@ -2773,131 +2955,6 @@ function LandingPage() {
                         <span className="pv-tl-chip">Portable co-signer</span>
                         <span className="pv-tl-chip">Unified recovery</span>
                       </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* TESTIMONIALS SECTION */}
-        <section className="section" id="testimonials">
-          <div className="padding-global">
-            <div className="container-large">
-              <div className="padding-section-large padding-bottom">
-                <div className="slider_wrapper">
-                  <div className="testimonial-slider w-slider">
-                    <div className="testimonial-slider_mask w-slider-mask" style={{ overflow: "hidden", position: "relative" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          transition: "transform 0.4s ease",
-                          transform: `translateX(-${testimonialSlide * 100}%)`,
-                          width: "100%",
-                        }}
-                      >
-                        {/* Slide 0 */}
-                        <div className="slide w-slide" style={{ minWidth: "100%", flex: "0 0 100%" }}>
-                          <div className="testimonial-card">
-                            <div className="testimonial-card_texts">
-                              <p className="text-size-tiny brand-color">Security and custody research</p>
-                              <h2 className="heading-style-h2 heading-change-mobile">
-                                No single party, not even Privatum, can move user funds.
-                              </h2>
-                            </div>
-                            <div className="testimonial-author_wrapper">
-                              <img
-                                alt="Anette Lõhmus"
-                                className="testimonial-author_image"
-                                loading="lazy"
-                                src="/6a5d4e514d1e968239079f7a/6a620f6501e616fce2755b86_Ellipse%201.webp"
-                              />
-                              <div className="testimonial-authors">
-                                <div className="text-size-regular weight-medium">Anette Lõhmus</div>
-                                <div className="text-size-small testimonial-text">Marketing Manager at Finbite</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Slide 1 */}
-                        <div className="slide w-slide" style={{ minWidth: "100%", flex: "0 0 100%" }}>
-                          <div className="testimonial-card">
-                            <div className="testimonial-card_texts">
-                              <p className="text-size-tiny brand-color">Security and custody research</p>
-                              <h2 className="heading-style-h2 heading-change-mobile">
-                                "Compromise of one shard gives an attacker zero spend authority. Loss of one shard still allows complete recovery."
-                              </h2>
-                            </div>
-                            <div className="testimonial-author_wrapper">
-                              <img
-                                alt="Ryan Patel"
-                                className="testimonial-author_image"
-                                loading="lazy"
-                                src="/6a5d4e514d1e968239079f7a/6a621038029600109248b125_Ellipse%201%201.webp"
-                              />
-                              <div className="testimonial-authors">
-                                <div className="text-size-regular weight-medium">Ryan Patel</div>
-                                <div className="text-size-small testimonial-text">Operations Manager</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Slide 2 */}
-                        <div className="slide w-slide" style={{ minWidth: "100%", flex: "0 0 100%" }}>
-                          <div className="testimonial-card">
-                            <div className="testimonial-card_texts">
-                              <p className="text-size-tiny brand-color">Security and custody research</p>
-                              <h2 className="heading-style-h2 heading-change-mobile">
-                                "The private key is never assembled or stored in one location. Spending requires cooperation from any two shards."
-                              </h2>
-                            </div>
-                            <div className="testimonial-author_wrapper">
-                              <img
-                                alt="Jessica Morgan"
-                                className="testimonial-author_image"
-                                loading="lazy"
-                                src="/6a5d4e514d1e968239079f7a/6a621038d481234fd43a03cc_Ellipse%201%202.webp"
-                              />
-                              <div className="testimonial-authors">
-                                <div className="text-size-regular weight-medium">Jessica Morgan</div>
-                                <div className="text-size-small testimonial-text">Planneder Success Director</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      className="slide_arrow testimonial w-slider-arrow-left"
-                      onClick={() => setTestimonialSlide((prev) => (prev > 0 ? prev - 1 : 2))}
-                      role="button"
-                      aria-label="Previous slide"
-                      tabIndex={0}
-                    >
-                      <svg className="slide_icon" fill="none" viewBox="0 0 14 14" width="100%" xmlns="http://www.w3.org/2000/svg">
-                        <path
-                          d="M4.56689 7.5851L7.69589 10.7141L6.87094 11.5391L2.33366 7.00177L6.87094 2.46454L7.69589 3.28949L4.56689 6.41844L11.667 6.41844L11.667 7.5851L4.56689 7.5851Z"
-                          fill="currentColor"
-                        />
-                      </svg>
-                    </div>
-                    <div
-                      className="slide_arrow right_arrow testimonial-right w-slider-arrow-right"
-                      onClick={() => setTestimonialSlide((prev) => (prev < 2 ? prev + 1 : 0))}
-                      role="button"
-                      aria-label="Next slide"
-                      tabIndex={0}
-                    >
-                      <svg className="slide_icon" fill="none" viewBox="0 0 14 14" width="100%" xmlns="http://www.w3.org/2000/svg">
-                        <path
-                          d="M9.43311 6.4149L6.30411 3.28589L7.12906 2.46094L11.6663 6.99823L7.12906 11.5355L6.30411 10.7105L9.43311 7.58157H2.33301V6.4149H9.43311Z"
-                          fill="currentColor"
-                        />
-                      </svg>
                     </div>
                   </div>
                 </div>
@@ -3104,10 +3161,10 @@ function LandingPage() {
                       <div className="footer_link_heading">Social Media</div>
                       <div className="dropdown-links">
                         <a
-                          className={`inner-link w-inline-block ${soonTip === "X" ? "is-soon" : ""}`}
-                          data-soon="X"
-                          href="#"
-                          onClick={(e) => triggerSoon(e, "X")}
+                          className="inner-link w-inline-block"
+                          href="https://x.com/privatumrh"
+                          target="_blank"
+                          rel="noopener noreferrer"
                         >
                           <div>X</div>
                         </a>
@@ -3128,17 +3185,17 @@ function LandingPage() {
                   <div className="footer_divider"></div>
                   <div className="footer-bottom_details-wrapper">
                     <p className="text-size-small footer-bottom_text">
-                      Private payments. Non-custodial. On Robinhood Chain. Send, receive, and swap USDC and USDT with 2-of-3 threshold security.
+                      Private payments. Non-custodial. On Robinhood Chain. Hold, send, and swap frontier assets (USDG &amp; native ETH) with 2-of-3 threshold security.
                     </p>
                   </div>
                   <div className="footer-socials_award_wrapper">
                     <div className="footer-socials_wrapper">
                       <a
                         aria-label="PRIVATUM on X"
-                        className={`w-inline-block ${soonTip === "X" ? "is-soon" : ""}`}
-                        data-soon="X"
-                        href="#"
-                        onClick={(e) => triggerSoon(e, "X")}
+                        className="w-inline-block"
+                        href="https://x.com/privatumrh"
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
                         <div className="social">
                           <svg fill="none" viewBox="0 0 24 24" width="100%" xmlns="http://www.w3.org/2000/svg">
