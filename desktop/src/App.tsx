@@ -34,6 +34,7 @@ import {
   TrendingUp,
   Scan,
   AlertTriangle,
+  Zap,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -53,6 +54,7 @@ import { SwapTab } from "./components/SwapTab";
 import { CrossChainTab } from "./components/CrossChainTab";
 import { NftTab } from "./components/NftTab";
 import { RwaTab } from "./components/RwaTab";
+import { StakingTab } from "./components/StakingTab";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { StealthScannerModal } from "./components/StealthScannerModal";
 import { buildStealthSendBatch, parseMetaAddress } from "./lib/stealth";
@@ -67,6 +69,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.4": "NFTs & Collectibles",
   "0.1.5": "Multi-Wallet & Keychain",
   "0.1.6": "Robinhood RWA Registry",
+  "0.1.7": "Gasless Staking & Protocol Sponsor",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -79,6 +82,8 @@ import {
   DEFAULT_API_URL,
   getUserOpHash,
   submitUserOp,
+  getStakingStatus,
+  type StakingStatusResponse,
 } from "@privatumrh/robinhood-chain-sdk";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
@@ -229,12 +234,16 @@ function TokenAvatar({ symbol, name, iconUrl, size = "md", className = "" }: Tok
 export function App() {
   const [showSplash, setShowSplash] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<
-    "wallet" | "swaps" | "cross_chain" | "nfts" | "rwa" | "tokens" | "shards" | "recovery"
+    "wallet" | "swaps" | "cross_chain" | "nfts" | "rwa" | "tokens" | "shards" | "recovery" | "gasless"
   >("wallet");
 
   // Versioning and feature release stage preview
-  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.6");
+  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.7");
   const [previewVersion, setPreviewVersion] = useState<ReleaseVersion | null>(null);
+
+  // Gasless Staking state
+  const [stakingStatus, setStakingStatus] = useState<StakingStatusResponse | null>(null);
+  const isGaslessActive = Boolean(stakingStatus?.isStaked);
 
   // Multi-wallet accounts
   const [accounts, setAccounts] = useState<WalletAccount[]>(() => {
@@ -812,6 +821,17 @@ export function App() {
     }
   };
 
+  const fetchStakingStatus = useCallback(async (targetAddr?: Address) => {
+    const addr = targetAddr || wallet?.address;
+    if (!addr) return;
+    try {
+      const st = await getStakingStatus(addr as Address, wallet?.apiUrl);
+      setStakingStatus(st);
+    } catch (err) {
+      console.warn("[App] Staking status fetch error:", err);
+    }
+  }, [wallet]);
+
   const fetchBalances = async (address: Address) => {
     setIsRefreshing(true);
     try {
@@ -830,6 +850,7 @@ export function App() {
       setLastSyncTime(Date.now());
       fetchEthPrice(true);
       fetchGasPrice();
+      fetchStakingStatus(address);
     } catch (err) {
       console.warn("Balance fetch error (counterfactual wallet or network):", err);
     } finally {
@@ -1431,7 +1452,7 @@ export function App() {
         addToast("error", "Insufficient Balance", `Available balance: ${usdgBalance} USDG`);
         return;
       }
-      if (parseFloat(ethBalance) < 0.00002) {
+      if (!isGaslessActive && parseFloat(ethBalance) < 0.00002) {
         addToast("error", "Insufficient ETH for Gas", "You need a small amount of ETH (~0.00003 ETH) on Robinhood Chain to pay network fees.");
         return;
       }
@@ -1478,6 +1499,7 @@ export function App() {
           targets: batch.targets,
           values: batch.values,
           datas: batch.datas,
+          sponsor: isGaslessActive,
         });
 
         setTxSuccessHash(broadcastHash);
@@ -1531,6 +1553,7 @@ export function App() {
           userOp: { ...userOpBase, signature },
           entryPoint: wallet.entryPointAddress,
           apiUrl: wallet.apiUrl,
+          sponsor: isGaslessActive,
         });
         broadcastHash = receipt.userOpHash;
       } catch (bundlerErr: any) {
@@ -1928,6 +1951,26 @@ export function App() {
               <Coins className="w-5 h-5" />
             </button>
 
+            {/* Stake $PRIV to Go Gasless (v0.1.7) */}
+            {isFeatureActive("gasless_staking", appVersion, previewVersion) && (
+              <button
+                onClick={() => setActiveTab("gasless")}
+                title="Stake $PRIV to Go Gasless"
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer relative ${
+                  activeTab === "gasless"
+                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                    : isGaslessActive
+                    ? "text-emerald-400 hover:bg-emerald-500/10"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <Zap className={`w-5 h-5 ${isGaslessActive ? "fill-emerald-400/20" : ""}`} />
+                {isGaslessActive && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                )}
+              </button>
+            )}
+
             <button
               onClick={() => setActiveTab("shards")}
               title="Shard Health"
@@ -2013,6 +2056,23 @@ export function App() {
               <img src="/rh-icon.png" alt="Robinhood" className="w-4 h-4 rounded-full object-contain" />
               <span>Robinhood Chain</span>
             </div>
+
+            {wallet && (
+              <button
+                onClick={() => setActiveTab("gasless")}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[10px] text-xs font-semibold transition border cursor-pointer ${
+                  isGaslessActive
+                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
+                    : "bg-white/[0.04] text-slate-400 border-white/[0.06] hover:text-white hover:bg-white/[0.08]"
+                }`}
+                title={isGaslessActive ? "100% Gasless Active (Protocol Sponsored)" : "Stake $PRIV to Go Gasless"}
+              >
+                <Zap className={`w-3.5 h-3.5 ${isGaslessActive ? "text-emerald-400 fill-emerald-400/20 animate-pulse" : "text-amber-400"}`} />
+                <span className="hidden sm:inline">
+                  {isGaslessActive ? "Gasless Active" : "Go Gasless"}
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Right: Stealth Inbox, Account Switcher, Address / Create */}
@@ -2503,6 +2563,7 @@ export function App() {
               shardAPrivKey={shardAPrivKey}
               addToast={addToast}
               preselectedTokenOut={swapTokenOut}
+              isGaslessActive={isGaslessActive}
             />
           </div>
         )}
@@ -2546,6 +2607,17 @@ export function App() {
               onCopyAddress={(addr: string) => copyToClipboard(addr, "Token address")}
             />
           </div>
+        )}
+
+        {/* Tab: Stake $PRIV to Go Gasless (v0.1.7) */}
+        {activeTab === "gasless" && wallet && (
+          <StakingTab
+            wallet={wallet}
+            shardAPrivKey={shardAPrivKey}
+            client={publicClient}
+            addToast={addToast}
+            onStakingUpdated={() => fetchStakingStatus(wallet.address as Address)}
+          />
         )}
       </main>
       </div>
@@ -2796,7 +2868,7 @@ export function App() {
                     </div>
                   </div>
 
-                  {parseFloat(ethBalance) === 0 && (
+                  {parseFloat(ethBalance) === 0 && !isGaslessActive && (
                     <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between text-xs text-amber-200">
                       <div className="flex items-center gap-2">
                         <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -2810,6 +2882,13 @@ export function App() {
                       >
                         <Copy className="w-3 h-3" />
                       </button>
+                    </div>
+                  )}
+
+                  {isGaslessActive && (
+                    <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2 text-xs text-emerald-200">
+                      <Zap className="w-3.5 h-3.5 text-emerald-400 fill-emerald-400/20 shrink-0 animate-pulse" />
+                      <span className="text-[11px] font-medium">100% Gasless Active: Protocol sponsors transaction gas.</span>
                     </div>
                   )}
 
@@ -2928,12 +3007,24 @@ export function App() {
 
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400">Estimated Network Fee</span>
-                    <div className="text-right font-mono">
-                      <div className="text-white">approx. {simulationData?.estimatedFeeEth || "0.000021"} ETH</div>
-                      <div className="text-[10px] text-slate-400 font-sans">
-                        (${simulationData?.estimatedFeeUsd || "<0.01"} USD)
+                    {isGaslessActive ? (
+                      <div className="text-right">
+                        <div className="text-emerald-400 font-bold flex items-center gap-1 justify-end">
+                          <Zap className="w-3.5 h-3.5 fill-emerald-400/20" />
+                          <span>FREE (Sponsored)</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          Paid by Privatum Protocol Pool
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="text-right font-mono">
+                        <div className="text-white">approx. {simulationData?.estimatedFeeEth || "0.000021"} ETH</div>
+                        <div className="text-[10px] text-slate-400 font-sans">
+                          (${simulationData?.estimatedFeeUsd || "<0.01"} USD)
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between pt-1 border-t border-white/10">
