@@ -84,6 +84,14 @@ fn delete_shard_a(app: tauri::AppHandle) -> Result<bool, String> {
 }
 
 fn main() {
+    #[cfg(target_os = "linux")]
+    {
+        // Prevent WebKitGTK DMA-BUF EGL display failure on Linux (Mesa/Wayland/NVIDIA)
+        if std::env::var("WEBKIT_DISABLE_DMABUF_RENDERER").is_err() {
+            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        }
+    }
+
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             save_shard_a,

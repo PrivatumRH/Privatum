@@ -85,6 +85,40 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
+      - name: Package standalone Linux tarball
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          mkdir -p desktop-dist/privatum
+          cp desktop/src-tauri/target/release/privatum-desktop desktop-dist/privatum/
+          cp desktop/src-tauri/icons/128x128.png desktop-dist/privatum/privatum.png
+          cat << 'EOF' > desktop-dist/privatum/privatum.desktop
+          [Desktop Entry]
+          Name=PRIVATUM
+          Comment=Private 2-of-3 Threshold Self-Custody on Robinhood Chain
+          Exec=privatum-desktop
+          Icon=privatum
+          Terminal=false
+          Type=Application
+          Categories=Utility;Finance;
+          EOF
+          cat << 'EOF' > desktop-dist/privatum/install.sh
+          #!/usr/bin/env bash
+          set -e
+          BIN_DIR="${HOME}/.local/bin"
+          APP_DIR="${HOME}/.local/share/applications"
+          ICON_DIR="${HOME}/.local/share/icons/hicolor/128x128/apps"
+          mkdir -p "$BIN_DIR" "$APP_DIR" "$ICON_DIR"
+          SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          cp "$SCRIPT_DIR/privatum-desktop" "$BIN_DIR/privatum-desktop"
+          ln -sf "$BIN_DIR/privatum-desktop" "$BIN_DIR/privatum"
+          chmod +x "$BIN_DIR/privatum-desktop"
+          cp "$SCRIPT_DIR/privatum.png" "$ICON_DIR/privatum.png"
+          cp "$SCRIPT_DIR/privatum.desktop" "$APP_DIR/privatum.desktop"
+          echo "PRIVATUM installed successfully to ~/.local/bin/privatum"
+          EOF
+          chmod +x desktop-dist/privatum/install.sh
+          tar -czvf desktop/src-tauri/target/release/bundle/privatum-linux-x64-standalone.tar.gz -C desktop-dist privatum
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
