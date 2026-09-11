@@ -2291,36 +2291,79 @@ export function App() {
         </div>
       </footer>
 
-      {/* Modal: Create Account */}
+      {/* Modal: Add / Create Account */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#181a23] border border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <h3 className="text-base font-semibold text-white">Create Self-Custody Account</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              This generates an orthogonal keypair on this client machine (Shard A) and configures a 2-of-3 threshold quorum with the co-signer (Shard B).
-            </p>
-
-            <div className="flex gap-2 pt-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wallet className="w-5 h-5 text-[#f64943]" />
+                <h3 className="text-base font-semibold text-white">Add Wallet</h3>
+              </div>
               <button
                 disabled={isSending}
                 onClick={() => setShowCreateModal(false)}
-                className="flex-1 py-2.5 rounded-xl bg-white/10 text-slate-300 font-semibold text-xs hover:bg-white/15 border border-white/10 transition disabled:opacity-40"
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition disabled:opacity-40"
+                title="Close"
               >
-                Cancel
+                <X className="w-4 h-4" />
               </button>
+            </div>
+
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Choose whether to initialize a new self-custody account or restore an existing one on this device.
+            </p>
+
+            <div className="space-y-3 pt-1">
               <button
+                type="button"
                 disabled={isSending}
                 onClick={handleCreateWallet}
-                className="flex-1 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2"
+                className="w-full p-4 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-[#f64943]/50 transition text-left flex items-start gap-3.5 disabled:opacity-50 group cursor-pointer"
               >
-                {isSending ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Initializing Account...</span>
-                  </>
-                ) : (
-                  <span>Initialize Account</span>
-                )}
+                <div className="w-10 h-10 rounded-xl bg-[#f64943]/10 border border-[#f64943]/20 flex items-center justify-center shrink-0 text-[#f64943] group-hover:scale-105 transition-transform">
+                  {isSending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <PlusCircle className="w-4 h-4" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-white group-hover:text-[#f64943] transition-colors">
+                      {isSending ? "Initializing Account..." : "Initialize Account"}
+                    </span>
+                    <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-white transition-colors" />
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                    Generate a fresh self-custody keypair on this client machine with 2-of-3 threshold protection.
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                disabled={isSending}
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setShowRecoverModal(true);
+                }}
+                className="w-full p-4 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-white/20 transition text-left flex items-start gap-3.5 disabled:opacity-50 group cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 text-slate-300 group-hover:scale-105 transition-transform">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-white group-hover:text-white transition-colors">
+                      Recover Account
+                    </span>
+                    <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-white transition-colors" />
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                    Import an existing wallet using your offline Shard C private key and 6-digit authenticator code.
+                  </p>
+                </div>
               </button>
             </div>
           </div>
@@ -2843,19 +2886,11 @@ export function App() {
                 />
               </div>
 
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  disabled={isRecovering}
-                  onClick={() => setShowRecoverModal(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-white/10 text-slate-300 font-semibold text-xs hover:bg-white/15 border border-white/10 transition disabled:opacity-40"
-                >
-                  Cancel
-                </button>
+              <div className="pt-2">
                 <button
                   type="submit"
                   disabled={isRecovering || !recoverAddress || !recoverShardCKey || recoverTotpCode.length !== 6}
-                  className="flex-1 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2"
+                  className="w-full py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2"
                 >
                   {isRecovering ? (
                     <>
