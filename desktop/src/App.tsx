@@ -947,7 +947,15 @@ export function App() {
   const handleResetApp = async () => {
     try {
       if (isTauri()) {
-        await invoke("delete_shard_a");
+        for (const acc of accounts) {
+          try {
+            await invoke("delete_shard_from_keychain", { accountId: acc.id });
+            await invoke("delete_shard_from_keychain", { accountId: acc.address });
+          } catch {}
+        }
+        try {
+          await invoke("delete_shard_a");
+        } catch {}
       }
       localStorage.clear();
 
@@ -961,10 +969,13 @@ export function App() {
       setUsdgBalance("0.00");
       setEthBalance("0.0000");
       setTransactions([]);
+      setAccounts([]);
+      setActiveAccountId("primary");
       setShowBackupModal(false);
       setShowSendModal(false);
       setShowReceiveModal(false);
       setShowCreateModal(false);
+      setShowRecoverModal(false);
       addToast("info", "Wallet Reset", "Local wallet state cleared. You can now create a new wallet.");
     } catch (err) {
       console.error("Failed to reset wallet:", err);
