@@ -28,6 +28,11 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
+  ArrowDownUp,
+  Globe2,
+  Sparkles,
+  TrendingUp,
+  Scan,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -42,6 +47,26 @@ import {
   type Address,
   type Hex,
 } from "viem";
+import { AccountSwitcher, type WalletAccount } from "./components/AccountSwitcher";
+import { SwapTab } from "./components/SwapTab";
+import { CrossChainTab } from "./components/CrossChainTab";
+import { NftTab } from "./components/NftTab";
+import { RwaTab } from "./components/RwaTab";
+import { UpdateBanner } from "./components/UpdateBanner";
+import { StealthScannerModal } from "./components/StealthScannerModal";
+import { buildStealthSendBatch, parseMetaAddress } from "./lib/stealth";
+import { executeAccountBatch } from "./lib/execute";
+import { isFeatureActive, RELEASE_VERSIONS, type ReleaseVersion } from "./config/features";
+
+const RELEASE_METADATA: Record<ReleaseVersion, string> = {
+  "0.1.0": "Genesis 2-of-3 MPC",
+  "0.1.1": "Updates & Private Send",
+  "0.1.2": "Robinhood DEX Swaps",
+  "0.1.3": "Cross-Chain Swaps",
+  "0.1.4": "NFTs & Collectibles",
+  "0.1.5": "Multi-Wallet & Keychain",
+  "0.1.6": "Robinhood RWA Registry",
+};
 import { privateKeyToAccount } from "viem/accounts";
 import {
   PrivatumWallet,
@@ -175,7 +200,38 @@ function TokenAvatar({ symbol, name, iconUrl, size = "md", className = "" }: Tok
 
 export function App() {
   const [showSplash, setShowSplash] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<"wallet" | "tokens" | "shards" | "recovery">("wallet");
+  const [activeTab, setActiveTab] = useState<
+    "wallet" | "swaps" | "cross_chain" | "nfts" | "rwa" | "tokens" | "shards" | "recovery"
+  >("wallet");
+
+  // Versioning and feature release stage preview
+  const [appVersion] = useState<string>("0.1.0");
+  const [previewVersion, setPreviewVersion] = useState<ReleaseVersion | null>(null);
+
+  // Multi-wallet accounts
+  const [accounts, setAccounts] = useState<WalletAccount[]>(() => {
+    try {
+      const stored = localStorage.getItem("privatum_accounts");
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return [
+      {
+        id: "primary",
+        name: "Primary Treasury",
+        address: "0x0000000000000000000000000000000000000000" as Address,
+        color: "#ef4444",
+        createdAt: Date.now(),
+      },
+    ];
+  });
+  const [activeAccountId, setActiveAccountId] = useState<string>("primary");
+
+  // Private Send Mode Toggle & Stealth Inbox
+  const [isStealthSend, setIsStealthSend] = useState<boolean>(false);
+  const [showStealthScanner, setShowStealthScanner] = useState<boolean>(false);
+
+  // Preselected token for Swap tab
+  const [swapTokenOut, setSwapTokenOut] = useState<string>("AAPL");
   const [wallet, setWallet] = useState<PrivatumWallet | null>(null);
   const [walletAddress, setWalletAddress] = useState<string>("");
   const [shardAPrivKey, setShardAPrivKey] = useState<string>("");
@@ -414,17 +470,28 @@ export function App() {
 
     async function loadSavedWallet() {
       try {
+        const activeId = localStorage.getItem("privatum_active_account_id") || "primary";
+        setActiveAccountId(activeId);
+
         let savedShardA: string | null = null;
         if (isTauri()) {
-          savedShardA = await invoke<string | null>("load_shard_a");
-        } else {
-          savedShardA = localStorage.getItem("privatum_shard_a");
+          try {
+            savedShardA = await invoke<string | null>("get_shard_from_keychain", { accountId: activeId });
+          } catch {}
+          if (!savedShardA && activeId === "primary") {
+            try {
+              savedShardA = await invoke<string | null>("load_shard_a");
+            } catch {}
+          }
+        }
+        if (!savedShardA) {
+          savedShardA = localStorage.getItem(`privatum_shard_a_${activeId}`) || (activeId === "primary" ? localStorage.getItem("privatum_shard_a") : null);
         }
 
-        const savedAddress = localStorage.getItem("privatum_wallet_address");
-        const savedApiKey = localStorage.getItem("privatum_api_key");
-        const savedShardB = localStorage.getItem("privatum_shard_b_address");
-        const savedShardC = localStorage.getItem("privatum_shard_c_address");
+        const savedAddress = localStorage.getItem(`privatum_wallet_address_${activeId}`) || (activeId === "primary" ? localStorage.getItem("privatum_wallet_address") : null);
+        const savedApiKey = localStorage.getItem(`privatum_api_key_${activeId}`) || (activeId === "primary" ? localStorage.getItem("privatum_api_key") : null);
+        const savedShardB = localStorage.getItem(`privatum_shard_b_address_${activeId}`) || (activeId === "primary" ? localStorage.getItem("privatum_shard_b_address") : null);
+        const savedShardC = localStorage.getItem(`privatum_shard_c_address_${activeId}`) || (activeId === "primary" ? localStorage.getItem("privatum_shard_c_address") : null);
 
         if (savedShardA && savedAddress && savedApiKey && savedShardB && savedShardC) {
           const shardA = LocalShard.fromPrivateKey(savedShardA as Hex, "device");
@@ -443,6 +510,28 @@ export function App() {
           setApiKey(savedApiKey);
           setShardCAddress(savedShardC);
 
+          // Ensure active account is in accounts list
+          setAccounts((prev) => {
+            const exists = prev.some((a) => a.id === activeId || a.address.toLowerCase() === savedAddress.toLowerCase());
+            if (!exists) {
+              const updated = [
+                {
+                  id: activeId,
+                  name: activeId === "primary" ? "Primary Treasury" : `Account ${prev.length + 1}`,
+                  address: savedAddress as Address,
+                  color: "#ef4444",
+                  createdAt: Date.now(),
+                },
+                ...prev.filter((a) => a.address !== "0x0000000000000000000000000000000000000000"),
+              ];
+              try {
+                localStorage.setItem("privatum_accounts", JSON.stringify(updated));
+              } catch {}
+              return updated;
+            }
+            return prev;
+          });
+
           // Purge any legacy Shard C key from device storage
           localStorage.removeItem("privatum_shard_c_key");
 
@@ -455,6 +544,55 @@ export function App() {
 
     loadSavedWallet();
   }, []);
+
+  const handleSelectAccount = async (targetId: string) => {
+    setActiveAccountId(targetId);
+    try {
+      localStorage.setItem("privatum_active_account_id", targetId);
+    } catch {}
+
+    let savedShardA: string | null = null;
+    if (isTauri()) {
+      try {
+        savedShardA = await invoke<string | null>("get_shard_from_keychain", { accountId: targetId });
+      } catch {}
+      if (!savedShardA && targetId === "primary") {
+        try {
+          savedShardA = await invoke<string | null>("load_shard_a");
+        } catch {}
+      }
+    }
+    if (!savedShardA) {
+      savedShardA = localStorage.getItem(`privatum_shard_a_${targetId}`) || (targetId === "primary" ? localStorage.getItem("privatum_shard_a") : null);
+    }
+
+    const savedAddress = localStorage.getItem(`privatum_wallet_address_${targetId}`) || (targetId === "primary" ? localStorage.getItem("privatum_wallet_address") : null);
+    const savedApiKey = localStorage.getItem(`privatum_api_key_${targetId}`) || (targetId === "primary" ? localStorage.getItem("privatum_api_key") : null);
+    const savedShardB = localStorage.getItem(`privatum_shard_b_address_${targetId}`) || (targetId === "primary" ? localStorage.getItem("privatum_shard_b_address") : null);
+    const savedShardC = localStorage.getItem(`privatum_shard_c_address_${targetId}`) || (targetId === "primary" ? localStorage.getItem("privatum_shard_c_address") : null);
+
+    if (savedShardA && savedAddress && savedApiKey && savedShardB && savedShardC) {
+      const shardA = LocalShard.fromPrivateKey(savedShardA as Hex, "device");
+      const shardB = new RemoteCosigner(savedShardB as Address, savedAddress as Address, DEFAULT_API_URL);
+      const restoredWallet = new PrivatumWallet({
+        address: savedAddress as Address,
+        shardA,
+        shardB,
+        shardCAddress: savedShardC as Address,
+        apiKey: savedApiKey,
+      });
+
+      setWallet(restoredWallet);
+      setWalletAddress(savedAddress);
+      setShardAPrivKey(savedShardA);
+      setApiKey(savedApiKey);
+      setShardCAddress(savedShardC);
+
+      fetchBalances(savedAddress as Address);
+      const accName = accounts.find((a) => a.id === targetId)?.name || shortenAddress(savedAddress);
+      addToast("info", "Account Switched", `Active account: ${accName}`);
+    }
+  };
 
   const fetchBalances = async (address: Address) => {
     setIsRefreshing(true);
@@ -485,21 +623,63 @@ export function App() {
     setIsSending(true);
     let lastError: any = null;
 
+    const isFirstAccount = !wallet || accounts.length === 0 || accounts[0].address === "0x0000000000000000000000000000000000000000";
+    const newAccId = isFirstAccount ? "primary" : `acc-${Date.now()}`;
+
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         const { wallet: newWallet, shardC } = await PrivatumWallet.create();
 
-        // Save Shard A to OS keystore / localStorage
+        // Save Shard A to OS keystore / Keychain
         if (isTauri()) {
-          await invoke("save_shard_a", { key: newWallet.shardA.privateKey });
+          try {
+            await invoke("save_shard_to_keychain", { accountId: newAccId, key: newWallet.shardA.privateKey });
+          } catch {}
+          if (newAccId === "primary") {
+            try {
+              await invoke("save_shard_a", { key: newWallet.shardA.privateKey });
+            } catch {}
+          }
         } else {
-          localStorage.setItem("privatum_shard_a", newWallet.shardA.privateKey);
+          localStorage.setItem(`privatum_shard_a_${newAccId}`, newWallet.shardA.privateKey);
+          if (newAccId === "primary") {
+            localStorage.setItem("privatum_shard_a", newWallet.shardA.privateKey);
+          }
         }
 
-        localStorage.setItem("privatum_wallet_address", newWallet.address);
-        localStorage.setItem("privatum_api_key", newWallet.apiKey);
-        localStorage.setItem("privatum_shard_b_address", newWallet.shardB.address);
-        localStorage.setItem("privatum_shard_c_address", shardC.address);
+        // Save account-specific credentials
+        localStorage.setItem(`privatum_wallet_address_${newAccId}`, newWallet.address);
+        localStorage.setItem(`privatum_api_key_${newAccId}`, newWallet.apiKey);
+        localStorage.setItem(`privatum_shard_b_address_${newAccId}`, newWallet.shardB.address);
+        localStorage.setItem(`privatum_shard_c_address_${newAccId}`, shardC.address);
+
+        if (newAccId === "primary") {
+          localStorage.setItem("privatum_wallet_address", newWallet.address);
+          localStorage.setItem("privatum_api_key", newWallet.apiKey);
+          localStorage.setItem("privatum_shard_b_address", newWallet.shardB.address);
+          localStorage.setItem("privatum_shard_c_address", shardC.address);
+        }
+
+        // Update accounts state
+        const colors = ["#ef4444", "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b"];
+        const newAccount: WalletAccount = {
+          id: newAccId,
+          name: newAccId === "primary" ? "Primary Treasury" : `Account ${accounts.length + 1}`,
+          address: newWallet.address as Address,
+          color: colors[accounts.length % colors.length],
+          createdAt: Date.now(),
+        };
+
+        const updatedAccounts = isFirstAccount
+          ? [newAccount]
+          : [...accounts.filter((a) => a.address !== "0x0000000000000000000000000000000000000000"), newAccount];
+
+        setAccounts(updatedAccounts);
+        setActiveAccountId(newAccId);
+        try {
+          localStorage.setItem("privatum_accounts", JSON.stringify(updatedAccounts));
+          localStorage.setItem("privatum_active_account_id", newAccId);
+        } catch {}
 
         setWallet(newWallet);
         setWalletAddress(newWallet.address);
@@ -509,7 +689,6 @@ export function App() {
         setShardCPrivKey(shardC.privateKey);
 
         try {
-          localStorage.removeItem("privatum_transactions");
           localStorage.setItem(`privatum_transactions_${newWallet.address.toLowerCase()}`, JSON.stringify([]));
         } catch {}
 
@@ -730,9 +909,19 @@ export function App() {
     e.preventDefault();
     if (!wallet) return;
 
-    if (!isAddress(sendRecipient)) {
-      addToast("error", "Invalid Address", "Recipient must be a valid 0x-prefixed address.");
-      return;
+    const trimmedRecipient = sendRecipient.trim();
+    const isMeta = trimmedRecipient.startsWith("st:eth:0x") || (!trimmedRecipient.startsWith("st:") && trimmedRecipient.replace(/^0x/, "").length === 132);
+
+    if (isStealthSend) {
+      if (!isMeta && !isAddress(trimmedRecipient)) {
+        addToast("error", "Invalid Recipient", "Please enter a valid ERC-5564 stealth meta-address (132 hex characters) or 0x address.");
+        return;
+      }
+    } else {
+      if (!isAddress(trimmedRecipient)) {
+        addToast("error", "Invalid Address", "Recipient must be a valid 0x-prefixed address.");
+        return;
+      }
     }
 
     const numAmount = parseFloat(sendAmount);
@@ -752,16 +941,42 @@ export function App() {
     }
 
     setSendStep("preview");
-    runSimulation(sendRecipient as Address, sendAmount, sendAssetType);
+
+    if (isStealthSend && isMeta) {
+      try {
+        const cleanMeta = trimmedRecipient.replace(/^st:eth:/, "");
+        const batch = buildStealthSendBatch({
+          recipientMetaAddress: cleanMeta,
+          amount: sendAssetType === "ETH" ? parseEther(sendAmount) : parseUnits(sendAmount, 6),
+          tokenAddress: USDG_ADDRESS,
+          isEth: sendAssetType === "ETH",
+        });
+        runSimulation(batch.stealthAddress, sendAmount, sendAssetType);
+      } catch (err: any) {
+        runSimulation(wallet.address as Address, sendAmount, sendAssetType);
+      }
+    } else {
+      runSimulation(trimmedRecipient as Address, sendAmount, sendAssetType);
+    }
   };
 
   const handleSendTransaction = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!wallet) return;
 
-    if (!isAddress(sendRecipient)) {
-      addToast("error", "Invalid Address", "Recipient must be a valid 0x-prefixed address.");
-      return;
+    const trimmedRecipient = sendRecipient.trim();
+    const isMeta = trimmedRecipient.startsWith("st:eth:0x") || (!trimmedRecipient.startsWith("st:") && trimmedRecipient.replace(/^0x/, "").length === 132);
+
+    if (isStealthSend) {
+      if (!isMeta && !isAddress(trimmedRecipient)) {
+        addToast("error", "Invalid Recipient", "Please enter a valid ERC-5564 stealth meta-address (132 hex characters) or 0x address.");
+        return;
+      }
+    } else {
+      if (!isAddress(trimmedRecipient)) {
+        addToast("error", "Invalid Address", "Recipient must be a valid 0x-prefixed address.");
+        return;
+      }
     }
 
     const numAmount = parseFloat(sendAmount);
@@ -789,9 +1004,61 @@ export function App() {
           ? parseEther(sendAmount)
           : parseUnits(sendAmount, 6);
 
-      // 1. Build standard transfer UserOp
+      // Private Stealth Send via ERC-5564 Announcer and atomic batch
+      if (isStealthSend && isMeta) {
+        const cleanMeta = trimmedRecipient.replace(/^st:eth:/, "");
+        const batch = buildStealthSendBatch({
+          recipientMetaAddress: cleanMeta,
+          amount: parsedAmount,
+          tokenAddress: USDG_ADDRESS,
+          isEth: sendAssetType === "ETH",
+        });
+
+        const broadcastHash = await executeAccountBatch({
+          wallet,
+          shardAPrivKey,
+          client: publicClient,
+          targets: batch.targets,
+          values: batch.values,
+          datas: batch.datas,
+        });
+
+        setTxSuccessHash(broadcastHash);
+
+        const newRecord: TransactionRecord = {
+          id: `tx-${Date.now()}`,
+          hash: broadcastHash,
+          type: "send",
+          counterparty: `(Stealth) ${shortenAddress(batch.stealthAddress)}`,
+          amount: sendAmount,
+          asset: sendAssetType,
+          timestamp: Date.now(),
+          status: "confirmed",
+        };
+        const updatedList = [newRecord, ...transactions];
+        setTransactions(updatedList);
+        if (wallet?.address) {
+          try {
+            localStorage.setItem(`privatum_transactions_${wallet.address.toLowerCase()}`, JSON.stringify(updatedList));
+          } catch {}
+        }
+
+        addToast("success", "Stealth Transfer Complete", `Sent to one-time stealth address ${shortenAddress(batch.stealthAddress)}`);
+        setSendAmount("");
+        setSendRecipient("");
+        setSendStep("form");
+        setSimulationData(null);
+        setShowSendModal(false);
+
+        setTimeout(() => {
+          fetchBalances(wallet.address as Address);
+        }, 2500);
+        return;
+      }
+
+      // Standard transfer UserOp
       const userOpBase = wallet.buildTransferUserOp({
-        to: sendRecipient as Address,
+        to: trimmedRecipient as Address,
         amount: parsedAmount,
         asset: sendAssetType,
       });
@@ -811,7 +1078,6 @@ export function App() {
         broadcastHash = receipt.userOpHash;
       } catch (bundlerErr: any) {
         const errMsg = String(bundlerErr?.message || "");
-        // If the execution RPC has no native ERC-4337 bundler daemon, broadcast transfer directly via authorized client keystore
         if (
           errMsg.includes("eth_sendUserOperation") ||
           errMsg.includes("BUNDLER_ERROR") ||
@@ -826,7 +1092,7 @@ export function App() {
 
           if (sendAssetType === "ETH") {
             broadcastHash = await walletClient.sendTransaction({
-              to: sendRecipient as Address,
+              to: trimmedRecipient as Address,
               value: parsedAmount,
             });
           } else {
@@ -834,7 +1100,7 @@ export function App() {
               address: USDG_ADDRESS,
               abi: erc20Abi,
               functionName: "transfer",
-              args: [sendRecipient as Address, parsedAmount],
+              args: [trimmedRecipient as Address, parsedAmount],
             });
           }
         } else {
@@ -849,7 +1115,7 @@ export function App() {
         id: `tx-${Date.now()}`,
         hash: broadcastHash,
         type: "send",
-        counterparty: sendRecipient,
+        counterparty: trimmedRecipient,
         amount: sendAmount,
         asset: sendAssetType,
         timestamp: Date.now(),
@@ -863,7 +1129,7 @@ export function App() {
         } catch {}
       }
 
-      addToast("success", "Transfer Complete", `Sent ${sendAmount} ${sendAssetType} to ${shortenAddress(sendRecipient)}`);
+      addToast("success", "Transfer Complete", `Sent ${sendAmount} ${sendAssetType} to ${shortenAddress(trimmedRecipient)}`);
 
       setSendAmount("");
       setSendRecipient("");
@@ -1114,11 +1380,11 @@ export function App() {
             </div>
 
           {/* Vertical navigation */}
-          <nav className="flex flex-col items-center gap-2.5 w-full px-2">
+          <nav className="flex flex-col items-center gap-2 w-full px-2">
             <button
               onClick={() => setActiveTab("wallet")}
-              title="Wallet"
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition ${
+              title="Wallet Overview"
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
                 activeTab === "wallet"
                   ? "bg-white/10 text-white border border-white/15"
                   : "text-slate-400 hover:text-white hover:bg-white/5"
@@ -1127,10 +1393,70 @@ export function App() {
               <Wallet className="w-5 h-5" />
             </button>
 
+            {/* Swaps (v0.1.2) */}
+            {isFeatureActive("swaps", appVersion, previewVersion) && (
+              <button
+                onClick={() => setActiveTab("swaps")}
+                title="Robinhood DEX Swap (v4/v3)"
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
+                  activeTab === "swaps"
+                    ? "bg-white/10 text-white border border-white/15"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <ArrowDownUp className="w-5 h-5" />
+              </button>
+            )}
+
+            {/* Cross-Chain Swaps (v0.1.3) */}
+            {isFeatureActive("cross_chain", appVersion, previewVersion) && (
+              <button
+                onClick={() => setActiveTab("cross_chain")}
+                title="Cross-Chain Swaps (Relay)"
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
+                  activeTab === "cross_chain"
+                    ? "bg-white/10 text-white border border-white/15"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <Globe2 className="w-5 h-5" />
+              </button>
+            )}
+
+            {/* Digital Collectibles & NFTs (v0.1.4) */}
+            {isFeatureActive("nfts", appVersion, previewVersion) && (
+              <button
+                onClick={() => setActiveTab("nfts")}
+                title="Digital Collectibles & NFTs"
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
+                  activeTab === "nfts"
+                    ? "bg-white/10 text-white border border-white/15"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <Sparkles className="w-5 h-5" />
+              </button>
+            )}
+
+            {/* RWA Equities Registry (v0.1.6) */}
+            {isFeatureActive("rwa_equities", appVersion, previewVersion) && (
+              <button
+                onClick={() => setActiveTab("rwa")}
+                title="Robinhood RWA Tokenized Equities"
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
+                  activeTab === "rwa"
+                    ? "bg-white/10 text-white border border-white/15"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <TrendingUp className="w-5 h-5" />
+              </button>
+            )}
+
             <button
               onClick={() => setActiveTab("tokens")}
               title="Tokens"
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition ${
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
                 activeTab === "tokens"
                   ? "bg-white/10 text-white border border-white/15"
                   : "text-slate-400 hover:text-white hover:bg-white/5"
@@ -1142,7 +1468,7 @@ export function App() {
             <button
               onClick={() => setActiveTab("shards")}
               title="Shard Health"
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition ${
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
                 activeTab === "shards"
                   ? "bg-white/10 text-white border border-white/15"
                   : "text-slate-400 hover:text-white hover:bg-white/5"
@@ -1154,7 +1480,7 @@ export function App() {
             <button
               onClick={() => setActiveTab("recovery")}
               title="2FA Recovery"
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition ${
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
                 activeTab === "recovery"
                   ? "bg-white/10 text-white border border-white/15"
                   : "text-slate-400 hover:text-white hover:bg-white/5"
@@ -1175,7 +1501,7 @@ export function App() {
                 }
               }}
               title="Reset Wallet / Start Afresh"
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition"
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -1197,8 +1523,13 @@ export function App() {
 
       {/* Main Canvas */}
       <main className="flex-1 flex flex-col h-full overflow-y-auto bg-[#13151b]">
+        {/* In-App Update Banner (v0.1.1) */}
+        {isFeatureActive("updater", appVersion, previewVersion) && (
+          <UpdateBanner currentVersion={previewVersion || appVersion} apiUrl={DEFAULT_API_URL} />
+        )}
+
         {/* Top bar */}
-        <header className="flex items-center justify-between px-8 py-4 border-b border-white/[0.06]">
+        <header className="flex items-center justify-between px-8 py-3.5 border-b border-white/[0.06] shrink-0">
           {/* Left: Sync status & Robinhood Network */}
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-2 text-slate-400">
@@ -1206,7 +1537,7 @@ export function App() {
               <button
                 onClick={() => wallet && fetchBalances(wallet.address as Address)}
                 disabled={isRefreshing || !wallet}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-xs font-medium text-slate-300 border border-white/[0.06] transition disabled:opacity-40"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-xs font-medium text-slate-300 border border-white/[0.06] transition disabled:opacity-40 cursor-pointer"
               >
                 <RotateCw className={`w-3 h-3 ${isRefreshing ? "animate-spin text-white" : "text-emerald-400"}`} />
                 <span>Sync</span>
@@ -1221,14 +1552,37 @@ export function App() {
             </div>
           </div>
 
-          {/* Right: Address or Create button */}
-          <div className="flex items-center gap-2">
+          {/* Right: Stealth Inbox, Account Switcher, Address / Create */}
+          <div className="flex items-center gap-2.5">
+            {/* Stealth Inbox Button (v0.1.1) */}
+            {isFeatureActive("private_send", appVersion, previewVersion) && wallet && (
+              <button
+                onClick={() => setShowStealthScanner(true)}
+                className="px-3 py-1.5 rounded-full bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-xs font-medium border border-purple-500/20 transition flex items-center gap-1.5 cursor-pointer"
+                title="Scan Stealth Announcements (ERC-5564)"
+              >
+                <Scan className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Stealth Inbox</span>
+              </button>
+            )}
+
+            {/* Account Switcher (v0.1.5) */}
+            {isFeatureActive("multi_wallet", appVersion, previewVersion) && wallet && (
+              <AccountSwitcher
+                accounts={accounts}
+                activeAccountId={activeAccountId}
+                onSelectAccount={(acc) => handleSelectAccount(acc.id)}
+                onCreateAccount={() => setShowCreateModal(true)}
+                onCopyAddress={(addr) => copyToClipboard(addr, "Account address")}
+              />
+            )}
+
             {wallet ? (
               <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] px-3 py-1.5 rounded-full text-xs font-mono text-slate-200">
                 <span>{shortenAddress(walletAddress)}</span>
                 <button
                   onClick={() => copyToClipboard(walletAddress, "Wallet address")}
-                  className="text-slate-400 hover:text-white transition"
+                  className="text-slate-400 hover:text-white transition cursor-pointer"
                   title="Copy address"
                 >
                   <Copy className="w-3 h-3" />
@@ -1237,7 +1591,7 @@ export function App() {
             ) : (
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="px-4 py-1.5 rounded-full text-xs font-semibold bg-[#f64943] hover:bg-[#e03d38] text-white transition flex items-center gap-1.5"
+                className="px-4 py-1.5 rounded-full text-xs font-semibold bg-[#f64943] hover:bg-[#e03d38] text-white transition flex items-center gap-1.5 cursor-pointer"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
                 <span>Create Account</span>
@@ -1685,15 +2039,91 @@ export function App() {
             </div>
           </div>
         )}
+
+        {/* Tab: Swaps (v0.1.2) */}
+        {activeTab === "swaps" && (
+          <div className="p-8 max-w-4xl mx-auto w-full">
+            <SwapTab
+              client={publicClient}
+              wallet={wallet}
+              walletAddress={walletAddress as Address}
+              shardAPrivKey={shardAPrivKey}
+              addToast={addToast}
+              preselectedTokenOut={swapTokenOut}
+            />
+          </div>
+        )}
+
+        {/* Tab: Cross-Chain Swaps (v0.1.3) */}
+        {activeTab === "cross_chain" && (
+          <div className="p-8 max-w-4xl mx-auto w-full">
+            <CrossChainTab
+              client={publicClient}
+              wallet={wallet}
+              walletAddress={walletAddress as Address}
+              shardAPrivKey={shardAPrivKey}
+              addToast={addToast}
+            />
+          </div>
+        )}
+
+        {/* Tab: Digital Collectibles & NFTs (v0.1.4) */}
+        {activeTab === "nfts" && (
+          <div className="p-8 max-w-5xl mx-auto w-full">
+            <NftTab
+              client={publicClient}
+              wallet={wallet}
+              walletAddress={walletAddress as Address}
+              shardAPrivKey={shardAPrivKey}
+              addToast={addToast}
+            />
+          </div>
+        )}
+
+        {/* Tab: RWA Equities Registry (v0.1.6) */}
+        {activeTab === "rwa" && (
+          <div className="p-8 max-w-5xl mx-auto w-full">
+            <RwaTab
+              client={publicClient}
+              walletAddress={walletAddress as Address}
+              onTradeToken={(symbol: string) => {
+                setSwapTokenOut(symbol);
+                setActiveTab("swaps");
+              }}
+              onCopyAddress={(addr: string) => copyToClipboard(addr, "Token address")}
+            />
+          </div>
+        )}
       </main>
       </div>
       )}
 
       {/* Full-width Bottom Status Bar */}
       <footer className="w-full h-8 shrink-0 bg-[#0e1015] border-t border-white/[0.06] px-5 flex items-center justify-between text-xs text-slate-400 select-none z-20">
-        <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
-          <Clock className="w-3.5 h-3.5 text-slate-500" />
-          <span>{utcTime}</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
+            <Clock className="w-3.5 h-3.5 text-slate-500" />
+            <span>{utcTime}</span>
+          </div>
+
+          <div className="h-3 w-px bg-white/10 hidden sm:block"></div>
+
+          {/* Release Stage Preview Switcher for testing/demo recording */}
+          <div className="flex items-center gap-1.5 text-[10px] font-mono">
+            <span className="text-slate-500 hidden md:inline">Release Stage:</span>
+            <select
+              value={previewVersion || "0.1.6"}
+              onChange={(e) => setPreviewVersion(e.target.value as ReleaseVersion)}
+              className="bg-black/50 border border-white/10 rounded px-2 py-0.5 text-[10px] text-slate-300 focus:outline-none cursor-pointer"
+              title="Simulate release version to demo features"
+            >
+              {RELEASE_VERSIONS.map((v) => (
+                <option key={v} value={v} className="bg-[#181a23] text-white">
+                  v{v} ({RELEASE_METADATA[v]})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="flex items-center gap-4 text-[11px] font-mono">
@@ -1792,11 +2222,39 @@ export function App() {
                     </div>
                   </div>
 
+                  {/* Private Stealth Send Toggle (v0.1.1) */}
+                  {isFeatureActive("private_send", appVersion, previewVersion) && (
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                      <div className="flex items-center gap-2.5">
+                        <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+                        <div>
+                          <div className="text-xs font-semibold text-purple-200">Private Send (ERC-5564)</div>
+                          <div className="text-[10px] text-purple-300/70">Unlinkable one-time stealth address on Robinhood Chain</div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsStealthSend(!isStealthSend)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold transition cursor-pointer ${
+                          isStealthSend
+                            ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
+                            : "bg-white/10 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        {isStealthSend ? "Active" : "Disabled"}
+                      </button>
+                    </div>
+                  )}
+
                   <div>
-                    <label className="text-xs text-slate-400 block mb-1">Recipient Address</label>
+                    <label className="text-xs text-slate-400 block mb-1">
+                      {isStealthSend
+                        ? "Recipient Stealth Meta-Address (st:eth:0x... or 132-char hex)"
+                        : "Recipient Address"}
+                    </label>
                     <input
                       type="text"
-                      placeholder="0x..."
+                      placeholder={isStealthSend ? "st:eth:0x... or 0x..." : "0x..."}
                       value={sendRecipient}
                       onChange={(e) => setSendRecipient(e.target.value.trim())}
                       className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-white/30"
@@ -2230,6 +2688,16 @@ export function App() {
           </div>
         </div>
       )}
+
+      {/* Modal: Stealth Scanner (v0.1.1) */}
+      <StealthScannerModal
+        isOpen={showStealthScanner}
+        onClose={() => setShowStealthScanner(false)}
+        client={publicClient}
+        shardAPrivKey={shardAPrivKey as Hex}
+        walletAddress={walletAddress as Address}
+        addToast={addToast}
+      />
     </div>
   );
 }
