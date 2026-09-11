@@ -12,7 +12,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import QRCode from "qrcode";
-import type { Hex, Address, PublicClient } from "viem";
+import { formatEther, formatUnits, type Hex, type Address, type PublicClient } from "viem";
+import { USDG_ADDRESS, erc20Abi, robinhoodChain } from "@privatumrh/robinhood-chain-sdk";
 import {
   generateStealthMetaAddressFromSeed,
   checkAnnouncement,
@@ -102,12 +103,28 @@ export function StealthScannerModal({
           );
 
           if (isMine) {
+            let balEth = "0.0000";
+            let balUsdg = "0.00";
+            try {
+              const bEth = await client.getBalance({ address: stealthAddress });
+              balEth = formatEther(bEth);
+              const bUsdg = await client.readContract({
+                address: USDG_ADDRESS,
+                abi: erc20Abi,
+                functionName: "balanceOf",
+                args: [stealthAddress],
+              });
+              balUsdg = formatUnits(bUsdg, 6);
+            } catch {}
+
             found.push({
               stealthAddress,
               ephemeralPubKey,
               viewTag,
               blockNumber: log.blockNumber,
               txHash: log.transactionHash,
+              discoveredBalanceEth: balEth,
+              discoveredBalanceUsdg: balUsdg,
             });
           }
         }
@@ -204,11 +221,28 @@ export function StealthScannerModal({
                 >
                   <div className="flex flex-col font-mono text-[11px]">
                     <span className="text-emerald-400 font-semibold">Stealth: {t.stealthAddress.slice(0, 8)}...</span>
-                    <span className="text-neutral-500">Block #{t.blockNumber?.toString() || "latest"}</span>
+                    <span className="text-neutral-500">
+                      Block #{t.blockNumber?.toString() || "latest"}
+                      {t.discoveredBalanceEth && parseFloat(t.discoveredBalanceEth) > 0 && ` • ${parseFloat(t.discoveredBalanceEth).toFixed(4)} ETH`}
+                      {t.discoveredBalanceUsdg && parseFloat(t.discoveredBalanceUsdg) > 0 && ` • ${parseFloat(t.discoveredBalanceUsdg).toFixed(2)} USDG`}
+                    </span>
                   </div>
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">
-                    Discovered
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">
+                      Discovered
+                    </span>
+                    {t.txHash && (
+                      <a
+                        href={`${robinhoodChain.blockExplorers.default.url}/tx/${t.txHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 rounded hover:bg-white/10 text-neutral-400 hover:text-white transition"
+                        title="View on Explorer"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
                 </div>
               ))
             )}
