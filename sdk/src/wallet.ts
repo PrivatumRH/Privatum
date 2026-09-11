@@ -258,7 +258,7 @@ export class PrivatumWallet {
       signature,
     };
 
-    // 6. Broadcast via bundler (if available on network)
+    // 6. Broadcast via bundler
     try {
       return await submitUserOp({
         userOp,
@@ -266,16 +266,10 @@ export class PrivatumWallet {
         apiUrl,
       });
     } catch (bundlerErr: any) {
-      console.warn(
-        "[PrivatumWallet.recoverWallet] Bundler submission skipped (chain does not run an ERC-4337 bundler node):",
-        bundlerErr?.message || bundlerErr
+      const msg = bundlerErr?.message || String(bundlerErr);
+      throw new Error(
+        `Failed to broadcast recovery UserOp to EntryPoint on Robinhood Chain (${msg}). Ensure an active ERC-4337 bundler or relayer is reachable.`
       );
-      return {
-        status: "SUBMITTED",
-        userOpHash,
-        chainId,
-        timestamp: new Date().toISOString(),
-      };
     }
   }
 }
