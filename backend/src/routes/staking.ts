@@ -1,18 +1,35 @@
 import { Router, type Request, type Response } from "express";
-import { isAddress, isHex, createPublicClient, createWalletClient, http, parseEther } from "viem";
+import {
+  isAddress,
+  isHex,
+  createPublicClient,
+  createWalletClient,
+  encodeFunctionData,
+  http,
+  parseEther,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { pool, query } from "../db/index";
 import { hashApiKey } from "../crypto";
 import { calculateStakingTier } from "../stakingTier";
 import { robinhoodChain } from "./bundler";
+import {
+  ERC20_ABI,
+  POOL_ADDRESS,
+  PRIV_DECIMALS,
+  PRIV_TOKEN_ADDRESS,
+  getPoolPrivBalance,
+  getPoolWalletClient,
+  getPublicClient,
+} from "../poolWallet";
+import { privDecimalToWei } from "../treasury";
 
 export const stakingRouter = Router();
 
 const rpcUrl = process.env.ROBINHOOD_RPC_URL || "https://rpc.mainnet.chain.robinhood.com";
 const chainId = Number(process.env.ROBINHOOD_CHAIN_ID) || 4663;
-const poolPublicKey = process.env.PLATFORM_POOL_WALLET_PUBLIC_KEY || "0xf5370a080A8c8Eed95E71982b228A3C0BdEfF41f";
-const poolPrivateKey = process.env.PLATFORM_POOL_WALLET_PRIVATE_KEY;
-const privTokenAddress = process.env.PRIV_TOKEN_ADDRESS || process.env.VITE_CA_ADDRESS || "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
+const poolPublicKey = POOL_ADDRESS;
+const privTokenAddress = PRIV_TOKEN_ADDRESS;
 
 const publicClient = createPublicClient({
   transport: http(rpcUrl),
@@ -351,22 +368,11 @@ stakingRouter.post("/v1/staking/unstake", async (req: Request, res: Response): P
       return;
     }
 
-    // On-chain return: Transfer $PRIV from Platform Pool back to user wallet
-    let onchainTxHash = `unstake-${Date.now()}`;
-    if (poolPrivateKey) {
-      try {
-        const poolAccount = privateKeyToAccount(poolPrivateKey as `0x${string}`);
-        const walletClient = createWalletClient({
-          account: poolAccount,
-          chain: robinhoodChain,
-          transport: http(rpcUrl),
-        });
-        // If ERC-20 transfer:
-        // const hash = await walletClient.writeContract(...)
-      } catch (poolErr) {
-        console.warn("[staking] Platform pool transfer warning:", poolErr);
-      }
-    }
+    // The stake is debited here and the PRIV transfer is broadcast after this
+    // transaction commits. Settling inside the transaction would hold a row lock
+    // across a network round trip, and a crash mid-broadcast could leave the
+    // ledger and the chain disagreeing with no record of which way.
+    const unstakeWei = privDecimalToWei(numAmount);
 
     const newTotal = Math.max(0, currentStaked - numAmount);
     const tierInfo = calculateStakingTier(newTotal);
@@ -383,13 +389,21 @@ stakingRouter.post("/v1/staking/unstake", async (req: Request, res: Response): P
       [walletAddress.toLowerCase(), newTotal, tierInfo.tierName, tierInfo.monthlyQuota, newStatus]
     );
 
-    await client.query(
-      `INSERT INTO staking_events (wallet_address, event_type, amount, tx_hash)
-       VALUES ($1, 'UNSTAKE', $2, $3)`,
-      [walletAddress.toLowerCase(), numAmount, onchainTxHash]
+    const eventRow = await client.query(
+      `INSERT INTO staking_events (wallet_address, event_type, amount, tx_hash, settlement_status)
+       VALUES ($1, 'UNSTAKE', $2, NULL, 'pending') RETURNING id`,
+      [walletAddress.toLowerCase(), numAmount]
     );
+    const unstakeEventId = eventRow.rows[0].id;
 
     await client.query("COMMIT");
+
+    const settlement = await settleUnstake(
+      unstakeEventId,
+      walletAddress.toLowerCase() as `0x${string}`,
+      unstakeWei,
+      numAmount
+    );
 
     res.status(200).json({
       status: "UNSTAKED",
@@ -398,6 +412,11 @@ stakingRouter.post("/v1/staking/unstake", async (req: Request, res: Response): P
       remainingStakedAmount: newTotal,
       tier: tierInfo.tierName,
       monthlyQuota: tierInfo.monthlyQuota,
+      settlement: {
+        status: settlement.status,
+        txHash: settlement.txHash ?? null,
+        error: settlement.error ?? null,
+      },
     });
   } catch (err) {
     await client.query("ROLLBACK");
@@ -407,3 +426,96 @@ stakingRouter.post("/v1/staking/unstake", async (req: Request, res: Response): P
     client.release();
   }
 });
+
+/**
+ * Sends unstaked PRIV back from the pool wallet.
+ *
+ * Runs after the debit has committed, so the ledger always has a durable record
+ * of what is owed. A failure restores the user's stake and marks the event
+ * failed, rather than leaving the balance debited with nothing sent.
+ */
+async function settleUnstake(
+  eventId: string,
+  recipient: `0x${string}`,
+  amountWei: bigint,
+  amountDecimal: number
+): Promise<{ status: "settled" | "failed"; txHash?: string; error?: string }> {
+  const fail = async (error: string) => {
+    try {
+      await pool.query("BEGIN");
+      // Give the stake back; the user still holds it until PRIV actually moves.
+      await pool.query(
+        `UPDATE staking_records SET staked_amount = staked_amount + $2, updated_at = NOW()
+         WHERE wallet_address = $1`,
+        [recipient, amountDecimal]
+      );
+      await pool.query(
+        `UPDATE staking_events SET settlement_status = 'failed', settlement_error = $2
+         WHERE id = $1`,
+        [eventId, error.slice(0, 500)]
+      );
+      await pool.query("COMMIT");
+    } catch (rollbackErr) {
+      await pool.query("ROLLBACK").catch(() => undefined);
+      console.error("[staking] Failed to restore stake after settlement failure:", rollbackErr);
+    }
+    console.error("[staking] Unstake settlement failed:", error);
+    return { status: "failed" as const, error };
+  };
+
+  let signer: ReturnType<typeof getPoolWalletClient>;
+  try {
+    signer = getPoolWalletClient();
+  } catch (err) {
+    return fail((err as Error).message);
+  }
+  if (!signer) {
+    return fail("Pool wallet signer is not configured, so PRIV could not be returned");
+  }
+
+  // The pool also custodies other stakers' PRIV, so a transfer that would
+  // overdraw it is refused up front rather than broadcast to revert.
+  try {
+    const balance = await getPoolPrivBalance();
+    if (balance < amountWei) {
+      return fail(`Pool holds ${balance} PRIV wei, which is less than the ${amountWei} owed`);
+    }
+  } catch (err) {
+    return fail(`Could not read pool PRIV balance: ${(err as Error).message}`);
+  }
+
+  try {
+    const publicClient = getPublicClient();
+    const data = encodeFunctionData({
+      abi: ERC20_ABI,
+      functionName: "transfer",
+      args: [recipient, amountWei],
+    });
+
+    await publicClient.call({ account: POOL_ADDRESS, to: PRIV_TOKEN_ADDRESS, data });
+
+    const txHash = await signer.client.sendTransaction({
+      account: signer.account,
+      chain: null,
+      to: PRIV_TOKEN_ADDRESS,
+      data,
+    });
+
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+    if (receipt.status !== "success") {
+      return fail(`Unstake transfer reverted (${txHash})`);
+    }
+
+    await query(
+      `UPDATE staking_events
+       SET tx_hash = $2, settlement_status = 'settled', settled_at = NOW()
+       WHERE id = $1`,
+      [eventId, txHash]
+    );
+
+    return { status: "settled", txHash };
+  } catch (err) {
+    return fail((err as Error).message ?? "Unknown settlement error");
+  }
+}
+

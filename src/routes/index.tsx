@@ -19,6 +19,34 @@ const STACK_CHIPS = [
   { name: "Screened Pools", sub: "Association-set ZK proofs" },
 ];
 
+/** Bridge rebate programme: users earn a share of the Relay relayer spread, paid in PRIV. */
+const REBATE_PERCENT = 25;
+
+/** PRIV (PrivatumRH) - 18 decimals, deployed on Robinhood Chain only. */
+const PRIV_TOKEN_ADDRESS = "0xee2ddd7128c291b027712eca157b3ff31a55a05a";
+
+const BRIDGE_CHAINS = [
+  { id: 1, name: "Ethereum" },
+  { id: 8453, name: "Base" },
+  { id: 42161, name: "Arbitrum" },
+  { id: 4663, name: "Robinhood Chain" },
+];
+
+const REBATE_STEPS = [
+  {
+    title: "Bridge through Privatum",
+    copy: "Move ETH or USDG between Ethereum, Base, Arbitrum and Robinhood Chain. Routing and quotes come from Relay.",
+  },
+  {
+    title: "The spread is measured, not estimated",
+    copy: "Every quote separates destination gas from the relayer's margin. Only that margin - the spread - is rebated.",
+  },
+  {
+    title: "Claim in PRIV on Robinhood Chain",
+    copy: "Rebates accrue once a bridge settles and are claimable in PRIV, with the amount fixed at the price on claim.",
+  },
+];
+
 const FAQS = [
   {
     q: "What does Privatum do?",
@@ -487,6 +515,9 @@ function LandingPage() {
                           <a className="inner-link w-inline-block" href="#security" onClick={() => setDropdownOpen(false)}>
                             <div>Security</div>
                           </a>
+                          <a className="inner-link w-inline-block" href="#rebates" onClick={() => setDropdownOpen(false)}>
+                            <div>Bridge Rebates</div>
+                          </a>
                           <a className="inner-link w-inline-block" href="#roadmap" onClick={() => setDropdownOpen(false)}>
                             <div>Roadmap</div>
                           </a>
@@ -602,6 +633,9 @@ function LandingPage() {
               </a>
               <a className="link on-desktop" href="#download">
                 Download
+              </a>
+              <a className="link on-desktop" href="#rebates">
+                Rebates
               </a>
               <a className="link on-desktop" href="#roadmap">
                 Roadmap
@@ -1576,6 +1610,96 @@ function LandingPage() {
                 </div>
                 <div>
                   <span>Robinhood Chain Mainnet &bull; Chain ID: <code>4663</code> &bull; Arbitrum L2 &bull; Native Gas: <code>ETH</code></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* BRIDGE REBATES SECTION */}
+        <section className="section pv-rebate-section" id="rebates">
+          <div className="padding-global">
+            <div className="container-large">
+              <div className="padding-section-large padding-bottom">
+                <div className="section-heading_wrapper">
+                  <div className="heading_wrapper home-heading-two">
+                    <div className="text-size-tiny brand-color">Bridge Rebates</div>
+                    <h2 className="heading-style-h2">Bridge across four chains and earn the spread back</h2>
+                  </div>
+                  <p className="text-size-regular">
+                    Every bridge pays the relayer a spread on top of destination gas. Privatum returns {REBATE_PERCENT}% of
+                    that spread to you in PRIV, settled on Robinhood Chain.
+                  </p>
+                </div>
+
+                <div className="pv-rebate-chains">
+                  {BRIDGE_CHAINS.map((chain) => (
+                    <div className="pv-rebate-chain" key={chain.id}>
+                      <span className="pv-rebate-chain-name">{chain.name}</span>
+                      <span className="pv-rebate-chain-id">Chain ID {chain.id}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pv-rebate-grid">
+                  <div className="pv-rebate-steps">
+                    {REBATE_STEPS.map((step, index) => (
+                      <div className="pv-rebate-step" key={step.title}>
+                        <div className="pv-rebate-step-index">{index + 1}</div>
+                        <div className="pv-rebate-step-body">
+                          <h3 className="pv-rebate-step-title">{step.title}</h3>
+                          <p className="pv-rebate-step-copy">{step.copy}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pv-rebate-panel">
+                    <div className="pv-rebate-panel-head">
+                      <span className="pv-rebate-panel-label">Worked example</span>
+                      <span className="pv-rebate-panel-rate">{REBATE_PERCENT}% of spread</span>
+                    </div>
+
+                    <div className="pv-rebate-rows">
+                      <div className="pv-rebate-row">
+                        <span>Route</span>
+                        <b>Base &rarr; Robinhood Chain</b>
+                      </div>
+                      <div className="pv-rebate-row">
+                        <span>Bridged</span>
+                        <b>0.1 ETH</b>
+                      </div>
+                      <div className="pv-rebate-row">
+                        <span>Relayer fee</span>
+                        <b>$0.0795</b>
+                      </div>
+                      <div className="pv-rebate-row is-muted">
+                        <span>&mdash; destination gas</span>
+                        <b>$0.0099</b>
+                      </div>
+                      <div className="pv-rebate-row">
+                        <span>&mdash; relayer spread</span>
+                        <b>$0.0695</b>
+                      </div>
+                      <div className="pv-rebate-row is-total">
+                        <span>Your rebate</span>
+                        <b>$0.0174 in PRIV</b>
+                      </div>
+                    </div>
+
+                    <p className="pv-rebate-note">
+                      Figures from a live Relay quote. Rebates accrue per bridge and are claimable in PRIV on
+                      Robinhood Chain once the bridge settles.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pv-rebate-token">
+                  <div className="pv-rebate-token-main">
+                    <span className="pv-rebate-token-symbol">PRIV</span>
+                    <span className="pv-rebate-token-name">PrivatumRH &bull; 18 decimals &bull; Robinhood Chain</span>
+                  </div>
+                  <code className="pv-rebate-token-ca">{PRIV_TOKEN_ADDRESS}</code>
                 </div>
               </div>
             </div>

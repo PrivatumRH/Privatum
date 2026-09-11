@@ -8,6 +8,7 @@ import { bundlerRouter } from "./routes/bundler";
 import { downloadsRouter } from "./routes/downloads";
 import { updatesRouter } from "./routes/updates";
 import { stakingRouter } from "./routes/staking";
+import { bridgeRouter } from "./routes/bridge";
 
 export function createApp(): Express {
   const app = express();
@@ -32,6 +33,7 @@ export function createApp(): Express {
   app.use(downloadsRouter);
   app.use(updatesRouter);
   app.use(stakingRouter);
+  app.use(bridgeRouter);
 
   return app;
 }

@@ -136,3 +136,104 @@ export interface RecoveryOptions {
   entryPointAddress?: Address;
   nonce?: bigint;
 }
+
+/* ---------- Cross-chain bridging & PRIV rebates ---------- */
+
+/** Chains Privatum bridges between (Ethereum, Base, Arbitrum, Robinhood Chain). */
+export type BridgeChainId = 1 | 8453 | 42161 | 4663;
+
+export type BridgeTradeType = "EXACT_INPUT" | "EXACT_OUTPUT";
+
+export interface BridgeQuoteRequest {
+  user: Address;
+  recipient?: Address;
+  originChainId: number;
+  destinationChainId: number;
+  /** Token address on the origin chain. Defaults to native. */
+  originCurrency?: Address;
+  /** Token address on the destination chain. Defaults to native. */
+  destinationCurrency?: Address;
+  /** Amount in the smallest unit of the origin currency, as a decimal string. */
+  amount: string;
+  tradeType?: BridgeTradeType;
+  /** Wallet that accrues Privatum's app fee with Relay. */
+  appFeeRecipient?: Address;
+  /** Privatum's app fee in basis points. */
+  appFeeBps?: number;
+}
+
+export interface RelayFeeAmount {
+  currency?: {
+    chainId?: number;
+    address?: string;
+    symbol?: string;
+    name?: string;
+    decimals?: number;
+  };
+  amount?: string;
+  amountFormatted?: string;
+  amountUsd?: string;
+  minimumAmount?: string;
+}
+
+export interface RelayQuoteFees {
+  gas?: RelayFeeAmount;
+  relayer?: RelayFeeAmount;
+  relayerGas?: RelayFeeAmount;
+  /** The relayer's margin above gas - the spread the rebate is calculated on. */
+  relayerService?: RelayFeeAmount;
+  app?: RelayFeeAmount;
+}
+
+export interface RelayQuoteStep {
+  id?: string;
+  requestId?: string;
+  kind?: string;
+  items?: unknown[];
+}
+
+export interface RelayQuoteResponse {
+  requestId?: string;
+  steps?: RelayQuoteStep[];
+  fees?: RelayQuoteFees;
+  details?: {
+    currencyIn?: unknown;
+    currencyOut?: unknown;
+    totalImpact?: { usd?: string; percent?: string };
+    timeEstimate?: number;
+    rate?: string;
+  };
+}
+
+export interface BridgeRebateEstimate {
+  /** Relayer spread on this route, as a decimal USD string. */
+  spreadUsd: string;
+  /** Rebate owed to the user, as a decimal USD string. */
+  rebateUsd: string;
+  rebateBps: number;
+  /** Rebates are always denominated for payout in PRIV. */
+  rebateCurrency: string;
+  /** PRIV only exists on Robinhood Chain, so rebates settle there. */
+  settlementChainId: number;
+}
+
+export interface BridgeQuote {
+  requestId: string | null;
+  quote: RelayQuoteResponse;
+  rebate: BridgeRebateEstimate;
+}
+
+export type RelayIntentStatusValue =
+  | "unknown"
+  | "pending"
+  | "success"
+  | "failure"
+  | "refund"
+  | "delayed";
+
+export interface RelayIntentStatus {
+  status: RelayIntentStatusValue;
+  details?: string;
+  txHashes?: string[];
+  inTxHashes?: string[];
+}
