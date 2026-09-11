@@ -6,7 +6,7 @@
       "name": "privatum-desktop",
       "dependencies": {
         "@noble/curves": "^2.4.0",
-        "@privatumrh/robinhood-chain-sdk": "^0.1.2",
+        "@privatumrh/robinhood-chain-sdk": "^0.1.3",
         "@tauri-apps/api": "^2.0.0",
         "@types/qrcode": "^1.5.6",
         "lucide-react": "^0.475.0",
@@ -147,7 +147,7 @@
 
     "@nodelib/fs.walk": ["@nodelib/fs.walk@1.2.8", "", { "dependencies": { "@nodelib/fs.scandir": "2.1.5", "fastq": "^1.6.0" } }, "sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg=="],
 
-    "@privatumrh/robinhood-chain-sdk": ["@privatumrh/robinhood-chain-sdk@0.1.2", "", { "dependencies": { "viem": "^2.23.0" } }, "sha512-r5JyafdqFsS9lNGf0U/7d3j4dyNE0NUBJmfBD+/ZcrocIcp+ZASQXhyHcqORAqJMdA+my45dkLL+5a8wmtE5/Q=="],
+    "@privatumrh/robinhood-chain-sdk": ["@privatumrh/robinhood-chain-sdk@0.1.3", "", { "dependencies": { "viem": "^2.23.0" } }, "sha512-KRquHZnNIfPERUIyDMMDbFn6skgfIraIcAwCY7TL3BZAus+8z1iFF1sD4LgcbLfBrIn13HpyE2uk+2JJYhj4Lg=="],
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.0-beta.27", "", {}, "sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA=="],
 
