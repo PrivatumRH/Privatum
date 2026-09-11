@@ -363,7 +363,18 @@ export function App() {
   const [totpCode, setTotpCode] = useState<string>("");
   const [totpVerified, setTotpVerified] = useState<boolean>(() => {
     try {
-      return localStorage.getItem("privatum_totp_enrolled") === "true";
+      const activeId = localStorage.getItem("privatum_active_account_id") || "primary";
+      const activeAddr = localStorage.getItem(`privatum_wallet_address_${activeId}`) || localStorage.getItem("privatum_wallet_address");
+      if (activeAddr && localStorage.getItem(`privatum_totp_enrolled_${activeAddr.toLowerCase()}`) === "true") {
+        return true;
+      }
+      if (localStorage.getItem(`privatum_totp_enrolled_${activeId}`) === "true") {
+        return true;
+      }
+      if (activeId === "primary" && localStorage.getItem("privatum_totp_enrolled") === "true") {
+        return true;
+      }
+      return false;
     } catch {
       return false;
     }
@@ -627,6 +638,12 @@ export function App() {
           // Purge any legacy Shard C key from device storage
           localStorage.removeItem("privatum_shard_c_key");
 
+          const isTotp =
+            localStorage.getItem(`privatum_totp_enrolled_${savedAddress.toLowerCase()}`) === "true" ||
+            localStorage.getItem(`privatum_totp_enrolled_${activeId}`) === "true" ||
+            (activeId === "primary" && localStorage.getItem("privatum_totp_enrolled") === "true");
+          setTotpVerified(isTotp);
+
           fetchBalances(savedAddress as Address);
         }
       } catch (err) {
@@ -690,6 +707,15 @@ export function App() {
       setShardAPrivKey(savedShardA);
       setApiKey(savedApiKey);
       setShardCAddress(savedShardC);
+
+      const isTotp =
+        localStorage.getItem(`privatum_totp_enrolled_${savedAddress.toLowerCase()}`) === "true" ||
+        localStorage.getItem(`privatum_totp_enrolled_${targetId}`) === "true" ||
+        (targetId === "primary" && localStorage.getItem("privatum_totp_enrolled") === "true");
+      setTotpVerified(isTotp);
+      setTotpSecret(null);
+      setTotpQrCode(null);
+      setTotpCode("");
 
       fetchBalances(savedAddress as Address);
       const accName = accounts.find((a) => a.id === targetId)?.name || shortenAddress(savedAddress);
@@ -791,8 +817,17 @@ export function App() {
         setApiKey(newWallet.apiKey);
         setShardCAddress(shardC.address);
         setShardCPrivKey(shardC.privateKey);
+        setTotpVerified(false);
+        setTotpSecret(null);
+        setTotpQrCode(null);
+        setTotpCode("");
 
         try {
+          localStorage.setItem(`privatum_totp_enrolled_${newAccId}`, "false");
+          localStorage.setItem(`privatum_totp_enrolled_${newWallet.address.toLowerCase()}`, "false");
+          if (newAccId === "primary") {
+            localStorage.setItem("privatum_totp_enrolled", "false");
+          }
           localStorage.setItem(`privatum_transactions_${newWallet.address.toLowerCase()}`, JSON.stringify([]));
         } catch {}
 
@@ -1391,7 +1426,13 @@ export function App() {
       if (success) {
         setTotpVerified(true);
         try {
-          localStorage.setItem("privatum_totp_enrolled", "true");
+          localStorage.setItem(`privatum_totp_enrolled_${activeAccountId}`, "true");
+          if (wallet.address) {
+            localStorage.setItem(`privatum_totp_enrolled_${wallet.address.toLowerCase()}`, "true");
+          }
+          if (activeAccountId === "primary") {
+            localStorage.setItem("privatum_totp_enrolled", "true");
+          }
         } catch {}
         addToast("success", "2FA Enabled", "Emergency recovery with TOTP is now active.");
       }
