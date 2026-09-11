@@ -66,6 +66,7 @@ jobs:
           echo "semver=${SEMVER}" >> $GITHUB_OUTPUT
           echo "release_title=${REL_TITLE:-PRIVATUM Desktop $TAG}" >> $GITHUB_OUTPUT
           echo "release_body=${REL_BODY}" >> $GITHUB_OUTPUT
+          echo "VITE_APP_VERSION=${SEMVER}" >> $GITHUB_ENV
 
           python3 -c "
           import json, re
