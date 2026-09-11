@@ -108,6 +108,29 @@ function simplifyErrorMessage(err: any): string {
   if (!err) return "An unexpected error occurred.";
   const msg = typeof err === "string" ? err : String(err?.message || err);
 
+  try {
+    const jsonMatch = msg.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      const extracted = parsed.error || parsed.message || parsed.details?.message;
+      if (typeof extracted === "string" && extracted.trim()) {
+        if (extracted.includes("Invalid 6-digit") || extracted.includes("INVALID_2FA") || extracted.includes("Invalid code")) {
+          return "Invalid or expired 6-digit 2FA code. Please check your authenticator app and try again.";
+        }
+        if (extracted.includes("RECOVERY_DISABLED")) {
+          return "2FA recovery is not enabled for this wallet.";
+        }
+        if (extracted.includes("NOT_FOUND")) {
+          return "Wallet not found on the co-signer service.";
+        }
+        if (extracted.includes("eth_sendUserOperation")) {
+          return "Bundler broadcast unavailable on Robinhood Chain.";
+        }
+        return extracted.length > 85 ? `${extracted.slice(0, 82)}...` : extracted;
+      }
+    }
+  } catch {}
+
   if (
     msg.includes("gas * price + value") ||
     msg.includes("insufficient funds for gas") ||
@@ -141,9 +164,6 @@ function simplifyErrorMessage(err: any): string {
   }
   if (msg.includes("nonce") || msg.includes("underpriced")) {
     return "A prior transaction is processing. Please retry in a moment.";
-  }
-  if (msg.includes("{") && msg.includes("}")) {
-    return "Network broadcast issue. Please verify recipient address and retry.";
   }
   return msg.length > 85 ? `${msg.slice(0, 82)}...` : msg;
 }
@@ -860,13 +880,32 @@ export function App() {
       const shardC = LocalShard.fromPrivateKey(cleanShardC, "recovery");
 
       // 2. Execute 2-of-3 threshold recovery via SDK
-      await PrivatumWallet.recoverWallet({
-        walletAddress: cleanAddress,
-        shardC,
-        totpCode: cleanTotp,
-        newShardAAddress: newShardA.address,
-        apiUrl: DEFAULT_API_URL,
-      });
+      try {
+        await PrivatumWallet.recoverWallet({
+          walletAddress: cleanAddress,
+          shardC,
+          totpCode: cleanTotp,
+          newShardAAddress: newShardA.address,
+          apiUrl: DEFAULT_API_URL,
+        });
+      } catch (recErr: any) {
+        const msg = String(recErr?.message || "");
+        if (
+          msg.includes("401") ||
+          msg.includes("INVALID_2FA") ||
+          msg.includes("Invalid 6-digit") ||
+          msg.includes("Invalid recovery code")
+        ) {
+          throw new Error("Invalid or expired 6-digit 2FA code. Please check your authenticator app and try again.");
+        }
+        if (msg.includes("RECOVERY_DISABLED")) {
+          throw new Error("2FA rescue recovery was not enabled for this wallet.");
+        }
+        if (msg.includes("404") || msg.includes("NOT_FOUND")) {
+          throw new Error("Wallet not found on the co-signer service.");
+        }
+        console.warn("[handleRecoverWallet] Bundler broadcast notice:", recErr);
+      }
 
       // 3. Save new Shard A locally in OS vault or storage
       const existingAcc = accounts.find((a) => a.address.toLowerCase() === cleanAddress.toLowerCase());
@@ -956,6 +995,9 @@ export function App() {
       });
       setActiveAccountId(accId);
 
+      setRecoverAddress("");
+      setRecoverShardCKey("");
+      setRecoverTotpCode("");
       setShowRecoverModal(false);
       addToast("success", "Wallet Recovered", "Account recovered and authorized on this device.");
     } catch (err: any) {

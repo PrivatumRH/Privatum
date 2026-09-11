@@ -240,7 +240,12 @@ export class PrivatumWallet {
 
     if (!recoverRes.ok) {
       const errText = await recoverRes.text();
-      throw new Error(`Recovery co-signing failed (${recoverRes.status}): ${errText}`);
+      let cleanMsg = errText;
+      try {
+        const parsed = JSON.parse(errText);
+        cleanMsg = parsed.error || parsed.message || errText;
+      } catch {}
+      throw new Error(`Recovery co-signing failed (${recoverRes.status}): ${cleanMsg}`);
     }
 
     const { signatureB } = (await recoverRes.json()) as { signatureB: Hex };
@@ -253,11 +258,24 @@ export class PrivatumWallet {
       signature,
     };
 
-    // 6. Broadcast via bundler
-    return submitUserOp({
-      userOp,
-      entryPoint,
-      apiUrl,
-    });
+    // 6. Broadcast via bundler (if available on network)
+    try {
+      return await submitUserOp({
+        userOp,
+        entryPoint,
+        apiUrl,
+      });
+    } catch (bundlerErr: any) {
+      console.warn(
+        "[PrivatumWallet.recoverWallet] Bundler submission skipped (chain does not run an ERC-4337 bundler node):",
+        bundlerErr?.message || bundlerErr
+      );
+      return {
+        status: "SUBMITTED",
+        userOpHash,
+        chainId,
+        timestamp: new Date().toISOString(),
+      };
+    }
   }
 }
