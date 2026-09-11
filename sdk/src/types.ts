@@ -237,3 +237,57 @@ export interface RelayIntentStatus {
   txHashes?: string[];
   inTxHashes?: string[];
 }
+
+export type PayLinkStatus =
+  | "active"
+  | "sweeping"
+  | "settled"
+  | "expired"
+  | "cancelled";
+
+export type PayLinkRouteMode = "direct" | "pool_shielded";
+
+export interface CreatePayLinkParams {
+  recipient_address: Address;
+  token_address?: Address;
+  token_symbol?: string;
+  amount?: number | string;
+  memo?: string;
+  route_mode?: PayLinkRouteMode;
+  expires_in_hours?: number;
+}
+
+export interface CreatePayLinkResponse {
+  success: boolean;
+  slug: string;
+  deposit_address: Address;
+  token_address: Address;
+  token_symbol: string;
+  expected_amount: number | null;
+  memo: string | null;
+  route_mode: PayLinkRouteMode;
+  expires_at: string;
+  pay_url: string;
+}
+
+export interface PublicPayLink {
+  slug: string;
+  token_address: Address;
+  token_symbol: string;
+  expected_amount: string | null;
+  memo: string | null;
+  deposit_address: Address;
+  route_mode: PayLinkRouteMode;
+  status: PayLinkStatus;
+  received_amount?: string | null;
+  swept_amount?: string | null;
+  sweep_tx_hash?: string | null;
+  expires_at: string;
+  settled_at?: string | null;
+  created_at: string;
+}
+
+export interface UserPayLinkItem extends PublicPayLink {
+  deposit_tx_hash?: string | null;
+}
+

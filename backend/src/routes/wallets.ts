@@ -72,7 +72,14 @@ walletsRouter.post("/v1/wallets", async (req: Request, res: Response): Promise<v
       threshold: 2,
       apiKey,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === "23505") {
+      res.status(409).json({
+        error: "Wallet is already registered",
+        code: "ALREADY_REGISTERED",
+      });
+      return;
+    }
     console.error("[wallets] Registration error:", error);
     res.status(500).json({
       error: "Internal server error during wallet registration",

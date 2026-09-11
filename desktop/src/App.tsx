@@ -35,6 +35,7 @@ import {
   Scan,
   AlertTriangle,
   Zap,
+  Link2,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -55,6 +56,7 @@ import { CrossChainTab } from "./components/CrossChainTab";
 import { NftTab } from "./components/NftTab";
 import { RwaTab } from "./components/RwaTab";
 import { StakingTab } from "./components/StakingTab";
+import { PayLinksTab } from "./components/PayLinksTab";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { StealthScannerModal } from "./components/StealthScannerModal";
 import { buildStealthSendBatch, parseMetaAddress } from "./lib/stealth";
@@ -70,6 +72,8 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.5": "Multi-Wallet & Keychain",
   "0.1.6": "Robinhood RWA Registry",
   "0.1.7": "Gasless Staking & Protocol Sponsor",
+  "0.1.8": "Bridge Spread Rebates",
+  "0.1.9": "Disposable Pay Links",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -234,7 +238,7 @@ function TokenAvatar({ symbol, name, iconUrl, size = "md", className = "" }: Tok
 export function App() {
   const [showSplash, setShowSplash] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<
-    "wallet" | "swaps" | "cross_chain" | "nfts" | "rwa" | "tokens" | "shards" | "recovery" | "gasless"
+    "wallet" | "swaps" | "cross_chain" | "nfts" | "rwa" | "tokens" | "shards" | "recovery" | "gasless" | "pay_links"
   >("wallet");
 
   // Versioning and feature release stage preview
@@ -1971,6 +1975,21 @@ export function App() {
               </button>
             )}
 
+            {/* Disposable Pay Links ("Hide My Wallet") (v0.1.9) */}
+            {isFeatureActive("disposable_pay_links", appVersion, previewVersion) && (
+              <button
+                onClick={() => setActiveTab("pay_links")}
+                title="Disposable Pay Links (Hide My Wallet)"
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer relative ${
+                  activeTab === "pay_links"
+                    ? "bg-white/10 text-white border border-white/15"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <Link2 className="w-5 h-5" />
+              </button>
+            )}
+
             <button
               onClick={() => setActiveTab("shards")}
               title="Shard Health"
@@ -2617,6 +2636,15 @@ export function App() {
             client={publicClient}
             addToast={addToast}
             onStakingUpdated={() => fetchStakingStatus(wallet.address as Address)}
+          />
+        )}
+
+        {/* Tab: Disposable Pay Links (v0.1.9) */}
+        {activeTab === "pay_links" && wallet && (
+          <PayLinksTab
+            wallet={wallet}
+            addToast={addToast}
+            onBalanceRefresh={() => fetchBalances(wallet.address as Address)}
           />
         )}
       </main>
