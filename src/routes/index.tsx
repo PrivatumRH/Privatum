@@ -494,15 +494,31 @@ function LandingPage() {
                 role="button"
                 tabIndex={0}
                 aria-label="Toggle mobile menu"
+                style={{ cursor: "pointer" }}
               >
                 <div className="hamburger-lines">
-                  <div className="hamburger-line top" />
-                  <div className="hamburger-line middle" />
-                  <div className="hamburger-line bottom" />
+                  <div
+                    className="hamburger-line top"
+                    style={{
+                      transform: mobileMenuOpen ? "translateY(7px) rotate(45deg)" : "none",
+                    }}
+                  />
+                  <div
+                    className="hamburger-line middle"
+                    style={{
+                      opacity: mobileMenuOpen ? 0 : 1,
+                    }}
+                  />
+                  <div
+                    className="hamburger-line bottom"
+                    style={{
+                      transform: mobileMenuOpen ? "translateY(-7px) rotate(-45deg)" : "none",
+                    }}
+                  />
                 </div>
               </div>
 
-              <div className="nav-buttons-wrap" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div className="nav-buttons-wrap">
                 <a
                   href="https://github.com/PrivatumRH/privatum"
                   target="_blank"
@@ -537,7 +553,7 @@ function LandingPage() {
                   rel="noopener noreferrer"
                   aria-label="npm SDK Package"
                   title="SDK on npm"
-                  className="w-inline-block on-desktop"
+                  className="w-inline-block"
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -575,22 +591,105 @@ function LandingPage() {
             className="mobile-nav-panel"
             style={{
               position: "absolute",
-              top: "100%",
+              top: "calc(100% + 8px)",
               left: "1rem",
               right: "1rem",
-              background: "#fff",
-              borderRadius: "16px",
-              padding: "1.5rem",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.15)",
+              background: "rgba(255, 255, 255, 0.98)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              borderRadius: "20px",
+              padding: "1.25rem 1.25rem 1.5rem",
+              boxShadow: "0 24px 48px -12px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.06)",
               zIndex: 1000,
               display: "flex",
               flexDirection: "column",
               gap: "1.25rem",
             }}
           >
+            {/* Top Quick Actions Section */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+              {/* Primary Download Button */}
+              <DownloadCta
+                style={{
+                  width: "100%",
+                  justifyContent: "center",
+                  padding: "12px 20px",
+                  fontSize: "15px",
+                  fontWeight: 600,
+                }}
+                href="#download"
+                onClick={() => setMobileMenuOpen(false)}
+              />
+
+              {/* GitHub & npm SDK Buttons Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.625rem" }}>
+                <a
+                  href="https://github.com/PrivatumRH/privatum"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-label="GitHub Repository"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    height: "44px",
+                    borderRadius: "12px",
+                    border: "1px solid rgba(0, 0, 0, 0.12)",
+                    background: "#f8f9fa",
+                    color: "#0e121b",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                  }}
+                >
+                  <svg fill="currentColor" viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+                    <path
+                      fillRule="evenodd"
+                      clipRule="evenodd"
+                      d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+                    />
+                  </svg>
+                  <span>GitHub</span>
+                </a>
+
+                <a
+                  href="https://www.npmjs.com/package/@privatumrh/robinhood-chain-sdk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-label="npm SDK Package"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                    height: "44px",
+                    borderRadius: "12px",
+                    border: "1px solid rgba(203, 56, 55, 0.25)",
+                    background: "rgba(203, 56, 55, 0.08)",
+                    color: "#cb3837",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                  }}
+                >
+                  <svg viewBox="0 0 780 250" width="20" height="9" fill="currentColor" aria-hidden="true">
+                    <path d="M240,250h100v-50h100V0H240V250z M340,50h50v100h-50V50z M480,0v200h100V50h50v150h50V50h50v150h50V0H480z M0,200h100V50h50v150h50V0H0V200z" />
+                  </svg>
+                  <span>npm SDK</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Subtle Divider */}
+            <div style={{ height: "1px", background: "rgba(0, 0, 0, 0.08)" }} />
+
+            {/* Navigation Links Grid */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <strong style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#687182" }}>Pages</strong>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+                <strong style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#687182", letterSpacing: "0.05em" }}>Pages</strong>
                 <a className="link mob" href="#overview" onClick={() => setMobileMenuOpen(false)}>
                   Overview
                 </a>
@@ -607,8 +706,8 @@ function LandingPage() {
                   Docs
                 </a>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <strong style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#687182" }}>Product</strong>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+                <strong style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#687182", letterSpacing: "0.05em" }}>Features</strong>
                 <a
                   aria-disabled="true"
                   className={`link mob ${soonTip === "Private Send" ? "is-soon" : ""}`}
@@ -636,29 +735,10 @@ function LandingPage() {
                 >
                   Swaps
                 </a>
-                <a className="link mob" href="#download" onClick={() => setMobileMenuOpen(false)}>
-                  Download App
-                </a>
                 <a className="link mob" href="/docs.html#sdk" onClick={() => setMobileMenuOpen(false)}>
                   Open SDK
                 </a>
-                <a
-                  className="link mob"
-                  href="https://www.npmjs.com/package/@privatumrh/robinhood-chain-sdk"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  SDK on npm &rarr;
-                </a>
               </div>
-            </div>
-            <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
-              <DownloadCta
-                style={{ flex: 1, textAlign: "center" }}
-                href="#download"
-                onClick={() => setMobileMenuOpen(false)}
-              />
             </div>
           </div>
         )}
