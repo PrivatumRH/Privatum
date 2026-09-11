@@ -8,6 +8,7 @@ export interface TokenInfo {
   native?: boolean;
   isRwa?: boolean;
   color?: string;
+  icon?: string;
 }
 
 export const USDG_ADDRESS: Address = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
@@ -20,6 +21,7 @@ export const TOKENS: TokenInfo[] = [
     address: USDG_ADDRESS,
     decimals: 6,
     color: "#22c55e",
+    icon: "/usdg_logo.png",
   },
   {
     symbol: "ETH",
@@ -28,6 +30,7 @@ export const TOKENS: TokenInfo[] = [
     decimals: 18,
     native: true,
     color: "#627eea",
+    icon: "/eth.jpeg",
   },
   {
     symbol: "AAPL",
@@ -36,6 +39,7 @@ export const TOKENS: TokenInfo[] = [
     decimals: 18,
     isRwa: true,
     color: "#a3a3a3",
+    icon: "/apple.png",
   },
   {
     symbol: "TSLA",
@@ -44,6 +48,7 @@ export const TOKENS: TokenInfo[] = [
     decimals: 18,
     isRwa: true,
     color: "#ef4444",
+    icon: "/tesla.png",
   },
   {
     symbol: "NVDA",
@@ -52,6 +57,7 @@ export const TOKENS: TokenInfo[] = [
     decimals: 18,
     isRwa: true,
     color: "#10b981",
+    icon: "/nvidia.png",
   },
   {
     symbol: "GOOGL",
@@ -60,6 +66,7 @@ export const TOKENS: TokenInfo[] = [
     decimals: 18,
     isRwa: true,
     color: "#4285f4",
+    icon: "/google.png",
   },
   {
     symbol: "AMZN",
@@ -68,6 +75,7 @@ export const TOKENS: TokenInfo[] = [
     decimals: 18,
     isRwa: true,
     color: "#f59e0b",
+    icon: "/amazon.png",
   },
   {
     symbol: "MSFT",
@@ -76,6 +84,7 @@ export const TOKENS: TokenInfo[] = [
     decimals: 18,
     isRwa: true,
     color: "#00a4ef",
+    icon: "/microsoft.png",
   },
   {
     symbol: "META",
@@ -84,6 +93,7 @@ export const TOKENS: TokenInfo[] = [
     decimals: 18,
     isRwa: true,
     color: "#0668e1",
+    icon: "/meta.jpg",
   },
   {
     symbol: "COIN",
@@ -92,14 +102,16 @@ export const TOKENS: TokenInfo[] = [
     decimals: 18,
     isRwa: true,
     color: "#0052ff",
+    icon: "/rh-icon.png",
   },
   {
     symbol: "SPACEX",
-    name: "SpaceX (Frontier)",
+    name: "SpaceX",
     address: "0x4a0E65A3EcceC6dBe60AE065F2e7bb85Fae35eEa",
     decimals: 18,
     isRwa: true,
     color: "#6366f1",
+    icon: "/spacex.png",
   },
 ];
 

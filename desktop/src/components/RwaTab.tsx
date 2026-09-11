@@ -2,14 +2,9 @@ import React, { useState, useEffect } from "react";
 import {
   TrendingUp,
   ArrowRight,
-  ExternalLink,
-  Copy,
-  Check,
-  ShieldCheck,
 } from "lucide-react";
 import { formatUnits, type Address, type PublicClient } from "viem";
 import { TOKENS, type TokenInfo } from "../lib/tokens";
-import { robinhoodChain } from "@privatumrh/robinhood-chain-sdk";
 
 interface RwaTabProps {
   client: PublicClient;
@@ -22,7 +17,6 @@ export function RwaTab({
   client,
   walletAddress,
   onTradeToken,
-  onCopyAddress,
 }: RwaTabProps) {
   const [balances, setBalances] = useState<Record<string, string>>({});
   const equities = TOKENS.filter((t) => t.isRwa);
@@ -65,10 +59,6 @@ export function RwaTab({
     };
   }, [client, walletAddress, equities]);
 
-  function shorten(addr: string) {
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  }
-
   return (
     <div className="flex flex-col gap-6 max-w-4xl mx-auto w-full p-4">
       {/* Header */}
@@ -79,12 +69,9 @@ export function RwaTab({
             <span>Robinhood Tokenized Equities & RWA</span>
           </h2>
           <p className="text-xs text-neutral-400">
-            Institutional real-world assets deployed natively on Robinhood Chain
+            Real-world assets deployed natively on Robinhood Chain
           </p>
         </div>
-        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-          <ShieldCheck className="w-3.5 h-3.5" /> Verified On-Chain
-        </span>
       </div>
 
       {/* Equities List */}
@@ -95,53 +82,33 @@ export function RwaTab({
             <div
               key={eq.symbol}
               onClick={() => onTradeToken(eq.symbol)}
-              className="p-4 rounded-2xl bg-neutral-900/70 border border-white/10 hover:border-white/20 hover:bg-neutral-900/90 transition-all cursor-pointer backdrop-blur-xl flex items-center justify-between group shadow-lg active:scale-[0.99]"
+              className="p-4 rounded-2xl bg-[#181a22] border border-white/[0.08] hover:border-white/20 hover:bg-[#181a22]/90 transition-all cursor-pointer flex items-center justify-between group shadow-lg active:scale-[0.99]"
             >
               <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-sm shadow-md"
-                  style={{ backgroundColor: eq.color || "#3b82f6" }}
-                >
-                  {eq.symbol.slice(0, 2)}
-                </div>
+                {eq.icon ? (
+                  <img
+                    src={eq.icon}
+                    alt={eq.symbol}
+                    className="w-10 h-10 rounded-xl object-cover shrink-0 bg-neutral-900 border border-white/10"
+                  />
+                ) : (
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-sm shrink-0 shadow-md"
+                    style={{ backgroundColor: eq.color || "#3b82f6" }}
+                  >
+                    {eq.symbol.slice(0, 2)}
+                  </div>
+                )}
 
                 <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-white text-sm group-hover:text-red-400 transition-colors">
-                      {eq.symbol}
-                    </span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-neutral-300 font-mono">
-                      RWA
-                    </span>
-                  </div>
-                  <span className="text-xs text-neutral-400">{eq.name}</span>
-                  <div className="flex items-center gap-1 text-[10px] text-neutral-500 font-mono mt-0.5">
-                    <span>{shorten(eq.address)}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onCopyAddress(eq.address);
-                      }}
-                      className="p-0.5 hover:text-white"
-                      title="Copy Token Contract"
-                    >
-                      <Copy className="w-2.5 h-2.5" />
-                    </button>
-                    <a
-                      href={`${robinhoodChain.blockExplorers.default.url}/token/${eq.address}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="p-0.5 hover:text-white"
-                      title="Explorer"
-                    >
-                      <ExternalLink className="w-2.5 h-2.5" />
-                    </a>
-                  </div>
+                  <span className="font-bold text-white text-sm group-hover:text-red-400 transition-colors">
+                    {eq.name}
+                  </span>
+                  <span className="text-xs text-neutral-400 font-mono">{eq.symbol}</span>
                 </div>
               </div>
 
-              <div className="flex flex-col items-end gap-1.5">
+              <div className="flex items-center gap-4">
                 <div className="flex flex-col items-end">
                   <span className="text-[10px] uppercase font-bold text-neutral-500">Balance</span>
                   <span className="font-mono text-sm font-semibold text-white">
@@ -149,9 +116,8 @@ export function RwaTab({
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1 text-xs font-semibold text-neutral-400 group-hover:text-red-400 transition-colors">
-                  <span>Trade</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-neutral-400 group-hover:text-white group-hover:border-white/20 group-hover:bg-white/10 transition">
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </div>
               </div>
             </div>
