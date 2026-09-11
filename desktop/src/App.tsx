@@ -335,7 +335,9 @@ export function App() {
   const [showRecoverModal, setShowRecoverModal] = useState<boolean>(false);
   const [receiveQrCode, setReceiveQrCode] = useState<string | null>(null);
 
-  // Recovery Form
+  // Recovery / Restore Form
+  const [recoverMode, setRecoverMode] = useState<"import" | "recover">("import");
+  const [importKey, setImportKey] = useState<string>("");
   const [recoverAddress, setRecoverAddress] = useState<string>("");
   const [recoverShardCKey, setRecoverShardCKey] = useState<string>("");
   const [recoverTotpCode, setRecoverTotpCode] = useState<string>("");
@@ -969,6 +971,115 @@ export function App() {
     }
   };
 
+  const handleImportPrivateKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanKey = importKey.trim();
+    if (!cleanKey || !cleanKey.startsWith("0x") || cleanKey.length !== 66) {
+      addToast("error", "Invalid Key", "Please enter a valid 64-character 0x-prefixed private key.");
+      return;
+    }
+
+    setIsRecovering(true);
+    try {
+      const account = privateKeyToAccount(cleanKey as Hex);
+      const cleanAddress = account.address.toLowerCase() as Address;
+      const shardA = LocalShard.fromPrivateKey(cleanKey as Hex, "device");
+
+      const existingAcc = accounts.find((a) => a.address.toLowerCase() === cleanAddress);
+      const accId = existingAcc ? existingAcc.id : `acc-${Date.now()}`;
+
+      if (isTauri()) {
+        try {
+          await invoke("save_shard_to_keychain", { accountId: accId, key: cleanKey });
+          await invoke("save_shard_to_keychain", { accountId: cleanAddress, key: cleanKey });
+        } catch {}
+        if (accId === "primary") {
+          try {
+            await invoke("save_shard_a", { key: cleanKey });
+          } catch {}
+        }
+      }
+
+      localStorage.setItem(`privatum_shard_a_${accId}`, cleanKey);
+      localStorage.setItem(`privatum_shard_a_${cleanAddress}`, cleanKey);
+      localStorage.setItem(`privatum_wallet_address_${accId}`, cleanAddress);
+      if (accId === "primary") {
+        localStorage.setItem("privatum_shard_a", cleanKey);
+        localStorage.setItem("privatum_wallet_address", cleanAddress);
+      }
+
+      // Fetch wallet info from cosigner
+      let shardBAddress: Address = "0x0000000000000000000000000000000000000000";
+      let shardCAddr: Address = "0x0000000000000000000000000000000000000000";
+      let apiKeyVal = "";
+      try {
+        const infoRes = await fetch(`${DEFAULT_API_URL}/v1/wallets/${cleanAddress}`);
+        if (infoRes.ok) {
+          const info = await infoRes.json();
+          shardBAddress = (info.shardBAddress || shardBAddress) as Address;
+          shardCAddr = (info.shardCAddress || shardCAddr) as Address;
+          apiKeyVal = info.apiKey || "";
+          localStorage.setItem(`privatum_shard_b_address_${accId}`, shardBAddress);
+          localStorage.setItem(`privatum_shard_c_address_${accId}`, shardCAddr);
+          localStorage.setItem(`privatum_api_key_${accId}`, apiKeyVal);
+        }
+      } catch {}
+
+      const shardB = new RemoteCosigner(shardBAddress, cleanAddress, DEFAULT_API_URL);
+      const importedWallet = new PrivatumWallet({
+        address: cleanAddress,
+        shardA,
+        shardB,
+        shardCAddress: shardCAddr,
+        apiKey: apiKeyVal,
+      });
+
+      setWallet(importedWallet);
+      setWalletAddress(cleanAddress);
+      setShardAPrivKey(cleanKey as Hex);
+      setApiKey(apiKeyVal);
+      if (shardCAddr !== "0x0000000000000000000000000000000000000000") {
+        setShardCAddress(shardCAddr);
+      }
+      fetchBalances(cleanAddress);
+
+      // Register in accounts list
+      setAccounts((prev) => {
+        const colors = ["#ef4444", "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b"];
+        const filtered = prev.filter((a) => a.address !== "0x0000000000000000000000000000000000000000");
+        const exists = filtered.find((a) => a.address.toLowerCase() === cleanAddress);
+        let updated: WalletAccount[];
+        if (exists) {
+          updated = filtered.map((a) => (a.address.toLowerCase() === cleanAddress ? { ...a, id: accId } : a));
+        } else {
+          const newAcc: WalletAccount = {
+            id: accId,
+            name: `Wallet ${filtered.length + 1}`,
+            address: cleanAddress,
+            color: colors[filtered.length % colors.length],
+            createdAt: Date.now(),
+          };
+          updated = [...filtered, newAcc];
+        }
+        try {
+          localStorage.setItem("privatum_accounts", JSON.stringify(updated));
+          localStorage.setItem("privatum_active_account_id", accId);
+        } catch {}
+        return updated;
+      });
+      setActiveAccountId(accId);
+
+      setImportKey("");
+      setShowRecoverModal(false);
+      addToast("success", "Wallet Imported", `Imported ${cleanAddress.slice(0, 6)}...${cleanAddress.slice(-4)} successfully.`);
+    } catch (err: any) {
+      console.error("Import failed:", err);
+      addToast("error", "Import Failed", simplifyErrorMessage(err));
+    } finally {
+      setIsRecovering(false);
+    }
+  };
+
   const handleRecoverWallet = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!recoverAddress || !recoverShardCKey || !recoverTotpCode) {
@@ -996,6 +1107,14 @@ export function App() {
       const cleanAddress = recoverAddress.trim().toLowerCase() as Address;
       const cleanShardC = recoverShardCKey.trim() as Hex;
       const cleanTotp = recoverTotpCode.trim();
+
+      // Guard: Check if wallet has smart contract bytecode on Robinhood Chain
+      const bytecode = await publicClient.getBytecode({ address: cleanAddress });
+      if (!bytecode || bytecode === "0x") {
+        throw new Error(
+          `Cannot rotate keys for a standard EOA wallet (${cleanAddress.slice(0, 6)}...${cleanAddress.slice(-4)}). This address has no smart contract deployed on Robinhood Chain. If you have this wallet's private key, please use the "Import Private Key" tab to restore it.`
+        );
+      }
 
       // 1. Generate new Shard A for this client machine
       const newShardA = LocalShard.create("device");
@@ -1026,7 +1145,7 @@ export function App() {
         if (msg.includes("404") || msg.includes("NOT_FOUND")) {
           throw new Error("Wallet not found on the co-signer service.");
         }
-        console.warn("[handleRecoverWallet] Bundler broadcast notice:", recErr);
+        throw new Error(msg || "Failed to broadcast rotation transaction on Robinhood Chain.");
       }
 
       // 3. Save new Shard A locally in OS vault or storage
@@ -3001,79 +3120,145 @@ export function App() {
         </div>
       )}
 
-      {/* Modal: Recover Existing Wallet */}
+      {/* Modal: Restore / Recover Existing Wallet */}
       {showRecoverModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#181a23] border border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <KeyRound className="w-5 h-5 text-[#f64943]" />
-                <h3 className="text-base font-semibold text-white">Recover Existing Wallet</h3>
+                <h3 className="text-base font-semibold text-white">Restore Wallet</h3>
               </div>
               <button
                 onClick={() => setShowRecoverModal(false)}
-                className="text-slate-400 hover:text-white p-1 transition"
+                className="text-slate-400 hover:text-white p-1 transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Restore access on this device using your offline Shard C key and your 6-digit 2FA authenticator code.
-            </p>
+            {/* Segmented Control */}
+            <div className="flex p-1 rounded-xl bg-black/40 border border-white/10 text-xs">
+              <button
+                type="button"
+                onClick={() => setRecoverMode("import")}
+                className={`flex-1 py-1.5 rounded-lg font-medium transition cursor-pointer ${
+                  recoverMode === "import"
+                    ? "bg-[#f64943] text-white shadow-sm"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                Import Private Key
+              </button>
+              <button
+                type="button"
+                onClick={() => setRecoverMode("recover")}
+                className={`flex-1 py-1.5 rounded-lg font-medium transition cursor-pointer ${
+                  recoverMode === "recover"
+                    ? "bg-[#f64943] text-white shadow-sm"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                2FA Smart Recovery
+              </button>
+            </div>
 
-            <form onSubmit={handleRecoverWallet} className="space-y-3.5">
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Wallet Address</label>
-                <input
-                  type="text"
-                  placeholder="0x..."
-                  value={recoverAddress}
-                  onChange={(e) => setRecoverAddress(e.target.value.trim())}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white/30"
-                />
-              </div>
+            {recoverMode === "import" ? (
+              <>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Restore an existing wallet on this device using its Shard A private key. Your address and signing permissions will match immediately.
+                </p>
 
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Shard C Private Key</label>
-                <input
-                  type="password"
-                  placeholder="0x..."
-                  value={recoverShardCKey}
-                  onChange={(e) => setRecoverShardCKey(e.target.value.trim())}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white/30"
-                />
-              </div>
+                <form onSubmit={handleImportPrivateKey} className="space-y-3.5">
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Shard A Private Key</label>
+                    <input
+                      type="password"
+                      placeholder="0x..."
+                      value={importKey}
+                      onChange={(e) => setImportKey(e.target.value.trim())}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white/30 font-mono"
+                    />
+                  </div>
 
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">6-Digit Authenticator (2FA) Code</label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  placeholder="123456"
-                  value={recoverTotpCode}
-                  onChange={(e) => setRecoverTotpCode(e.target.value.replace(/\D/g, ""))}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white/30"
-                />
-              </div>
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={isRecovering || !importKey || !importKey.startsWith("0x") || importKey.length !== 66}
+                      className="w-full py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {isRecovering ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Importing Wallet...</span>
+                        </>
+                      ) : (
+                        <span>Import Wallet</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Emergency 2-of-3 threshold key rotation for deployed smart accounts using Shard C and your 6-digit 2FA authenticator code.
+                </p>
 
-              <div className="pt-2">
-                <button
-                  type="submit"
-                  disabled={isRecovering || !recoverAddress || !recoverShardCKey || recoverTotpCode.length !== 6}
-                  className="w-full py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2"
-                >
-                  {isRecovering ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Authorizing Device...</span>
-                    </>
-                  ) : (
-                    <span>Recover Wallet</span>
-                  )}
-                </button>
-              </div>
-            </form>
+                <form onSubmit={handleRecoverWallet} className="space-y-3.5">
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Smart Wallet Address</label>
+                    <input
+                      type="text"
+                      placeholder="0x..."
+                      value={recoverAddress}
+                      onChange={(e) => setRecoverAddress(e.target.value.trim())}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white/30 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Shard C Private Key</label>
+                    <input
+                      type="password"
+                      placeholder="0x..."
+                      value={recoverShardCKey}
+                      onChange={(e) => setRecoverShardCKey(e.target.value.trim())}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white/30 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">6-Digit Authenticator (2FA) Code</label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      placeholder="123456"
+                      value={recoverTotpCode}
+                      onChange={(e) => setRecoverTotpCode(e.target.value.replace(/\D/g, ""))}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white/30"
+                    />
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={isRecovering || !recoverAddress || !recoverShardCKey || recoverTotpCode.length !== 6}
+                      className="w-full py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {isRecovering ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Authorizing Rotation...</span>
+                        </>
+                      ) : (
+                        <span>Rotate and Recover</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}
