@@ -137,7 +137,7 @@ function simplifyErrorMessage(err: any): string {
     msg.includes("insufficient funds for gas") ||
     msg.includes("gas required exceeds allowance")
   ) {
-    return "Insufficient ETH to cover Robinhood Chain network fees. Please keep at least 0.0002 ETH for gas.";
+    return "Insufficient ETH to cover Robinhood Chain network fees. Please keep at least 0.00003 ETH for gas.";
   }
   if (
     msg.includes("insufficient funds") ||
@@ -1359,13 +1359,13 @@ export function App() {
         addToast("error", "Insufficient Balance", `Available balance: ${usdgBalance} USDG`);
         return;
       }
-      if (parseFloat(ethBalance) < 0.00005) {
-        addToast("error", "Insufficient ETH for Gas", "You need a small amount of ETH (~0.0001 ETH) on Robinhood Chain to pay network fees.");
+      if (parseFloat(ethBalance) < 0.00002) {
+        addToast("error", "Insufficient ETH for Gas", "You need a small amount of ETH (~0.00003 ETH) on Robinhood Chain to pay network fees.");
         return;
       }
     }
     if (sendAssetType === "ETH") {
-      const gasBuffer = isStealthSend ? 0.0002 : 0.0001;
+      const gasBuffer = isStealthSend ? 0.00003 : 0.000015;
       if (numAmount > parseFloat(ethBalance)) {
         addToast("error", "Insufficient Balance", `Available balance: ${ethBalance} ETH`);
         return;
@@ -1375,7 +1375,7 @@ export function App() {
         return;
       }
       if (numAmount > parseFloat(ethBalance) - gasBuffer) {
-        addToast("error", "Gas Reserve Required", `Transfer leaves insufficient ETH for gas. Maximum sendable: ${(parseFloat(ethBalance) - gasBuffer).toFixed(4)} ETH.`);
+        addToast("error", "Gas Reserve Required", `Transfer leaves insufficient ETH for gas. Maximum sendable: ${(parseFloat(ethBalance) - gasBuffer).toFixed(6)} ETH.`);
         return;
       }
     }
@@ -1431,13 +1431,13 @@ export function App() {
         addToast("error", "Insufficient Balance", `Available balance: ${usdgBalance} USDG`);
         return;
       }
-      if (parseFloat(ethBalance) < 0.00005) {
-        addToast("error", "Insufficient ETH for Gas", "You need a small amount of ETH (~0.0001 ETH) on Robinhood Chain to pay network fees.");
+      if (parseFloat(ethBalance) < 0.00002) {
+        addToast("error", "Insufficient ETH for Gas", "You need a small amount of ETH (~0.00003 ETH) on Robinhood Chain to pay network fees.");
         return;
       }
     }
     if (sendAssetType === "ETH") {
-      const gasBuffer = isStealthSend ? 0.0002 : 0.0001;
+      const gasBuffer = isStealthSend ? 0.00003 : 0.000015;
       if (numAmount > parseFloat(ethBalance)) {
         addToast("error", "Insufficient Balance", `Available balance: ${ethBalance} ETH`);
         return;
@@ -1447,7 +1447,7 @@ export function App() {
         return;
       }
       if (numAmount > parseFloat(ethBalance) - gasBuffer) {
-        addToast("error", "Gas Reserve Required", `Transfer leaves insufficient ETH for gas. Maximum sendable: ${(parseFloat(ethBalance) - gasBuffer).toFixed(4)} ETH.`);
+        addToast("error", "Gas Reserve Required", `Transfer leaves insufficient ETH for gas. Maximum sendable: ${(parseFloat(ethBalance) - gasBuffer).toFixed(6)} ETH.`);
         return;
       }
     }
@@ -2780,10 +2780,10 @@ export function App() {
                           if (sendAssetType === "USDG") {
                             setSendAmount(usdgBalance);
                           } else {
-                            const gasBuffer = isStealthSend ? 0.0002 : 0.0001;
+                            const gasBuffer = isStealthSend ? 0.00003 : 0.000015;
                             const curEth = parseFloat(ethBalance) || 0;
                             const maxEth = Math.max(0, curEth - gasBuffer);
-                            setSendAmount(maxEth > 0 ? maxEth.toFixed(4) : "0");
+                            setSendAmount(maxEth > 0 ? maxEth.toFixed(6) : "0");
                             if (curEth > 0) {
                               addToast("info", "Gas Reserved", `Reserved ${gasBuffer} ETH for network fees.`);
                             }
