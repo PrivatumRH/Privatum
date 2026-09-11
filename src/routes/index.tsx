@@ -48,18 +48,7 @@ const FAQS = [
 ];
 
 /**
- * The dashboard is not live yet, so every CTA that used to open it renders as
- * an inert "Coming soon" control.
- *
- * Rendered as an <a> with no href - per HTML that is a "placeholder link",
- * which is exactly right here: nothing to navigate to, no history entry, and
- * nothing for a crawler to follow. It must stay an anchor rather than a span
- * because the Webflow design colours these through the bare `a { color: ... }`
- * rule; a span inherits the section's text colour instead and the label
- * disappears against the button fill.
- *
- * To re-enable: swap these back to <a href="/dashboard.html"> with the original
- * label. Sites are listed in the handover doc.
+ * Interactive helper state and platform configurations.
  */
 type PlatformKey = "windows" | "macos" | "linux";
 
@@ -382,15 +371,6 @@ function LandingPage() {
                         <div className="dropdown-links">
                           <a
                             aria-disabled="true"
-                            className={`inner-link w-inline-block ${soonTip === "Dashboard" ? "is-soon" : ""}`}
-                            data-soon="Dashboard"
-                            href="#"
-                            onClick={(e) => triggerSoon(e, "Dashboard")}
-                          >
-                            <div>Dashboard</div>
-                          </a>
-                          <a
-                            aria-disabled="true"
                             className={`inner-link w-inline-block ${soonTip === "Private Send" ? "is-soon" : ""}`}
                             data-soon="Private Send"
                             href="#"
@@ -452,22 +432,6 @@ function LandingPage() {
                           </svg>
                         </div>
                       </a>
-                      <a
-                        aria-label="PRIVATUM on Telegram"
-                        className={`w-inline-block ${soonTip === "Telegram" ? "is-soon" : ""}`}
-                        data-soon="Telegram"
-                        href="#"
-                        onClick={(e) => triggerSoon(e, "Telegram")}
-                      >
-                        <div className="social">
-                          <svg fill="none" viewBox="0 0 24 24" width="100%" xmlns="http://www.w3.org/2000/svg">
-                            <path
-                              d="M21.9 3.1L2.7 10.7C1.4 11.2 1.5 12.6 2.5 13L7.3 14.5L9.1 20C9.3 20.7 10.1 20.9 10.6 20.4L13.2 18L18.2 21.7C18.9 22.2 19.8 21.9 20 21L23.2 4.2C23.4 3 22.6 2.2 21.9 3.1ZM8.6 14L18.7 6.2C19 6 19.2 6.4 19 6.6L10.2 15.1L10 18.1L8.6 14Z"
-                              fill="currentColor"
-                            />
-                          </svg>
-                        </div>
-                      </a>
                     </div>
                   </div>
                 </nav>
@@ -505,9 +469,6 @@ function LandingPage() {
               </div>
 
               <div className="nav-buttons-wrap">
-                <a className="link" href="/dashboard.html">
-                  Web App
-                </a>
                 <DownloadCta
                   className="primary-button w-variant-c2dc9de4-8772-9172-2dd8-cda2f9121fc9 w-inline-block"
                   textClassName="primary-button-text w-variant-c2dc9de4-8772-9172-2dd8-cda2f9121fc9"
@@ -559,15 +520,6 @@ function LandingPage() {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 <strong style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#687182" }}>Product</strong>
-                <a
-                  aria-disabled="true"
-                  className={`link mob ${soonTip === "Dashboard" ? "is-soon" : ""}`}
-                  data-soon="Dashboard"
-                  href="#"
-                  onClick={(e) => triggerSoon(e, "Dashboard")}
-                >
-                  Dashboard
-                </a>
                 <a
                   aria-disabled="true"
                   className={`link mob ${soonTip === "Private Send" ? "is-soon" : ""}`}
@@ -1080,14 +1032,7 @@ function LandingPage() {
 
               <div className="pv-downloads-footer">
                 <div>
-                  <span>Need custom build, source code, or earlier versions? </span>
-                  <a
-                    href="https://github.com/NotADeveloper7/privatum/releases"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Browse all releases on GitHub &rarr;
-                  </a>
+                  <span>Automated releases built and signed for Windows, macOS, and Linux.</span>
                 </div>
                 <div>
                   <span>Robinhood Chain Testnet ID: <code>4663</code></span>
@@ -1560,9 +1505,8 @@ function LandingPage() {
                       <form
                         className="demo-form"
                         onSubmit={(e) => {
-                          // Nowhere to submit to until the dashboard ships.
                           e.preventDefault();
-                          triggerSoon(e, "Dashboard");
+                          triggerSoon(e, "Live Demo");
                         }}
                       >
                         <div className="fields-wrapper">
@@ -2714,9 +2658,6 @@ function LandingPage() {
                         <a className="inner-link w-inline-block" href="#download">
                           <div>Desktop Application</div>
                         </a>
-                        <a className="inner-link w-inline-block" href="/dashboard.html">
-                          <div>Web Dashboard</div>
-                        </a>
                         <a
                             aria-disabled="true"
                             className={`inner-link w-inline-block ${soonTip === "Private Send" ? "is-soon" : ""}`}
@@ -2766,14 +2707,6 @@ function LandingPage() {
                       <div className="footer_link_heading">Social Media</div>
                       <div className="dropdown-links">
                         <a
-                          className={`inner-link w-inline-block ${soonTip === "Telegram" ? "is-soon" : ""}`}
-                          data-soon="Telegram"
-                          href="#"
-                          onClick={(e) => triggerSoon(e, "Telegram")}
-                        >
-                          <div>Telegram</div>
-                        </a>
-                        <a
                           className={`inner-link w-inline-block ${soonTip === "X" ? "is-soon" : ""}`}
                           data-soon="X"
                           href="#"
@@ -2806,22 +2739,6 @@ function LandingPage() {
                           <svg fill="none" viewBox="0 0 24 24" width="100%" xmlns="http://www.w3.org/2000/svg">
                             <path
                               d="M18.9 2H22L15.2 9.8L23.3 22H17L12.1 15.6L6.5 22H3.3L10.6 13.7L2.8 2H9.2L13.6 7.9L18.9 2ZM17.8 20.1H19.5L7.1 3.8H5.3L17.8 20.1Z"
-                              fill="currentColor"
-                            />
-                          </svg>
-                        </div>
-                      </a>
-                      <a
-                        aria-label="PRIVATUM on Telegram"
-                        className={`w-inline-block ${soonTip === "Telegram" ? "is-soon" : ""}`}
-                        data-soon="Telegram"
-                        href="#"
-                        onClick={(e) => triggerSoon(e, "Telegram")}
-                      >
-                        <div className="social">
-                          <svg fill="none" viewBox="0 0 24 24" width="100%" xmlns="http://www.w3.org/2000/svg">
-                            <path
-                              d="M21.9 3.1L2.7 10.7C1.4 11.2 1.5 12.6 2.5 13L7.3 14.5L9.1 20C9.3 20.7 10.1 20.9 10.6 20.4L13.2 18L18.2 21.7C18.9 22.2 19.8 21.9 20 21L23.2 4.2C23.4 3 22.6 2.2 21.9 3.1ZM8.6 14L18.7 6.2C19 6 19.2 6.4 19 6.6L10.2 15.1L10 18.1L8.6 14Z"
                               fill="currentColor"
                             />
                           </svg>
