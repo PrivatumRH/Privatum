@@ -233,7 +233,7 @@ export function App() {
   >("wallet");
 
   // Versioning and feature release stage preview
-  const [appVersion] = useState<string>("0.1.0");
+  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.6");
   const [previewVersion, setPreviewVersion] = useState<ReleaseVersion | null>(null);
 
   // Multi-wallet accounts
@@ -2565,7 +2565,7 @@ export function App() {
           <div className="flex items-center gap-1.5 text-[10px] font-mono">
             <span className="text-slate-500 hidden md:inline">Release Stage:</span>
             <select
-              value={previewVersion || "0.1.6"}
+              value={previewVersion || (appVersion as ReleaseVersion) || "0.1.6"}
               onChange={(e) => setPreviewVersion(e.target.value as ReleaseVersion)}
               className="bg-black/50 border border-white/10 rounded px-2 py-0.5 text-[10px] text-slate-300 focus:outline-none cursor-pointer"
               title="Simulate release version to demo features"
