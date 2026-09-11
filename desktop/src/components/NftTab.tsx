@@ -224,7 +224,7 @@ export function NftTab({
                 placeholder="0x..."
                 value={recipient}
                 onChange={(e) => setRecipient(e.target.value)}
-                className="p-2.5 rounded-xl bg-[#13151b] border border-white/[0.08] text-white font-mono text-xs focus:outline-none focus:border-white/20"
+                className="p-2.5 rounded-xl bg-[#13151b] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-white/20"
               />
             </div>
 

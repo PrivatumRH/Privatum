@@ -48,6 +48,7 @@ export function SwapTab({
 
   const [balanceIn, setBalanceIn] = useState<string>("0.00");
   const [balanceOut, setBalanceOut] = useState<string>("0.00");
+  const [nativeEthBalance, setNativeEthBalance] = useState<string>("0.00");
   const [lastTxHash, setLastTxHash] = useState<string | null>(null);
 
   // Token picker modal state
@@ -61,13 +62,16 @@ export function SwapTab({
     });
   }, []);
 
-  // Fetch token balances
+  // Fetch token balances and native gas balance
   const refreshBalances = useCallback(async () => {
     if (!walletAddress) return;
     try {
+      const nativeBal = await client.getBalance({ address: walletAddress });
+      const formattedNativeBal = formatUnits(nativeBal, 18);
+      setNativeEthBalance(formattedNativeBal);
+
       if (tokenIn.native) {
-        const bal = await client.getBalance({ address: walletAddress });
-        setBalanceIn(formatUnits(bal, 18));
+        setBalanceIn(formattedNativeBal);
       } else {
         const bal = await client.readContract({
           address: tokenIn.address,
@@ -87,8 +91,7 @@ export function SwapTab({
       }
 
       if (tokenOut.native) {
-        const bal = await client.getBalance({ address: walletAddress });
-        setBalanceOut(formatUnits(bal, 18));
+        setBalanceOut(formattedNativeBal);
       } else {
         const bal = await client.readContract({
           address: tokenOut.address,
@@ -152,8 +155,35 @@ export function SwapTab({
     setQuote(null);
   }
 
+  const parsedAmountIn = parseFloat(amountIn || "0");
+  const parsedBalanceIn = parseFloat(balanceIn || "0");
+  const parsedNativeEth = parseFloat(nativeEthBalance || "0");
+  const isInsufficientBalance = Boolean(amountIn && parsedAmountIn > parsedBalanceIn);
+  const isInsufficientGas = tokenIn.native
+    ? parsedAmountIn + 0.00003 > parsedNativeEth
+    : parsedNativeEth < 0.00003;
+
   async function handleSwap() {
     if (!wallet || !quote || !amountIn) return;
+
+    if (parsedAmountIn > parsedBalanceIn) {
+      addToast(
+        "error",
+        "Insufficient Balance",
+        `You have ${balanceIn} ${tokenIn.symbol}, but entered ${amountIn}.`
+      );
+      return;
+    }
+
+    if (isInsufficientGas) {
+      addToast(
+        "error",
+        "Insufficient ETH for Gas",
+        "You need native ETH on Robinhood Chain to pay network gas fees for this swap. Fund this wallet with testnet ETH."
+      );
+      return;
+    }
+
     setIsSwapping(true);
     setLastTxHash(null);
 
@@ -187,8 +217,24 @@ export function SwapTab({
       setQuote(null);
       refreshBalances();
     } catch (err: any) {
-      const msg = err?.message || String(err);
-      addToast("error", "Swap Failed", msg.length > 70 ? `${msg.slice(0, 70)}...` : msg);
+      const rawMsg = err?.shortMessage || err?.message || String(err);
+      let userFriendlyMsg = rawMsg;
+
+      if (
+        rawMsg.includes("exceeds the balance") ||
+        rawMsg.includes("insufficient funds") ||
+        rawMsg.includes("gas * gas fee + value")
+      ) {
+        userFriendlyMsg = "Insufficient ETH balance to cover network gas fees on Robinhood Chain. Fund this wallet with ETH to proceed.";
+      } else if (rawMsg.includes("STF") || rawMsg.includes("transfer amount exceeds balance")) {
+        userFriendlyMsg = `Insufficient ${tokenIn.symbol} balance or token transfer allowance failed.`;
+      } else if (rawMsg.includes("User rejected") || rawMsg.includes("User denied")) {
+        userFriendlyMsg = "Transaction rejected by user.";
+      } else if (rawMsg.length > 90) {
+        userFriendlyMsg = `${rawMsg.slice(0, 90)}...`;
+      }
+
+      addToast("error", "Swap Failed", userFriendlyMsg);
     } finally {
       setIsSwapping(false);
     }
@@ -218,6 +264,20 @@ export function SwapTab({
           </div>
         </div>
 
+        {/* Insufficient Gas Warning */}
+        {isInsufficientGas && (
+          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200 flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="font-semibold text-amber-100">Robinhood Chain ETH Required for Gas</div>
+              <div className="text-[11px] text-amber-200/80 mt-0.5 leading-relaxed">
+                Swapping requires native ETH to pay network gas fees. This wallet currently has{" "}
+                <span className="font-semibold text-white">{parseFloat(nativeEthBalance).toFixed(6)} ETH</span>.
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Token In Box */}
         <div className="flex flex-col gap-1.5 p-4 rounded-xl bg-[#13151b] border border-white/[0.06]">
           <div className="flex items-center justify-between text-xs text-neutral-400">
@@ -239,7 +299,7 @@ export function SwapTab({
               placeholder="0.0"
               value={amountIn}
               onChange={(e) => setAmountIn(e.target.value)}
-              className="bg-transparent text-white font-mono text-2xl font-bold focus:outline-none w-full placeholder:text-neutral-600"
+              className="bg-transparent text-white text-2xl font-bold focus:outline-none w-full placeholder:text-neutral-600"
             />
 
             <button
@@ -285,11 +345,14 @@ export function SwapTab({
           </div>
 
           <div className="flex items-center justify-between gap-3">
-            <div className="font-mono text-2xl font-bold text-white min-h-[32px] flex items-center">
+            <div
+              className="text-2xl font-bold text-white min-h-[32px] flex items-center overflow-x-auto select-all max-w-[280px]"
+              title={quote?.amountOut}
+            >
               {isQuoting ? (
                 <Loader2 className="w-5 h-5 animate-spin text-neutral-400" />
               ) : quote ? (
-                parseFloat(quote.amountOut).toFixed(4)
+                quote.amountOut
               ) : (
                 <span className="text-neutral-600">0.0</span>
               )}
@@ -325,29 +388,43 @@ export function SwapTab({
           <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-[#13151b] border border-white/[0.06] text-xs text-neutral-400">
             <div className="flex justify-between items-center">
               <span>Execution Rate</span>
-              <span className="text-white font-mono">
-                1 {tokenIn.symbol} ≈ {quote.rate.toFixed(4)} {tokenOut.symbol}
+              <span className="text-white">
+                1 {tokenIn.symbol} ≈ {quote.rate < 0.0001 ? quote.rate.toExponential(4) : quote.rate.toFixed(6)} {tokenOut.symbol}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span>Route & Venue</span>
-              <span className="text-emerald-400 font-semibold uppercase tracking-wider text-[10px]">
-                Uniswap {quote.protocol.toUpperCase()} ({quote.feeTier / 10000}%)
+              <span className="text-emerald-400 font-medium text-xs">
+                Uniswap {quote.protocol.toLowerCase()} ({quote.feeTier / 10000}%)
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span>Slippage Protection</span>
-              <span className="text-white font-mono">{slippageBps / 100}%</span>
+              <span className="text-white">{slippageBps / 100}%</span>
             </div>
           </div>
         )}
 
         {/* Swap Action Button */}
         <button
-          disabled={!quote || isSwapping || isQuoting || !amountIn || parseFloat(amountIn) <= 0}
+          disabled={
+            !quote ||
+            isSwapping ||
+            isQuoting ||
+            !amountIn ||
+            parsedAmountIn <= 0 ||
+            isInsufficientBalance ||
+            isInsufficientGas
+          }
           onClick={handleSwap}
           className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer ${
-            !quote || isSwapping || isQuoting || !amountIn || parseFloat(amountIn) <= 0
+            !quote ||
+            isSwapping ||
+            isQuoting ||
+            !amountIn ||
+            parsedAmountIn <= 0 ||
+            isInsufficientBalance ||
+            isInsufficientGas
               ? "bg-white/5 text-neutral-500 cursor-not-allowed border border-white/5"
               : "bg-[#f64943] hover:bg-[#e03d38] text-white active:scale-[0.99]"
           }`}
@@ -362,12 +439,16 @@ export function SwapTab({
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Fetching Best Pool Rate...</span>
             </>
-          ) : !amountIn || parseFloat(amountIn) <= 0 ? (
+          ) : !amountIn || parsedAmountIn <= 0 ? (
             <span>Enter an Amount</span>
+          ) : isInsufficientBalance ? (
+            <span>Insufficient {tokenIn.symbol} Balance</span>
+          ) : isInsufficientGas ? (
+            <span>Insufficient ETH for Gas</span>
           ) : !quote ? (
             <span>Insufficient Liquidity</span>
           ) : (
-            <span>Swap Tokens Atomically</span>
+            <span>Swap {tokenIn.symbol} for {tokenOut.symbol}</span>
           )}
         </button>
 
