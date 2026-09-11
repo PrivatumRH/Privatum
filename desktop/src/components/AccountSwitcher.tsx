@@ -77,7 +77,7 @@ export function AccountSwitcher({
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 sm:left-0 mt-2 w-56 rounded-2xl bg-[#181a22] backdrop-blur-xl border border-white/[0.08] p-2 shadow-2xl z-50 flex flex-col gap-1 text-xs">
+        <div className="absolute top-full right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] rounded-2xl bg-[#181a22] backdrop-blur-xl border border-white/[0.08] p-2 shadow-2xl z-50 flex flex-col gap-1 text-xs">
           <div className="max-h-56 overflow-y-auto flex flex-col gap-1 pr-1">
             {accounts.map((acc, index) => {
               const isSelected = acc.id === activeAccount?.id;

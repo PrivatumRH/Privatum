@@ -1565,7 +1565,7 @@ export function App() {
       </aside>
 
       {/* Main Canvas */}
-      <main className="flex-1 flex flex-col h-full overflow-y-auto bg-[#13151b]">
+      <main className="flex-1 flex flex-col h-full overflow-y-auto overflow-x-hidden bg-[#13151b]">
         {/* In-App Update Banner (v0.1.1) */}
         {isFeatureActive("updater", appVersion, previewVersion) && (
           <UpdateBanner currentVersion={previewVersion || appVersion} apiUrl={DEFAULT_API_URL} />
