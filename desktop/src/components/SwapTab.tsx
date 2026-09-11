@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   ArrowDownUp,
   RotateCw,
@@ -10,6 +10,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { formatUnits, parseUnits, type Address, type Hex, type PublicClient } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import { TOKENS, type TokenInfo, findToken } from "../lib/tokens";
 import { getBestSwapQuote, buildSwapBatchCalls, type SwapQuoteResult } from "../lib/swap";
 import { executeAccountBatch } from "../lib/execute";
@@ -155,6 +156,21 @@ export function SwapTab({
     setQuote(null);
   }
 
+  const signerAddress = useMemo(() => {
+    if (!shardAPrivKey) return null;
+    try {
+      return privateKeyToAccount(shardAPrivKey as Hex).address;
+    } catch {
+      return null;
+    }
+  }, [shardAPrivKey]);
+
+  const isKeyMismatch = Boolean(
+    signerAddress &&
+      walletAddress &&
+      signerAddress.toLowerCase() !== walletAddress.toLowerCase()
+  );
+
   const parsedAmountIn = parseFloat(amountIn || "0");
   const parsedBalanceIn = parseFloat(balanceIn || "0");
   const parsedNativeEth = parseFloat(nativeEthBalance || "0");
@@ -165,6 +181,15 @@ export function SwapTab({
 
   async function handleSwap() {
     if (!wallet || !quote || !amountIn) return;
+
+    if (isKeyMismatch) {
+      addToast(
+        "error",
+        "Signer Key Mismatch",
+        `Local signing key (${signerAddress?.slice(0, 6)}...${signerAddress?.slice(-4)}) does not match active wallet (${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}).`
+      );
+      return;
+    }
 
     if (parsedAmountIn > parsedBalanceIn) {
       addToast(
@@ -220,7 +245,9 @@ export function SwapTab({
       const rawMsg = err?.shortMessage || err?.message || String(err);
       let userFriendlyMsg = rawMsg;
 
-      if (
+      if (rawMsg.includes("Signer key mismatch")) {
+        userFriendlyMsg = rawMsg;
+      } else if (
         rawMsg.includes("exceeds the balance") ||
         rawMsg.includes("insufficient funds") ||
         rawMsg.includes("gas * gas fee + value")
@@ -263,6 +290,19 @@ export function SwapTab({
             ))}
           </div>
         </div>
+
+        {/* Signer Key Mismatch Warning */}
+        {isKeyMismatch && (
+          <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-200 flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="font-semibold text-red-100">Signer Key Mismatch</div>
+              <div className="text-[11px] text-red-200/80 mt-0.5 leading-relaxed">
+                The local device key ({signerAddress?.slice(0, 6)}...{signerAddress?.slice(-4)}) does not match this wallet address ({walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}). Direct on-chain transactions cannot be authorized with this key. Switch to an account with matching keys in the Account Switcher.
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Insufficient Gas Warning */}
         {isInsufficientGas && (
@@ -414,7 +454,8 @@ export function SwapTab({
             !amountIn ||
             parsedAmountIn <= 0 ||
             isInsufficientBalance ||
-            isInsufficientGas
+            isInsufficientGas ||
+            isKeyMismatch
           }
           onClick={handleSwap}
           className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer ${
@@ -424,7 +465,8 @@ export function SwapTab({
             !amountIn ||
             parsedAmountIn <= 0 ||
             isInsufficientBalance ||
-            isInsufficientGas
+            isInsufficientGas ||
+            isKeyMismatch
               ? "bg-white/5 text-neutral-500 cursor-not-allowed border border-white/5"
               : "bg-[#f64943] hover:bg-[#e03d38] text-white active:scale-[0.99]"
           }`}
@@ -439,6 +481,8 @@ export function SwapTab({
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Fetching Best Pool Rate...</span>
             </>
+          ) : isKeyMismatch ? (
+            <span>Signer Key Mismatch</span>
           ) : !amountIn || parsedAmountIn <= 0 ? (
             <span>Enter an Amount</span>
           ) : isInsufficientBalance ? (

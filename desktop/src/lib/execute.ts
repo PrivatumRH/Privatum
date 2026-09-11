@@ -69,6 +69,11 @@ export async function executeAccountCall(params: {
   } catch (bundlerErr: any) {
     if (shardAPrivKey) {
       const account = privateKeyToAccount(shardAPrivKey as Hex);
+      if (account.address.toLowerCase() !== wallet.address.toLowerCase()) {
+        throw new Error(
+          `Signer key mismatch: Local signing key (${account.address.slice(0, 6)}...${account.address.slice(-4)}) differs from wallet address (${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}). Cannot broadcast direct transaction.`
+        );
+      }
       const walletClient = createWalletClient({
         account,
         chain: robinhoodChain,
@@ -134,8 +139,8 @@ export async function executeAccountBatch(params: {
     if (shardAPrivKey) {
       const account = privateKeyToAccount(shardAPrivKey as Hex);
       if (account.address.toLowerCase() !== wallet.address.toLowerCase()) {
-        console.warn(
-          `[executeAccountBatch] Signer key mismatch: local key derives ${account.address} while wallet address is ${wallet.address}`
+        throw new Error(
+          `Signer key mismatch: Local signing key (${account.address.slice(0, 6)}...${account.address.slice(-4)}) differs from wallet address (${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}). Cannot broadcast direct transaction.`
         );
       }
       const walletClient = createWalletClient({
