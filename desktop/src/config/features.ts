@@ -7,7 +7,9 @@ export type FeatureKey =
   | "nfts"
   | "multi_wallet"
   | "rwa_equities"
-  | "gasless_staking";
+  | "gasless_staking"
+  | "bridge_rebates"
+  | "disposable_pay_links";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -19,9 +21,22 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   multi_wallet: "0.1.5",
   rwa_equities: "0.1.6",
   gasless_staking: "0.1.7",
+  bridge_rebates: "0.1.8",
+  disposable_pay_links: "0.1.9",
 };
 
-export const RELEASE_VERSIONS = ["0.1.0", "0.1.1", "0.1.2", "0.1.3", "0.1.4", "0.1.5", "0.1.6", "0.1.7"] as const;
+export const RELEASE_VERSIONS = [
+  "0.1.0",
+  "0.1.1",
+  "0.1.2",
+  "0.1.3",
+  "0.1.4",
+  "0.1.5",
+  "0.1.6",
+  "0.1.7",
+  "0.1.8",
+  "0.1.9",
+] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 
 function parseSemver(v: string): number[] {

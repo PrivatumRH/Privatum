@@ -1,6 +1,6 @@
 [package]
 name = "privatum-desktop"
-version = "0.1.7"
+version = "0.1.9"
 description = "PRIVATUM Desktop Native Client"
 authors = ["PRIVATUM"]
 edition = "2021"
