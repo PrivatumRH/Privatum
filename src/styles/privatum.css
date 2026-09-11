@@ -881,4 +881,36 @@ a[data-soon].is-soon::after{opacity:1;transform:translateY(-50%) translateX(0)}
   }
 }
 
+/* Responsive visibility for top navbar actions */
+.nav-buttons-wrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+@media screen and (max-width: 991px) {
+  .nav-buttons-wrap {
+    display: none !important;
+  }
+}
+
+.hamburger-line {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.mobile-nav-panel {
+  animation: mobileNavFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes mobileNavFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 
