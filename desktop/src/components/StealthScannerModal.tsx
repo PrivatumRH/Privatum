@@ -17,6 +17,7 @@ import { USDG_ADDRESS, erc20Abi, robinhoodChain } from "@privatumrh/robinhood-ch
 import {
   generateStealthMetaAddressFromSeed,
   checkAnnouncement,
+  sweepStealthFunds,
   ERC5564_ANNOUNCER,
   ANNOUNCER_ABI,
   type AnnouncementRecord,
@@ -29,6 +30,7 @@ interface StealthScannerModalProps {
   client: PublicClient;
   walletAddress: Address;
   addToast: (type: "success" | "error" | "info", title: string, message?: string) => void;
+  onSweepSuccess?: () => void;
 }
 
 export function StealthScannerModal({
@@ -38,10 +40,12 @@ export function StealthScannerModal({
   client,
   walletAddress,
   addToast,
+  onSweepSuccess,
 }: StealthScannerModalProps) {
   const [copied, setCopied] = useState<boolean>(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [sweepingIndex, setSweepingIndex] = useState<number | null>(null);
   const [discoveredTransfers, setDiscoveredTransfers] = useState<AnnouncementRecord[]>([]);
 
   // Derive stealth meta-address from user's local Shard A key
@@ -53,6 +57,33 @@ export function StealthScannerModal({
       return null;
     }
   }, [shardAPrivKey]);
+
+  async function handleSweep(t: AnnouncementRecord, index: number) {
+    if (!stealthInfo || !shardAPrivKey || !walletAddress) return;
+    setSweepingIndex(index);
+    try {
+      const res = await sweepStealthFunds({
+        stealthAddress: t.stealthAddress,
+        ephemeralPubKey: t.ephemeralPubKey,
+        viewPrivKey: stealthInfo.viewPriv,
+        spendPrivKeyHex: shardAPrivKey,
+        destinationAddress: walletAddress,
+        client,
+        tokenAddress: USDG_ADDRESS,
+      });
+      addToast(
+        "success",
+        "Funds Swept to Wallet",
+        `Swept ${res.amount} ${res.asset} to ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+      );
+      if (onSweepSuccess) onSweepSuccess();
+      handleScan();
+    } catch (err: any) {
+      addToast("error", "Sweep Failed", err?.message || "Failed to sweep funds from stealth address.");
+    } finally {
+      setSweepingIndex(null);
+    }
+  }
 
   useEffect(() => {
     if (stealthInfo?.metaAddress) {
@@ -228,6 +259,21 @@ export function StealthScannerModal({
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
+                    {(parseFloat(t.discoveredBalanceEth || "0") > 0 ||
+                      parseFloat(t.discoveredBalanceUsdg || "0") > 0) && (
+                      <button
+                        type="button"
+                        disabled={sweepingIndex !== null}
+                        onClick={() => handleSweep(t, idx)}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold transition disabled:opacity-50"
+                        title="Claim and sweep funds back to your wallet"
+                      >
+                        {sweepingIndex === idx ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : null}
+                        <span>Claim / Sweep</span>
+                      </button>
+                    )}
                     <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">
                       Discovered
                     </span>

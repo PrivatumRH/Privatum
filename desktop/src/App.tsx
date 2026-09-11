@@ -109,11 +109,18 @@ function simplifyErrorMessage(err: any): string {
   const msg = typeof err === "string" ? err : String(err?.message || err);
 
   if (
+    msg.includes("gas * price + value") ||
+    msg.includes("insufficient funds for gas") ||
+    msg.includes("gas required exceeds allowance")
+  ) {
+    return "Insufficient ETH to cover Robinhood Chain network fees. Please keep at least 0.0002 ETH for gas.";
+  }
+  if (
     msg.includes("insufficient funds") ||
     msg.includes("exceeds balance") ||
     msg.includes("Insufficient")
   ) {
-    return "Insufficient balance to complete this transfer.";
+    return "Transfer amount exceeds available balance.";
   }
   if (
     msg.includes("Load failed") ||
@@ -509,22 +516,44 @@ export function App() {
         const activeId = localStorage.getItem("privatum_active_account_id") || "primary";
         setActiveAccountId(activeId);
 
+        let savedAddress = localStorage.getItem(`privatum_wallet_address_${activeId}`) || (activeId === "primary" ? localStorage.getItem("privatum_wallet_address") : null);
+
         let savedShardA: string | null = null;
-        if (isTauri()) {
-          try {
-            savedShardA = await invoke<string | null>("get_shard_from_keychain", { accountId: activeId });
-          } catch {}
+        if (savedAddress) {
+          savedShardA = localStorage.getItem(`privatum_shard_a_${savedAddress.toLowerCase()}`);
+        }
+        if (!savedShardA) {
+          savedShardA = localStorage.getItem(`privatum_shard_a_${activeId}`) || (activeId === "primary" ? localStorage.getItem("privatum_shard_a") : null);
+        }
+        if (!savedShardA && isTauri()) {
+          if (savedAddress) {
+            try {
+              savedShardA = await invoke<string | null>("get_shard_from_keychain", { accountId: savedAddress.toLowerCase() });
+            } catch {}
+          }
+          if (!savedShardA) {
+            try {
+              savedShardA = await invoke<string | null>("get_shard_from_keychain", { accountId: activeId });
+            } catch {}
+          }
           if (!savedShardA && activeId === "primary") {
             try {
               savedShardA = await invoke<string | null>("load_shard_a");
             } catch {}
           }
         }
-        if (!savedShardA) {
-          savedShardA = localStorage.getItem(`privatum_shard_a_${activeId}`) || (activeId === "primary" ? localStorage.getItem("privatum_shard_a") : null);
+
+        // Verify key consistency: make sure active signing key matches active address
+        if (savedShardA) {
+          try {
+            const derived = privateKeyToAccount(savedShardA as Hex).address;
+            if (savedAddress && derived.toLowerCase() !== savedAddress.toLowerCase()) {
+              console.warn(`[Privatum] Key alignment: loaded shard A derives ${derived} while saved address was ${savedAddress}. Synchronizing active wallet address.`);
+              savedAddress = derived;
+            }
+          } catch {}
         }
 
-        const savedAddress = localStorage.getItem(`privatum_wallet_address_${activeId}`) || (activeId === "primary" ? localStorage.getItem("privatum_wallet_address") : null);
         const savedApiKey = localStorage.getItem(`privatum_api_key_${activeId}`) || (activeId === "primary" ? localStorage.getItem("privatum_api_key") : null);
         const savedShardB = localStorage.getItem(`privatum_shard_b_address_${activeId}`) || (activeId === "primary" ? localStorage.getItem("privatum_shard_b_address") : null);
         const savedShardC = localStorage.getItem(`privatum_shard_c_address_${activeId}`) || (activeId === "primary" ? localStorage.getItem("privatum_shard_c_address") : null);
@@ -594,22 +623,33 @@ export function App() {
       localStorage.setItem("privatum_active_account_id", targetId);
     } catch {}
 
+    const savedAddress = localStorage.getItem(`privatum_wallet_address_${targetId}`) || (targetId === "primary" ? localStorage.getItem("privatum_wallet_address") : null);
+
     let savedShardA: string | null = null;
-    if (isTauri()) {
-      try {
-        savedShardA = await invoke<string | null>("get_shard_from_keychain", { accountId: targetId });
-      } catch {}
+    if (savedAddress) {
+      savedShardA = localStorage.getItem(`privatum_shard_a_${savedAddress.toLowerCase()}`);
+    }
+    if (!savedShardA) {
+      savedShardA = localStorage.getItem(`privatum_shard_a_${targetId}`) || (targetId === "primary" ? localStorage.getItem("privatum_shard_a") : null);
+    }
+    if (!savedShardA && isTauri()) {
+      if (savedAddress) {
+        try {
+          savedShardA = await invoke<string | null>("get_shard_from_keychain", { accountId: savedAddress.toLowerCase() });
+        } catch {}
+      }
+      if (!savedShardA) {
+        try {
+          savedShardA = await invoke<string | null>("get_shard_from_keychain", { accountId: targetId });
+        } catch {}
+      }
       if (!savedShardA && targetId === "primary") {
         try {
           savedShardA = await invoke<string | null>("load_shard_a");
         } catch {}
       }
     }
-    if (!savedShardA) {
-      savedShardA = localStorage.getItem(`privatum_shard_a_${targetId}`) || (targetId === "primary" ? localStorage.getItem("privatum_shard_a") : null);
-    }
 
-    const savedAddress = localStorage.getItem(`privatum_wallet_address_${targetId}`) || (targetId === "primary" ? localStorage.getItem("privatum_wallet_address") : null);
     const savedApiKey = localStorage.getItem(`privatum_api_key_${targetId}`) || (targetId === "primary" ? localStorage.getItem("privatum_api_key") : null);
     const savedShardB = localStorage.getItem(`privatum_shard_b_address_${targetId}`) || (targetId === "primary" ? localStorage.getItem("privatum_shard_b_address") : null);
     const savedShardC = localStorage.getItem(`privatum_shard_c_address_${targetId}`) || (targetId === "primary" ? localStorage.getItem("privatum_shard_c_address") : null);
@@ -677,17 +717,18 @@ export function App() {
         if (isTauri()) {
           try {
             await invoke("save_shard_to_keychain", { accountId: newAccId, key: newWallet.shardA.privateKey });
+            await invoke("save_shard_to_keychain", { accountId: newWallet.address.toLowerCase(), key: newWallet.shardA.privateKey });
           } catch {}
           if (newAccId === "primary") {
             try {
               await invoke("save_shard_a", { key: newWallet.shardA.privateKey });
             } catch {}
           }
-        } else {
-          localStorage.setItem(`privatum_shard_a_${newAccId}`, newWallet.shardA.privateKey);
-          if (newAccId === "primary") {
-            localStorage.setItem("privatum_shard_a", newWallet.shardA.privateKey);
-          }
+        }
+        localStorage.setItem(`privatum_shard_a_${newAccId}`, newWallet.shardA.privateKey);
+        localStorage.setItem(`privatum_shard_a_${newWallet.address.toLowerCase()}`, newWallet.shardA.privateKey);
+        if (newAccId === "primary") {
+          localStorage.setItem("privatum_shard_a", newWallet.shardA.privateKey);
         }
 
         // Save account-specific credentials
@@ -828,15 +869,30 @@ export function App() {
       });
 
       // 3. Save new Shard A locally in OS vault or storage
-      if (isTauri()) {
-        await invoke("save_shard_a", { key: newShardA.privateKey });
-      } else {
-        localStorage.setItem("privatum_shard_a", newShardA.privateKey);
-      }
+      const existingAcc = accounts.find((a) => a.address.toLowerCase() === cleanAddress.toLowerCase());
+      const accId = existingAcc ? existingAcc.id : `acc-${Date.now()}`;
 
-      localStorage.setItem("privatum_wallet_address", cleanAddress);
-      localStorage.setItem("privatum_shard_c_address", shardC.address);
+      if (isTauri()) {
+        try {
+          await invoke("save_shard_to_keychain", { accountId: accId, key: newShardA.privateKey });
+          await invoke("save_shard_to_keychain", { accountId: cleanAddress, key: newShardA.privateKey });
+        } catch {}
+        if (accId === "primary") {
+          try {
+            await invoke("save_shard_a", { key: newShardA.privateKey });
+          } catch {}
+        }
+      }
+      localStorage.setItem(`privatum_shard_a_${accId}`, newShardA.privateKey);
+      localStorage.setItem(`privatum_shard_a_${cleanAddress}`, newShardA.privateKey);
+      localStorage.setItem(`privatum_wallet_address_${accId}`, cleanAddress);
+      localStorage.setItem(`privatum_shard_c_address_${accId}`, shardC.address);
       localStorage.setItem("privatum_totp_enrolled", "true");
+      if (accId === "primary") {
+        localStorage.setItem("privatum_shard_a", newShardA.privateKey);
+        localStorage.setItem("privatum_wallet_address", cleanAddress);
+        localStorage.setItem("privatum_shard_c_address", shardC.address);
+      }
 
       // 4. Fetch wallet info from cosigner to construct PrivatumWallet
       let shardBAddress: Address = "0x0000000000000000000000000000000000000000";
@@ -847,8 +903,12 @@ export function App() {
           const info = await infoRes.json();
           shardBAddress = (info.shardBAddress || shardBAddress) as Address;
           apiKeyVal = info.apiKey || "";
-          localStorage.setItem("privatum_shard_b_address", shardBAddress);
-          localStorage.setItem("privatum_api_key", apiKeyVal);
+          localStorage.setItem(`privatum_shard_b_address_${accId}`, shardBAddress);
+          localStorage.setItem(`privatum_api_key_${accId}`, apiKeyVal);
+          if (accId === "primary") {
+            localStorage.setItem("privatum_shard_b_address", shardBAddress);
+            localStorage.setItem("privatum_api_key", apiKeyVal);
+          }
         }
       } catch {}
 
@@ -869,6 +929,32 @@ export function App() {
       setShardCPrivKey(cleanShardC);
       setTotpVerified(true);
       fetchBalances(cleanAddress);
+
+      // Register in accounts list for multiwallet switcher
+      setAccounts((prev) => {
+        const colors = ["#ef4444", "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b"];
+        const filtered = prev.filter((a) => a.address !== "0x0000000000000000000000000000000000000000");
+        const exists = filtered.find((a) => a.address.toLowerCase() === cleanAddress.toLowerCase());
+        let updated: WalletAccount[];
+        if (exists) {
+          updated = filtered.map((a) => (a.address.toLowerCase() === cleanAddress.toLowerCase() ? { ...a, id: accId } : a));
+        } else {
+          const newAcc: WalletAccount = {
+            id: accId,
+            name: `Wallet ${filtered.length + 1}`,
+            address: cleanAddress,
+            color: colors[filtered.length % colors.length],
+            createdAt: Date.now(),
+          };
+          updated = [...filtered, newAcc];
+        }
+        try {
+          localStorage.setItem("privatum_accounts", JSON.stringify(updated));
+          localStorage.setItem("privatum_active_account_id", accId);
+        } catch {}
+        return updated;
+      });
+      setActiveAccountId(accId);
 
       setShowRecoverModal(false);
       addToast("success", "Wallet Recovered", "Account recovered and authorized on this device.");
@@ -974,13 +1060,30 @@ export function App() {
     }
 
     // Pre-flight balance check
-    if (sendAssetType === "USDG" && numAmount > parseFloat(usdgBalance)) {
-      addToast("error", "Insufficient Balance", `Available balance: ${usdgBalance} USDG`);
-      return;
+    if (sendAssetType === "USDG") {
+      if (numAmount > parseFloat(usdgBalance)) {
+        addToast("error", "Insufficient Balance", `Available balance: ${usdgBalance} USDG`);
+        return;
+      }
+      if (parseFloat(ethBalance) < 0.00005) {
+        addToast("error", "Insufficient ETH for Gas", "You need a small amount of ETH (~0.0001 ETH) on Robinhood Chain to pay network fees.");
+        return;
+      }
     }
-    if (sendAssetType === "ETH" && numAmount > parseFloat(ethBalance)) {
-      addToast("error", "Insufficient Balance", `Available balance: ${ethBalance} ETH`);
-      return;
+    if (sendAssetType === "ETH") {
+      const gasBuffer = isStealthSend ? 0.0002 : 0.0001;
+      if (numAmount > parseFloat(ethBalance)) {
+        addToast("error", "Insufficient Balance", `Available balance: ${ethBalance} ETH`);
+        return;
+      }
+      if (parseFloat(ethBalance) <= gasBuffer) {
+        addToast("error", "Insufficient ETH for Gas", `You need at least ${gasBuffer} ETH on Robinhood Chain to cover network transaction fees.`);
+        return;
+      }
+      if (numAmount > parseFloat(ethBalance) - gasBuffer) {
+        addToast("error", "Gas Reserve Required", `Transfer leaves insufficient ETH for gas. Maximum sendable: ${(parseFloat(ethBalance) - gasBuffer).toFixed(4)} ETH.`);
+        return;
+      }
     }
 
     setSendStep("preview");
@@ -1029,13 +1132,30 @@ export function App() {
     }
 
     // Pre-flight balance check
-    if (sendAssetType === "USDG" && numAmount > parseFloat(usdgBalance)) {
-      addToast("error", "Insufficient Balance", `Available balance: ${usdgBalance} USDG`);
-      return;
+    if (sendAssetType === "USDG") {
+      if (numAmount > parseFloat(usdgBalance)) {
+        addToast("error", "Insufficient Balance", `Available balance: ${usdgBalance} USDG`);
+        return;
+      }
+      if (parseFloat(ethBalance) < 0.00005) {
+        addToast("error", "Insufficient ETH for Gas", "You need a small amount of ETH (~0.0001 ETH) on Robinhood Chain to pay network fees.");
+        return;
+      }
     }
-    if (sendAssetType === "ETH" && numAmount > parseFloat(ethBalance)) {
-      addToast("error", "Insufficient Balance", `Available balance: ${ethBalance} ETH`);
-      return;
+    if (sendAssetType === "ETH") {
+      const gasBuffer = isStealthSend ? 0.0002 : 0.0001;
+      if (numAmount > parseFloat(ethBalance)) {
+        addToast("error", "Insufficient Balance", `Available balance: ${ethBalance} ETH`);
+        return;
+      }
+      if (parseFloat(ethBalance) <= gasBuffer) {
+        addToast("error", "Insufficient ETH for Gas", `You need at least ${gasBuffer} ETH on Robinhood Chain to cover network transaction fees.`);
+        return;
+      }
+      if (numAmount > parseFloat(ethBalance) - gasBuffer) {
+        addToast("error", "Gas Reserve Required", `Transfer leaves insufficient ETH for gas. Maximum sendable: ${(parseFloat(ethBalance) - gasBuffer).toFixed(4)} ETH.`);
+        return;
+      }
     }
 
     setIsSending(true);
@@ -2312,13 +2432,42 @@ export function App() {
                       />
                       <button
                         type="button"
-                        onClick={() => setSendAmount(sendAssetType === "USDG" ? usdgBalance : ethBalance)}
+                        onClick={() => {
+                          if (sendAssetType === "USDG") {
+                            setSendAmount(usdgBalance);
+                          } else {
+                            const gasBuffer = isStealthSend ? 0.0002 : 0.0001;
+                            const curEth = parseFloat(ethBalance) || 0;
+                            const maxEth = Math.max(0, curEth - gasBuffer);
+                            setSendAmount(maxEth > 0 ? maxEth.toFixed(4) : "0");
+                            if (curEth > 0) {
+                              addToast("info", "Gas Reserved", `Reserved ${gasBuffer} ETH for network fees.`);
+                            }
+                          }
+                        }}
                         className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-slate-400 hover:text-white px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 transition"
                       >
                         Max
                       </button>
                     </div>
                   </div>
+
+                  {parseFloat(ethBalance) === 0 && (
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between text-xs text-amber-200">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span className="text-[11px]">Wallet has 0 ETH for gas fees on Robinhood Chain.</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(wallet?.address || walletAddress, "Wallet address")}
+                        className="p-1 hover:bg-white/10 rounded text-amber-300 hover:text-white transition"
+                        title="Copy address to fund"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
 
                   <div className="flex gap-2 pt-2">
                     <button
@@ -2731,6 +2880,7 @@ export function App() {
         shardAPrivKey={shardAPrivKey as Hex}
         walletAddress={walletAddress as Address}
         addToast={addToast}
+        onSweepSuccess={() => fetchBalances(walletAddress as Address)}
       />
     </div>
   );
