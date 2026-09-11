@@ -150,6 +150,152 @@ function ComingSoonCta({
   );
 }
 
+function CopyIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+    </svg>
+  );
+}
+
+function CheckIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
+function DexscreenerIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M12.016 2.016a9.984 9.984 0 1 0 9.984 9.984A10.012 10.012 0 0 0 12.016 2.016Zm3.784 14.17-1.35-1.35a3.42 3.42 0 0 1-4.85 0l-1.35 1.35a5.33 5.33 0 0 0 7.55 0Zm.84-2.82-1.35-1.35a1.51 1.51 0 0 0-2.14 0l-1.35 1.35a3.42 3.42 0 0 1 4.84 0Z" />
+    </svg>
+  );
+}
+
+function ExternalLinkIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+}
+
+function ContractAddressBadge() {
+  const caAddress = (import.meta.env.VITE_CA_ADDRESS as string | undefined)?.trim() || "";
+  const isLive = Boolean(caAddress);
+  const [copied, setCopied] = useState(false);
+
+  const displayAddress = isLive
+    ? caAddress.length > 16
+      ? `${caAddress.slice(0, 6)}...${caAddress.slice(-4)}`
+      : caAddress
+    : "Coming Soon";
+
+  const dexscreenerUrl = isLive
+    ? `https://dexscreener.com/search?q=${encodeURIComponent(caAddress)}`
+    : "https://dexscreener.com";
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const textToCopy = isLive ? caAddress : "Coming Soon";
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(textToCopy);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <div className="hero-ca-wrapper">
+      <div className="hero-ca-card">
+        <div className="hero-ca-status">
+          <span
+            className={`hero-ca-dot ${isLive ? "is-live" : "is-coming"}`}
+            title={isLive ? "Contract Live" : "Token Coming Soon"}
+          />
+          <span className="hero-ca-label">CA:</span>
+          <span className="hero-ca-value" title={isLive ? caAddress : "Coming Soon"}>
+            {displayAddress}
+          </span>
+        </div>
+
+        <div className="hero-ca-divider" />
+
+        <div className="hero-ca-actions">
+          <button
+            type="button"
+            onClick={handleCopy}
+            className={`hero-ca-copy-btn ${copied ? "is-copied" : ""}`}
+            title={copied ? "Copied to clipboard!" : isLive ? "Copy contract address" : "Copy"}
+            aria-label="Copy contract address"
+          >
+            {copied ? <CheckIcon /> : <CopyIcon />}
+            <span>{copied ? "Copied" : "Copy"}</span>
+          </button>
+
+          <a
+            href={dexscreenerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hero-ca-dex-btn"
+            title={isLive ? "Open in Dexscreener" : "Dexscreener (Token Coming Soon)"}
+            aria-label="Open in Dexscreener"
+          >
+            <DexscreenerIcon />
+            <ExternalLinkIcon />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DownloadCta({
   className = "primary-button w-inline-block",
   textClassName = "primary-button-text",
@@ -757,6 +903,7 @@ function LandingPage() {
                       Private payments. Non-custodial. On Robinhood Chain.
                     </div>
                     <h1 className="heading-style-h1">Private payments. Non-custodial.</h1>
+                    <ContractAddressBadge />
                   </div>
                   <div className="button-wrapper">
                     <DownloadCta />
