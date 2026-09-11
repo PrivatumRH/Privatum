@@ -1,6 +1,6 @@
 {
   "name": "@privatumrh/robinhood-chain-sdk",
-  "version": "0.1.3",
+  "version": "0.1.8",
   "description": "Viem-based TypeScript SDK for PRIVATUM 2-of-3 threshold self-custody and private payments on Robinhood Chain",
   "type": "module",
   "main": "./dist/index.js",
