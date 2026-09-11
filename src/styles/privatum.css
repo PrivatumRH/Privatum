@@ -1339,3 +1339,48 @@ a[data-soon].is-soon::after{opacity:1;transform:translateY(-50%) translateX(0)}
 /* Chinese glyphs need a little more line height to avoid clipping in tight chips */
 :root[data-lang="zh"] .primary-button-text,
 :root[data-lang="zh"] .lang-toggle-option{line-height:1.35}
+
+/* ===== Bridge rebates ===== */
+.pv-rebate-section{background:linear-gradient(180deg,#fff 0%,#f7f8fa 100%)}
+.pv-rebate-chains{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:36px 0 28px}
+.pv-rebate-chain{display:flex;flex-direction:column;gap:4px;padding:16px 18px;border:1px solid var(--pv-line);border-radius:14px;background:#fff}
+.pv-rebate-chain-name{font-weight:650;font-size:15px;color:var(--pv-ink)}
+.pv-rebate-chain-id{font-size:11.5px;color:var(--pv-soft);letter-spacing:.01em}
+
+.pv-rebate-grid{display:grid;grid-template-columns:1fr 0.85fr;gap:28px;align-items:start}
+.pv-rebate-steps{display:grid;gap:14px}
+.pv-rebate-step{display:flex;gap:16px;padding:20px 22px;border:1px solid var(--pv-line);border-radius:16px;background:#fff}
+.pv-rebate-step-index{display:grid;width:30px;height:30px;flex:0 0 30px;place-items:center;border-radius:50%;background:var(--pv-ink);color:#fff;font-size:13px;font-weight:700}
+.pv-rebate-step-body{display:grid;gap:6px}
+.pv-rebate-step-title{margin:0;font-size:16px;font-weight:650;color:var(--pv-ink)}
+.pv-rebate-step-copy{margin:0;font-size:13.5px;line-height:1.6;color:var(--pv-soft)}
+
+.pv-rebate-panel{padding:24px;border:1px solid var(--pv-line);border-radius:18px;background:var(--pv-ink);color:#fff;box-shadow:0 26px 60px rgba(14,18,27,.16)}
+.pv-rebate-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.pv-rebate-panel-label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+.pv-rebate-panel-rate{padding:5px 11px;border-radius:999px;background:rgba(255,255,255,.12);font-size:11.5px;font-weight:650}
+.pv-rebate-rows{display:grid;gap:2px}
+.pv-rebate-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.09);font-size:13.5px}
+.pv-rebate-row span{color:rgba(255,255,255,.62)}
+.pv-rebate-row b{font-weight:650}
+.pv-rebate-row.is-muted{font-size:12.5px}
+.pv-rebate-row.is-muted span,.pv-rebate-row.is-muted b{color:rgba(255,255,255,.42)}
+.pv-rebate-row.is-total{margin-top:8px;border-bottom:0;padding-top:14px;border-top:1px solid rgba(255,255,255,.22)}
+.pv-rebate-row.is-total span{color:#fff}
+.pv-rebate-row.is-total b{color:#91d5b2;font-size:15px}
+.pv-rebate-note{margin:16px 0 0;font-size:11.5px;line-height:1.6;color:rgba(255,255,255,.5)}
+
+.pv-rebate-token{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-top:28px;padding:18px 22px;border:1px solid var(--pv-line);border-radius:14px;background:#fff}
+.pv-rebate-token-main{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.pv-rebate-token-symbol{font-size:19px;font-weight:750;color:var(--pv-ink)}
+.pv-rebate-token-name{font-size:12.5px;color:var(--pv-soft)}
+.pv-rebate-token-ca{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-all;color:var(--pv-ink);background:#f1f3f6;padding:7px 11px;border-radius:8px}
+
+@media (max-width:991px){
+  .pv-rebate-grid{grid-template-columns:1fr}
+  .pv-rebate-chains{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:560px){
+  .pv-rebate-chains{grid-template-columns:1fr}
+  .pv-rebate-token{flex-direction:column;align-items:flex-start;gap:10px}
+}

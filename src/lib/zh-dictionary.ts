@@ -46,6 +46,36 @@ export const ZH_DICTIONARY: Record<string, string> = {
   "Email Address": "电子邮箱",
   "Toggle mobile menu": "切换移动端菜单",
 
+  /* ---------- Bridge rebates ---------- */
+  "Bridge Rebates": "跨链返利",
+  Rebates: "返利",
+  "Bridge across four chains and earn the spread back": "跨四条链桥接，赚回中继价差",
+  "Ethereum": "以太坊",
+  "Base": "Base",
+  "Arbitrum": "Arbitrum",
+  "Worked example": "计算示例",
+  "25% of spread": "价差的 25%",
+  "Route": "路由",
+  "Bridged": "桥接金额",
+  "Relayer fee": "中继费用",
+  "— destination gas": "— 目标链 Gas",
+  "— relayer spread": "— 中继价差",
+  "Your rebate": "您的返利",
+  "$0.0174 in PRIV": "价值 $0.0174 的 PRIV",
+  "Base → Robinhood Chain": "Base → Robinhood Chain",
+  "Bridge through Privatum": "通过 Privatum 桥接",
+  "Move ETH or USDG between Ethereum, Base, Arbitrum and Robinhood Chain. Routing and quotes come from Relay.":
+    "在以太坊、Base、Arbitrum 与 Robinhood Chain 之间转移 ETH 或 USDG。路由与报价均来自 Relay。",
+  "The spread is measured, not estimated": "价差为实测值，而非估算值",
+  "Every quote separates destination gas from the relayer's margin. Only that margin - the spread - is rebated.":
+    "每笔报价都会将目标链 Gas 与中继方的利润分开列示。仅对该利润（即价差）进行返利。",
+  "Claim in PRIV on Robinhood Chain": "在 Robinhood Chain 上领取 PRIV",
+  "Rebates accrue once a bridge settles and are claimable in PRIV, with the amount fixed at the price on claim.":
+    "桥接结算后返利即开始累积，可按领取时的价格折算为 PRIV 领取。",
+  "Figures from a live Relay quote. Rebates accrue per bridge and are claimable in PRIV on Robinhood Chain once the bridge settles.":
+    "数据取自 Relay 实时报价。返利按每笔桥接累积，桥接结算后即可在 Robinhood Chain 上以 PRIV 领取。",
+  "PrivatumRH • 18 decimals • Robinhood Chain": "PrivatumRH • 18 位小数 • Robinhood Chain",
+
   /* ---------- Hero ---------- */
   "Private payments. Non-custodial. On Robinhood Chain.": "隐私支付。非托管。基于 Robinhood Chain。",
   "Private payments. Non-custodial.": "隐私支付。非托管。",
