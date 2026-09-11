@@ -255,12 +255,8 @@ function ContractAddressBadge() {
     <div className="hero-ca-wrapper">
       <div className="hero-ca-card">
         <div className="hero-ca-status">
-          <span
-            className={`hero-ca-dot ${isLive ? "is-live" : "is-coming"}`}
-            title={isLive ? "Contract Live" : "Token Coming Soon"}
-          />
           <span className="hero-ca-label">CA:</span>
-          <span className="hero-ca-value" title={isLive ? caAddress : "Coming Soon"}>
+          <span className="hero-ca-value" title={isLive ? caAddress : "Contract Address Coming Soon"}>
             {displayAddress}
           </span>
         </div>
