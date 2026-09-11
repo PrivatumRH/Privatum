@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@noble/curves": "^2.4.0",
-    "@privatumrh/robinhood-chain-sdk": "^0.1.1",
+    "@privatumrh/robinhood-chain-sdk": "^0.1.2",
     "@tauri-apps/api": "^2.0.0",
     "@types/qrcode": "^1.5.6",
     "lucide-react": "^0.475.0",

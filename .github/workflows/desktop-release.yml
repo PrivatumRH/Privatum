@@ -120,9 +120,18 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Build SDK
+        working-directory: ./sdk
+        run: |
+          bun install
+          bun run build
+          bun link
+
       - name: Install Desktop dependencies
         working-directory: ./desktop
-        run: bun install
+        run: |
+          bun install
+          bun link @privatumrh/robinhood-chain-sdk
 
       - name: Build Desktop frontend
         working-directory: ./desktop
