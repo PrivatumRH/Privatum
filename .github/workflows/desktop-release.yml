@@ -5,6 +5,19 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version tag (e.g. v0.1.1, v0.1.2, v0.1.6)'
+        required: true
+        default: 'v0.1.1'
+      release_title:
+        description: 'Release Title'
+        required: false
+        default: 'PRIVATUM Desktop Release'
+      release_body:
+        description: 'Release Notes / Description'
+        required: false
+        default: 'Official native multi-platform release of PRIVATUM self-custody smart account for Robinhood Chain.'
 
 permissions:
   contents: write
@@ -33,6 +46,48 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Determine version and update configurations
+        id: version_step
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            RAW_VER="${{ github.event.inputs.version }}"
+            REL_TITLE="${{ github.event.inputs.release_title }}"
+            REL_BODY="${{ github.event.inputs.release_body }}"
+          else
+            RAW_VER="${{ github.ref_name }}"
+            REL_TITLE="PRIVATUM Desktop ${RAW_VER}"
+            REL_BODY="Official native multi-platform release of PRIVATUM self-custody smart account for Robinhood Chain."
+          fi
+          SEMVER="${RAW_VER#v}"
+          TAG="v${SEMVER}"
+          echo "tag_name=${TAG}" >> $GITHUB_OUTPUT
+          echo "semver=${SEMVER}" >> $GITHUB_OUTPUT
+          echo "release_title=${REL_TITLE:-PRIVATUM Desktop $TAG}" >> $GITHUB_OUTPUT
+          echo "release_body=${REL_BODY}" >> $GITHUB_OUTPUT
+
+          python3 -c "
+          import json, re
+          semver = '$SEMVER'
+          with open('desktop/src-tauri/tauri.conf.json', 'r') as f:
+              data = json.load(f)
+          data['version'] = semver
+          with open('desktop/src-tauri/tauri.conf.json', 'w') as f:
+              json.dump(data, f, indent=2)
+
+          with open('desktop/package.json', 'r') as f:
+              pkg = json.load(f)
+          pkg['version'] = semver
+          with open('desktop/package.json', 'w') as f:
+              json.dump(pkg, f, indent=2)
+
+          with open('desktop/src-tauri/Cargo.toml', 'r') as f:
+              cargo = f.read()
+          cargo = re.sub(r'version = \"[^\"]+\"', f'version = \"{semver}\"', cargo, count=1)
+          with open('desktop/src-tauri/Cargo.toml', 'w') as f:
+              f.write(cargo)
+          "
 
       - name: Install Linux system dependencies
         if: matrix.platform == 'ubuntu-22.04'
@@ -78,9 +133,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: './desktop'
-          tagName: ${{ github.ref_name }}
-          releaseName: 'PRIVATUM Desktop ${{ github.ref_name }}'
-          releaseBody: 'Official native multi-platform release of PRIVATUM self-custody smart account for Robinhood Chain.'
+          tagName: ${{ steps.version_step.outputs.tag_name }}
+          releaseName: ${{ steps.version_step.outputs.release_title }}
+          releaseBody: ${{ steps.version_step.outputs.release_body }}
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
