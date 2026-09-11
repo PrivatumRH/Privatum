@@ -23,7 +23,7 @@ def main():
     print(f"[1/3] Exporting and rewriting commit history for {PUBLIC_AUTHOR_NAME} <{PUBLIC_AUTHOR_EMAIL}>...")
 
     # Fast export master -> rewrite stream -> fast import to public-master
-    p1 = subprocess.Popen(["git", "fast-export", TARGET_BRANCH], stdout=subprocess.PIPE)
+    p1 = subprocess.Popen(["git", "fast-export", f"refs/heads/{TARGET_BRANCH}"], stdout=subprocess.PIPE)
     p2 = subprocess.Popen(["git", "fast-import", "--force", "--quiet"], stdin=subprocess.PIPE)
 
     inp = p1.stdout
