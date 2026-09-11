@@ -60,6 +60,11 @@ import { PayLinksTab } from "./components/PayLinksTab";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { StealthScannerModal } from "./components/StealthScannerModal";
 import { buildStealthSendBatch, parseMetaAddress } from "./lib/stealth";
+import {
+  checkAddressPoisoning,
+  requiresAcknowledgement,
+  type AddressGuardVerdict,
+} from "./lib/addressGuard";
 import { executeAccountBatch } from "./lib/execute";
 import { isFeatureActive, RELEASE_VERSIONS, type ReleaseVersion } from "./config/features";
 
@@ -74,6 +79,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.7": "Gasless Staking & Protocol Sponsor",
   "0.1.8": "Bridge Spread Rebates",
   "0.1.9": "Disposable Pay Links",
+  "0.1.10": "Address Poisoning Guard",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -192,6 +198,36 @@ function formatRelativeTime(timestamp: number): string {
 function shortenAddress(addr: string): string {
   if (!addr || addr.length < 10) return addr || "";
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
+/**
+ * Renders an address with the characters shared with a look-alike left plain and
+ * the differing middle highlighted, so the part a truncated row hides is the
+ * part that stands out.
+ */
+function AddressDiff({
+  address,
+  prefixMatch,
+  suffixMatch,
+}: {
+  address: string;
+  prefixMatch: number;
+  suffixMatch: number;
+}) {
+  const body = address.replace(/^0x/, "");
+  const head = body.slice(0, prefixMatch);
+  const tailLen = Math.max(0, Math.min(suffixMatch, body.length - prefixMatch));
+  const tail = tailLen > 0 ? body.slice(body.length - tailLen) : "";
+  const middle = body.slice(prefixMatch, body.length - tailLen);
+
+  return (
+    <span className="font-mono text-[11px] break-all leading-relaxed">
+      <span className="text-slate-500">0x</span>
+      <span className="text-slate-200">{head}</span>
+      {middle && <span className="text-red-200 bg-red-500/25 rounded-sm px-0.5">{middle}</span>}
+      <span className="text-slate-200">{tail}</span>
+    </span>
+  );
 }
 
 
@@ -404,6 +440,10 @@ export function App() {
 
   // Transactions list
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
+
+  // Address poisoning guard for the pending recipient
+  const [addressVerdict, setAddressVerdict] = useState<AddressGuardVerdict | null>(null);
+  const [guardAcknowledged, setGuardAcknowledged] = useState<boolean>(false);
 
   // Animated popup toast alerts
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -1290,6 +1330,8 @@ export function App() {
     if (asset) setSendAssetType(asset);
     setSendStep("form");
     setSimulationData(null);
+    setAddressVerdict(null);
+    setGuardAcknowledged(false);
     setIsSimulating(false);
     setTxSuccessHash(null);
     setShowSendModal(true);
@@ -1405,6 +1447,20 @@ export function App() {
       }
     }
 
+    // Screen the recipient for address poisoning before anything reaches Shard A.
+    // Stealth meta-addresses derive a fresh one-time address per send, so they
+    // are never look-alikes of a previous recipient.
+    setAddressVerdict(
+      isMeta
+        ? null
+        : checkAddressPoisoning({
+            recipient: trimmedRecipient,
+            history: transactions,
+            ownAddresses: accounts.map((a) => a.address),
+          })
+    );
+    setGuardAcknowledged(false);
+
     setSendStep("preview");
 
     if (isStealthSend && isMeta) {
@@ -1428,6 +1484,15 @@ export function App() {
   const handleSendTransaction = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!wallet) return;
+
+    if (addressVerdict && requiresAcknowledgement(addressVerdict) && !guardAcknowledged) {
+      addToast(
+        "error",
+        "Recipient not verified",
+        "Confirm you checked the full recipient address before this transfer can be signed."
+      );
+      return;
+    }
 
     const trimmedRecipient = sendRecipient.trim();
     const isMeta = trimmedRecipient.startsWith("st:eth:0x") || (!trimmedRecipient.startsWith("st:") && trimmedRecipient.replace(/^0x/, "").length === 132);
@@ -1531,6 +1596,8 @@ export function App() {
         setSendRecipient("");
         setSendStep("form");
         setSimulationData(null);
+        setAddressVerdict(null);
+        setGuardAcknowledged(false);
         setShowSendModal(false);
 
         setTimeout(() => {
@@ -1619,6 +1686,8 @@ export function App() {
       setSendRecipient("");
       setSendStep("form");
       setSimulationData(null);
+      setAddressVerdict(null);
+      setGuardAcknowledged(false);
       setShowSendModal(false);
 
       // Poll updated balance
@@ -2982,6 +3051,88 @@ export function App() {
                   </div>
                 </div>
 
+                {/* Address poisoning guard */}
+                {addressVerdict && addressVerdict.level !== "ok" && (
+                  addressVerdict.level === "known" ? (
+                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center gap-2.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <div className="text-[11px] text-slate-300">
+                        <span className="font-semibold text-slate-200">{addressVerdict.title}.</span>{" "}
+                        {addressVerdict.detail}
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      className={`p-3.5 rounded-xl border space-y-3 ${
+                        addressVerdict.level === "danger"
+                          ? "bg-red-500/10 border-red-500/30"
+                          : "bg-amber-500/10 border-amber-500/30"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle
+                          className={`w-4 h-4 shrink-0 mt-0.5 ${
+                            addressVerdict.level === "danger" ? "text-red-400" : "text-amber-400"
+                          }`}
+                        />
+                        <div className="text-xs">
+                          <div
+                            className={`font-semibold ${
+                              addressVerdict.level === "danger" ? "text-red-300" : "text-amber-300"
+                            }`}
+                          >
+                            {addressVerdict.title}
+                          </div>
+                          <div
+                            className={`text-[11px] mt-0.5 ${
+                              addressVerdict.level === "danger" ? "text-red-200/80" : "text-amber-200/80"
+                            }`}
+                          >
+                            {addressVerdict.detail}
+                          </div>
+                        </div>
+                      </div>
+
+                      {addressVerdict.lookalikeOf && (
+                        <div className="bg-black/40 rounded-lg p-2.5 space-y-2">
+                          <div>
+                            <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">
+                              Sending to
+                            </div>
+                            <AddressDiff
+                              address={sendRecipient.trim()}
+                              prefixMatch={addressVerdict.prefixMatch ?? 0}
+                              suffixMatch={addressVerdict.suffixMatch ?? 0}
+                            />
+                          </div>
+                          <div>
+                            <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">
+                              You previously paid
+                            </div>
+                            <AddressDiff
+                              address={addressVerdict.lookalikeOf}
+                              prefixMatch={addressVerdict.prefixMatch ?? 0}
+                              suffixMatch={addressVerdict.suffixMatch ?? 0}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <label className="flex items-start gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={guardAcknowledged}
+                          onChange={(e) => setGuardAcknowledged(e.target.checked)}
+                          className="mt-0.5 w-3.5 h-3.5 shrink-0 accent-[#f64943] cursor-pointer"
+                        />
+                        <span className="text-[11px] text-slate-300">
+                          I checked every character of this address against my own records.
+                        </span>
+                      </label>
+                    </div>
+                  )
+                )}
+
                 {/* Simulation status */}
                 {isSimulating ? (
                   <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center gap-3">
@@ -3073,7 +3224,11 @@ export function App() {
                   </button>
                   <button
                     type="button"
-                    disabled={isSending || isSimulating}
+                    disabled={
+                      isSending ||
+                      isSimulating ||
+                      Boolean(addressVerdict && requiresAcknowledgement(addressVerdict) && !guardAcknowledged)
+                    }
                     onClick={() => handleSendTransaction()}
                     className="flex-1 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2"
                   >
