@@ -2142,7 +2142,7 @@ export function App() {
                     type={showHealthShardC ? "text" : "password"}
                     readOnly
                     value={shardCPrivKey}
-                    className="bg-transparent font-mono text-xs text-amber-100 w-full focus:outline-none select-all tracking-wider"
+                    className="bg-transparent text-xs text-amber-100 w-full focus:outline-none select-all tracking-wider"
                   />
                   <div className="flex items-center gap-1 shrink-0">
                     <button
@@ -2252,7 +2252,7 @@ export function App() {
                       placeholder="Enter 6-digit code"
                       value={totpCode}
                       onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ""))}
-                      className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-white/30"
+                      className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white/30"
                     />
                     <button
                       onClick={handleConfirmTotp}
@@ -2537,7 +2537,7 @@ export function App() {
                       placeholder={isStealthSend ? "st:eth:0x... or 0x..." : "0x..."}
                       value={sendRecipient}
                       onChange={(e) => setSendRecipient(e.target.value.trim())}
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-white/30"
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
                     />
                   </div>
 
@@ -2554,7 +2554,7 @@ export function App() {
                         placeholder="0.0"
                         value={sendAmount}
                         onChange={(e) => setSendAmount(e.target.value.trim())}
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-white/30 pr-14"
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30 pr-14"
                       />
                       <button
                         type="button"
@@ -2833,7 +2833,7 @@ export function App() {
                   type={showShardCSecret ? "text" : "password"}
                   readOnly
                   value={shardCPrivKey || shardCAddress || ""}
-                  className="bg-transparent font-mono text-xs text-white w-full focus:outline-none select-all tracking-wider"
+                  className="bg-transparent text-xs text-white w-full focus:outline-none select-all tracking-wider"
                 />
                 <div className="flex items-center gap-1 shrink-0">
                   <button
@@ -2942,7 +2942,7 @@ export function App() {
                   placeholder="0x..."
                   value={recoverAddress}
                   onChange={(e) => setRecoverAddress(e.target.value.trim())}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-white/30"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white/30"
                 />
               </div>
 
@@ -2953,7 +2953,7 @@ export function App() {
                   placeholder="0x..."
                   value={recoverShardCKey}
                   onChange={(e) => setRecoverShardCKey(e.target.value.trim())}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-white/30"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white/30"
                 />
               </div>
 
@@ -2965,7 +2965,7 @@ export function App() {
                   placeholder="123456"
                   value={recoverTotpCode}
                   onChange={(e) => setRecoverTotpCode(e.target.value.replace(/\D/g, ""))}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-white/30"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-white/30"
                 />
               </div>
 

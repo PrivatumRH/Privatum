@@ -147,7 +147,7 @@ export function TokenPickerModal({
                 placeholder="0x..."
                 value={customAddress}
                 onChange={(e) => setCustomAddress(e.target.value)}
-                className="w-full mt-1 px-3 py-1.5 rounded-lg bg-[#181a22] border border-white/[0.08] text-white font-mono text-xs focus:outline-none focus:border-white/20"
+                className="w-full mt-1 px-3 py-1.5 rounded-lg bg-[#181a22] border border-white/[0.08] text-white text-xs focus:outline-none focus:border-white/20"
               />
             </div>
 

@@ -295,7 +295,7 @@ export function CrossChainTab({
               placeholder="0.0"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="bg-transparent text-white font-mono text-2xl font-bold focus:outline-none w-full placeholder:text-neutral-600"
+              className="bg-transparent text-white text-2xl font-bold focus:outline-none w-full placeholder:text-neutral-600"
             />
 
             <button
@@ -342,7 +342,7 @@ export function CrossChainTab({
             placeholder="0x... (recipient address on destination chain)"
             value={recipient}
             onChange={(e) => setRecipient(e.target.value)}
-            className="bg-[#181a22] text-white font-mono text-xs px-3 py-2 rounded-lg border border-white/10 focus:outline-none focus:border-white/20 w-full placeholder:text-neutral-500"
+            className="bg-[#181a22] text-white text-xs px-3 py-2 rounded-lg border border-white/10 focus:outline-none focus:border-white/20 w-full placeholder:text-neutral-500"
           />
         </div>
 
