@@ -7,6 +7,7 @@ import { recoveryRouter } from "./routes/recovery";
 import { bundlerRouter } from "./routes/bundler";
 import { downloadsRouter } from "./routes/downloads";
 import { updatesRouter } from "./routes/updates";
+import { stakingRouter } from "./routes/staking";
 
 export function createApp(): Express {
   const app = express();
@@ -30,6 +31,7 @@ export function createApp(): Express {
   app.use(bundlerRouter);
   app.use(downloadsRouter);
   app.use(updatesRouter);
+  app.use(stakingRouter);
 
   return app;
 }

@@ -900,6 +900,12 @@ function LandingPage() {
                     </div>
                     <h1 className="heading-style-h1">Private payments. Non-custodial.</h1>
                     <ContractAddressBadge />
+                    <div className="hero-gasless-tag" style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "rgba(14, 18, 27, 0.7)", fontWeight: 500, marginTop: "4px" }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style={{ color: "#f64b43" }}>
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                      </svg>
+                      <span>Stake $PRIV to unlock 100% gasless transactions sponsored by protocol.</span>
+                    </div>
                   </div>
                   <div className="button-wrapper">
                     <DownloadCta />

@@ -97,6 +97,33 @@ export interface BundlerSubmissionResponse {
   userOpHash: Hex;
   chainId: number;
   timestamp: string;
+  sponsored?: boolean;
+}
+
+export interface StakingConfigResponse {
+  platformPoolWallet: Address;
+  tokenAddress: Address;
+  minStake: number;
+  cycleDays: number;
+  tiers: {
+    name: string;
+    minPriv: number;
+    txnsPerMonth: number | string;
+  }[];
+}
+
+export interface StakingStatusResponse {
+  walletAddress: Address;
+  isStaked: boolean;
+  stakedAmount: number;
+  tier: string;
+  monthlyQuota: number;
+  quotaUsed: number;
+  quotaRemaining: number;
+  expiresAt: string | null;
+  daysRemaining: number;
+  isExpired: boolean;
+  canRenew: boolean;
 }
 
 export interface RecoveryOptions {

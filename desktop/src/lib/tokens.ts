@@ -13,8 +13,17 @@ export interface TokenInfo {
 
 export const USDG_ADDRESS: Address = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
 export const WETH_ADDRESS: Address = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
+export const PRIV_TOKEN_ADDRESS: Address = "0xee2ddd7128c291b027712eca157b3ff31a55a05a";
 
 export const TOKENS: TokenInfo[] = [
+  {
+    symbol: "PRIV",
+    name: "Privatum",
+    address: PRIV_TOKEN_ADDRESS,
+    decimals: 18,
+    color: "#f64b43",
+    icon: "/logo.png",
+  },
   {
     symbol: "USDG",
     name: "Global Dollar",
