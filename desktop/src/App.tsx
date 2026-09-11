@@ -210,15 +210,28 @@ export function App() {
 
   // Multi-wallet accounts
   const [accounts, setAccounts] = useState<WalletAccount[]>(() => {
+    const activeWalletAddr = typeof window !== "undefined" ? localStorage.getItem("privatum_wallet_address") : null;
+    const initialAddr = (activeWalletAddr as Address) || ("0x0000000000000000000000000000000000000000" as Address);
     try {
       const stored = localStorage.getItem("privatum_accounts");
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const repaired = parsed.map((a: WalletAccount) => {
+            if ((!a.address || a.address === "0x0000000000000000000000000000000000000000") && activeWalletAddr) {
+              return { ...a, address: activeWalletAddr as Address };
+            }
+            return a;
+          });
+          return repaired;
+        }
+      }
     } catch {}
     return [
       {
         id: "primary",
-        name: "Primary Treasury",
-        address: "0x0000000000000000000000000000000000000000" as Address,
+        name: "Wallet 1",
+        address: initialAddr,
         color: "#ef4444",
         createdAt: Date.now(),
       },
@@ -238,6 +251,29 @@ export function App() {
   const [shardCAddress, setShardCAddress] = useState<string>("");
   const [shardCPrivKey, setShardCPrivKey] = useState<string>("");
   const [apiKey, setApiKey] = useState<string>("");
+
+  // Keep accounts synchronized with real active wallet address
+  useEffect(() => {
+    if (walletAddress && walletAddress !== "0x0000000000000000000000000000000000000000") {
+      setAccounts((prev) => {
+        let changed = false;
+        const updated = prev.map((acc) => {
+          if (acc.id === activeAccountId && (!acc.address || acc.address.toLowerCase() !== walletAddress.toLowerCase())) {
+            changed = true;
+            return { ...acc, address: walletAddress as Address };
+          }
+          return acc;
+        });
+        if (changed) {
+          try {
+            localStorage.setItem("privatum_accounts", JSON.stringify(updated));
+          } catch {}
+          return updated;
+        }
+        return prev;
+      });
+    }
+  }, [walletAddress, activeAccountId]);
 
   const [ethBalance, setEthBalance] = useState<string>("0.0000");
   const [usdgBalance, setUsdgBalance] = useState<string>("0.00");
@@ -510,26 +546,33 @@ export function App() {
           setApiKey(savedApiKey);
           setShardCAddress(savedShardC);
 
-          // Ensure active account is in accounts list
+          // Ensure active account is in accounts list with real address
           setAccounts((prev) => {
-            const exists = prev.some((a) => a.id === activeId || a.address.toLowerCase() === savedAddress.toLowerCase());
-            if (!exists) {
-              const updated = [
+            const hasReal = prev.some((a) => a.address.toLowerCase() === savedAddress.toLowerCase());
+            let updated: WalletAccount[];
+            if (hasReal) {
+              updated = prev
+                .filter((a) => a.address !== "0x0000000000000000000000000000000000000000")
+                .map((a) => (a.address.toLowerCase() === savedAddress.toLowerCase() ? { ...a, id: activeId } : a));
+            } else {
+              const filtered = prev.filter(
+                (a) => a.address !== "0x0000000000000000000000000000000000000000" && a.id !== activeId
+              );
+              updated = [
                 {
                   id: activeId,
-                  name: activeId === "primary" ? "Primary Treasury" : `Account ${prev.length + 1}`,
+                  name: `Wallet 1`,
                   address: savedAddress as Address,
                   color: "#ef4444",
                   createdAt: Date.now(),
                 },
-                ...prev.filter((a) => a.address !== "0x0000000000000000000000000000000000000000"),
+                ...filtered,
               ];
-              try {
-                localStorage.setItem("privatum_accounts", JSON.stringify(updated));
-              } catch {}
-              return updated;
             }
-            return prev;
+            try {
+              localStorage.setItem("privatum_accounts", JSON.stringify(updated));
+            } catch {}
+            return updated;
           });
 
           // Purge any legacy Shard C key from device storage
@@ -664,7 +707,7 @@ export function App() {
         const colors = ["#ef4444", "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b"];
         const newAccount: WalletAccount = {
           id: newAccId,
-          name: newAccId === "primary" ? "Primary Treasury" : `Account ${accounts.length + 1}`,
+          name: isFirstAccount ? "Wallet 1" : `Wallet ${accounts.length + 1}`,
           address: newWallet.address as Address,
           color: colors[accounts.length % colors.length],
           createdAt: Date.now(),
@@ -1397,7 +1440,7 @@ export function App() {
             {isFeatureActive("swaps", appVersion, previewVersion) && (
               <button
                 onClick={() => setActiveTab("swaps")}
-                title="Robinhood DEX Swap (v4/v3)"
+                title="Swap"
                 className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
                   activeTab === "swaps"
                     ? "bg-white/10 text-white border border-white/15"
@@ -1412,7 +1455,7 @@ export function App() {
             {isFeatureActive("cross_chain", appVersion, previewVersion) && (
               <button
                 onClick={() => setActiveTab("cross_chain")}
-                title="Cross-Chain Swaps (Relay)"
+                title="Cross-Chain Swaps"
                 className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
                   activeTab === "cross_chain"
                     ? "bg-white/10 text-white border border-white/15"
@@ -1427,7 +1470,7 @@ export function App() {
             {isFeatureActive("nfts", appVersion, previewVersion) && (
               <button
                 onClick={() => setActiveTab("nfts")}
-                title="Digital Collectibles & NFTs"
+                title="NFTs"
                 className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
                   activeTab === "nfts"
                     ? "bg-white/10 text-white border border-white/15"
@@ -1537,7 +1580,7 @@ export function App() {
               <button
                 onClick={() => wallet && fetchBalances(wallet.address as Address)}
                 disabled={isRefreshing || !wallet}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-xs font-medium text-slate-300 border border-white/[0.06] transition disabled:opacity-40 cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-[10px] bg-white/[0.04] hover:bg-white/[0.08] text-xs font-medium text-slate-300 border border-white/[0.06] transition disabled:opacity-40 cursor-pointer"
               >
                 <RotateCw className={`w-3 h-3 ${isRefreshing ? "animate-spin text-white" : "text-emerald-400"}`} />
                 <span>Sync</span>
@@ -1558,7 +1601,7 @@ export function App() {
             {isFeatureActive("private_send", appVersion, previewVersion) && wallet && (
               <button
                 onClick={() => setShowStealthScanner(true)}
-                className="px-3 py-1.5 rounded-full bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-xs font-medium border border-purple-500/20 transition flex items-center gap-1.5 cursor-pointer"
+                className="h-8 px-3 rounded-[10px] bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-xs font-medium border border-purple-500/20 transition flex items-center gap-1.5 cursor-pointer"
                 title="Scan Stealth Announcements (ERC-5564)"
               >
                 <Scan className="w-3.5 h-3.5" />
@@ -1577,21 +1620,10 @@ export function App() {
               />
             )}
 
-            {wallet ? (
-              <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] px-3 py-1.5 rounded-full text-xs font-mono text-slate-200">
-                <span>{shortenAddress(walletAddress)}</span>
-                <button
-                  onClick={() => copyToClipboard(walletAddress, "Wallet address")}
-                  className="text-slate-400 hover:text-white transition cursor-pointer"
-                  title="Copy address"
-                >
-                  <Copy className="w-3 h-3" />
-                </button>
-              </div>
-            ) : (
+            {!wallet && (
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="px-4 py-1.5 rounded-full text-xs font-semibold bg-[#f64943] hover:bg-[#e03d38] text-white transition flex items-center gap-1.5 cursor-pointer"
+                className="h-8 px-4 rounded-xl text-xs font-semibold bg-[#f64943] hover:bg-[#e03d38] text-white transition flex items-center gap-1.5 cursor-pointer"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
                 <span>Create Account</span>
