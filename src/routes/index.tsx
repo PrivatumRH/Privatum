@@ -411,6 +411,14 @@ function LandingPage() {
                           <a className="inner-link w-inline-block" href="/docs.html#sdk">
                             <div>SDK Docs</div>
                           </a>
+                          <a
+                            className="inner-link w-inline-block"
+                            href="https://www.npmjs.com/package/@privatumrh/robinhood-chain-sdk"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <div>SDK on npm</div>
+                          </a>
                         </div>
                       </div>
                     </div>
@@ -570,6 +578,15 @@ function LandingPage() {
                 </a>
                 <a className="link mob" href="/docs.html#sdk" onClick={() => setMobileMenuOpen(false)}>
                   Open SDK
+                </a>
+                <a
+                  className="link mob"
+                  href="https://www.npmjs.com/package/@privatumrh/robinhood-chain-sdk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  SDK on npm &rarr;
                 </a>
               </div>
             </div>
@@ -956,7 +973,7 @@ function LandingPage() {
                     </div>
                     <div className="pv-spec-row">
                       <span>Target File</span>
-                      <b>{releaseInfo?.downloads?.windows?.filename || PLATFORM_DATA.windows.filename}</b>
+                      <b>{releaseInfo?.downloads?.["windows"]?.filename || PLATFORM_DATA.windows.filename}</b>
                     </div>
                   </div>
                   <a
@@ -994,7 +1011,7 @@ function LandingPage() {
                     </div>
                     <div className="pv-spec-row">
                       <span>Target File</span>
-                      <b>{releaseInfo?.downloads?.macos?.filename || PLATFORM_DATA.macos.filename}</b>
+                      <b>{releaseInfo?.downloads?.["macos"]?.filename || PLATFORM_DATA.macos.filename}</b>
                     </div>
                   </div>
                   <a
@@ -1032,7 +1049,7 @@ function LandingPage() {
                     </div>
                     <div className="pv-spec-row">
                       <span>Target File</span>
-                      <b>{releaseInfo?.downloads?.linux?.filename || PLATFORM_DATA.linux.filename}</b>
+                      <b>{releaseInfo?.downloads?.["linux"]?.filename || PLATFORM_DATA.linux.filename}</b>
                     </div>
                   </div>
                   <a
@@ -1043,7 +1060,7 @@ function LandingPage() {
                     <span>Download for Linux (.deb)</span>
                   </a>
                   <div className="pv-card-instructions">
-                    Install via <code>sudo dpkg -i {releaseInfo?.downloads?.linux?.filename || PLATFORM_DATA.linux.filename}</code>
+                    Install via <code>sudo dpkg -i {releaseInfo?.downloads?.["linux"]?.filename || PLATFORM_DATA.linux.filename}</code>
                   </div>
                 </div>
               </div>
@@ -1057,6 +1074,14 @@ function LandingPage() {
                     rel="noopener noreferrer"
                   >
                     View repository on GitHub &rarr;
+                  </a>
+                  <span style={{ margin: "0 8px", opacity: 0.4 }}>|</span>
+                  <a
+                    href="https://www.npmjs.com/package/@privatumrh/robinhood-chain-sdk"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    SDK on npm &rarr;
                   </a>
                 </div>
                 <div>
@@ -1753,8 +1778,17 @@ function LandingPage() {
                     </div>
                   </div>
 
-                  <div className="integration-card">
-                    <h3 className="heading-style-h6">Open SDK</h3>
+                  <a
+                    className="integration-card"
+                    href="https://www.npmjs.com/package/@privatumrh/robinhood-chain-sdk"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ textDecoration: "none", color: "inherit", display: "block" }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <h3 className="heading-style-h6">Open SDK</h3>
+                      <span style={{ fontSize: "11px", letterSpacing: "0.04em", color: "rgba(255, 255, 255, 0.6)" }}>npm &rarr;</span>
+                    </div>
                     <div className="integration-card_details">
                       <img
                         alt="Code icon"
@@ -1764,7 +1798,7 @@ function LandingPage() {
                       />
                       <p className="text-size-small">Embed threshold wallets into applications with a Viem based TypeScript SDK.</p>
                     </div>
-                  </div>
+                  </a>
                 </div>
               </div>
             </div>
@@ -2126,9 +2160,16 @@ function LandingPage() {
                             <div aria-label="Open SDK sending threshold payment" className="connected-scene sdk-connected" role="img">
                               <div className="connected-top">
                                 <span>TypeScript SDK</span>
-                                <b>
-                                  <i></i> Live
-                                </b>
+                                <a
+                                  href="https://www.npmjs.com/package/@privatumrh/robinhood-chain-sdk"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ color: "inherit", textDecoration: "none" }}
+                                >
+                                  <b>
+                                    <i></i> Live on npm &rarr;
+                                  </b>
+                                </a>
                               </div>
                               <div className="code-lines">
                                 <span>
@@ -2312,7 +2353,15 @@ function LandingPage() {
                         A public, typed TypeScript toolkit built on viem, with guides, sample apps and audit-ready threshold primitives under MIT licensing.
                       </p>
                       <div className="pv-tl-chips">
-                        <span className="pv-tl-chip">npm SDK</span>
+                        <a
+                          className="pv-tl-chip"
+                          href="https://www.npmjs.com/package/@privatumrh/robinhood-chain-sdk"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ textDecoration: "none", color: "inherit" }}
+                        >
+                          npm SDK &rarr;
+                        </a>
                         <span className="pv-tl-chip">viem APIs</span>
                         <span className="pv-tl-chip">Developer guides</span>
                         <span className="pv-tl-chip">MIT licensed</span>
@@ -2724,6 +2773,14 @@ function LandingPage() {
                         </a>
                         <a className="inner-link w-inline-block" href="/docs.html#sdk">
                           <div>SDK Docs</div>
+                        </a>
+                        <a
+                          className="inner-link w-inline-block"
+                          href="https://www.npmjs.com/package/@privatumrh/robinhood-chain-sdk"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <div>SDK on npm</div>
                         </a>
                       </div>
                     </div>
