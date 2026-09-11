@@ -133,6 +133,11 @@ export async function executeAccountBatch(params: {
   } catch (bundlerErr: any) {
     if (shardAPrivKey) {
       const account = privateKeyToAccount(shardAPrivKey as Hex);
+      if (account.address.toLowerCase() !== wallet.address.toLowerCase()) {
+        console.warn(
+          `[executeAccountBatch] Signer key mismatch: local key derives ${account.address} while wallet address is ${wallet.address}`
+        );
+      }
       const walletClient = createWalletClient({
         account,
         chain: robinhoodChain,

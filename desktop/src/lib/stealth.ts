@@ -5,10 +5,14 @@ import {
   hexToBytes,
   encodeFunctionData,
   parseAbi,
+  createWalletClient,
+  http,
   type Address,
   type Hex,
+  type PublicClient,
 } from "viem";
-import { publicKeyToAddress } from "viem/accounts";
+import { publicKeyToAddress, privateKeyToAccount } from "viem/accounts";
+import { robinhoodChain } from "@privatumrh/robinhood-chain-sdk";
 
 export const ERC5564_ANNOUNCER = "0x55649E01B5Df198D18D95b5cc5051630cfD45564" as const;
 
@@ -19,6 +23,7 @@ export const ANNOUNCER_ABI = parseAbi([
 
 const ERC20_ABI = parseAbi([
   "function transfer(address to, uint256 amount) returns (bool)",
+  "function balanceOf(address owner) view returns (uint256)",
 ]);
 
 export interface StealthMetaAddress {
@@ -180,5 +185,106 @@ export function buildStealthSendBatch(params: {
     stealthAddress,
     ephemeralPubKey,
     viewTag,
+  };
+}
+
+export function computeStealthPrivateKey(
+  ephemeralPubKey: Hex,
+  viewPrivKey: Hex,
+  spendPrivKeyHex: Hex
+): Hex {
+  const curveN = secp256k1.Point.CURVE().n;
+  const R = secp256k1.Point.fromHex(ephemeralPubKey.replace(/^0x/, ""));
+  const S = R.multiply(BigInt(viewPrivKey));
+  const SxBytes = numberToBytes32(S.x);
+  const h = keccak256(bytesToHex(SxBytes));
+  const hBig = BigInt(h) % curveN;
+  const spendPriv = BigInt(spendPrivKeyHex) % curveN;
+  const stealthPrivBig = (spendPriv + hBig) % curveN;
+  return `0x${stealthPrivBig.toString(16).padStart(64, "0")}` as Hex;
+}
+
+export async function sweepStealthFunds(params: {
+  stealthAddress: Address;
+  ephemeralPubKey: Hex;
+  viewPrivKey: Hex;
+  spendPrivKeyHex: Hex;
+  destinationAddress: Address;
+  client: PublicClient;
+  tokenAddress?: Address;
+}): Promise<{ txHash: Hex; asset: "ETH" | "USDG"; amount: string }> {
+  const {
+    stealthAddress,
+    ephemeralPubKey,
+    viewPrivKey,
+    spendPrivKeyHex,
+    destinationAddress,
+    client,
+    tokenAddress,
+  } = params;
+
+  const stealthPrivKey = computeStealthPrivateKey(
+    ephemeralPubKey,
+    viewPrivKey,
+    spendPrivKeyHex
+  );
+  const stealthAccount = privateKeyToAccount(stealthPrivKey);
+
+  const walletClient = createWalletClient({
+    account: stealthAccount,
+    chain: robinhoodChain,
+    transport: http(),
+  });
+
+  const ethBalance = await client.getBalance({ address: stealthAddress });
+
+  let tokenBalance = 0n;
+  if (tokenAddress) {
+    try {
+      tokenBalance = await client.readContract({
+        address: tokenAddress,
+        abi: ERC20_ABI,
+        functionName: "balanceOf",
+        args: [stealthAddress],
+      });
+    } catch {
+      tokenBalance = 0n;
+    }
+  }
+
+  // Sweep USDG if available and enough ETH for gas
+  if (tokenAddress && tokenBalance > 0n && ethBalance >= 45000n * 1500000000n) {
+    const txHash = await walletClient.writeContract({
+      address: tokenAddress,
+      abi: ERC20_ABI,
+      functionName: "transfer",
+      args: [destinationAddress, tokenBalance],
+    });
+    return {
+      txHash,
+      asset: "USDG",
+      amount: (Number(tokenBalance) / 1e6).toFixed(2),
+    };
+  }
+
+  // Sweep native ETH
+  const gasPrice = await client.getGasPrice().catch(() => 1500000000n);
+  const gasCost = 21000n * gasPrice;
+  if (ethBalance <= gasCost) {
+    throw new Error(
+      `Stealth address balance (${(Number(ethBalance) / 1e18).toFixed(6)} ETH) is insufficient to cover the network fee.`
+    );
+  }
+
+  const sendValue = ethBalance - gasCost;
+  const txHash = await walletClient.sendTransaction({
+    to: destinationAddress,
+    value: sendValue,
+  });
+
+  return {
+    txHash,
+    asset: "ETH",
+    amount: (Number(sendValue) / 1e18).toFixed(4),
   };
 }

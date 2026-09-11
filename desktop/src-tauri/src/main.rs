@@ -86,10 +86,10 @@ fn delete_shard_a(app: tauri::AppHandle) -> Result<bool, String> {
 const KEYRING_SERVICE: &str = "com.privatum.desktop";
 
 #[tauri::command]
-fn save_shard_to_keychain(app: tauri::AppHandle, account_id: String, shard_key: String) -> Result<(), String> {
+fn save_shard_to_keychain(app: tauri::AppHandle, account_id: String, key: String) -> Result<(), String> {
     let mut _saved_keychain = false;
     if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, &account_id) {
-        if entry.set_password(&shard_key).is_ok() {
+        if entry.set_password(&key).is_ok() {
             _saved_keychain = true;
         }
     }
@@ -111,17 +111,17 @@ fn save_shard_to_keychain(app: tauri::AppHandle, account_id: String, shard_key: 
                 .mode(0o600)
                 .open(&file_path)
             {
-                let _ = file.write_all(shard_key.as_bytes());
+                let _ = file.write_all(key.as_bytes());
             }
         }
         #[cfg(not(unix))]
         {
-            let _ = fs::write(&file_path, shard_key.as_bytes());
+            let _ = fs::write(&file_path, key.as_bytes());
         }
     }
 
     if account_id == "primary" || account_id == "default" {
-        let _ = save_shard_a(app, shard_key);
+        let _ = save_shard_a(app, key);
     }
 
     Ok(())
