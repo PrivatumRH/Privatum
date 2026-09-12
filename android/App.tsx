@@ -1,8 +1,10 @@
+import "./src/lib/polyfills";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   StyleSheet,
   Text,
   View,
+  Image,
   TextInput,
   TouchableOpacity,
   ScrollView,
@@ -269,7 +271,7 @@ export default function App() {
   const handleManualRefresh = () => {
     if (walletAddress) {
       syncBalances(walletAddress);
-      Alert.alert("Balances Synced", "Updated balances from Robinhood Chain RPC.");
+      Alert.alert("Balances Synced", "Updated balances from Robinhood Chain.");
     }
   };
 
@@ -283,7 +285,7 @@ export default function App() {
       await syncBalances(created.address);
       Alert.alert(
         "Smart Account Ready",
-        `Created 2-of-3 smart account on Robinhood Chain:\n${shortenAddress(created.address)}\nShard A stored in device Keystore.`
+        `Created smart account on Robinhood Chain:\n${shortenAddress(created.address)}\nProtected by your device security.`
       );
     } catch (err: any) {
       Alert.alert("Creation Error", err?.message || "Failed to register smart account.");
@@ -455,26 +457,30 @@ export default function App() {
         <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
           <StatusBar barStyle="light-content" backgroundColor="#000000" />
           <View style={styles.onboardingContainer}>
-            <View style={styles.onboardingIconBox}>
-              <Shield size={36} color="#ffffff" />
+            <View style={styles.onboardingLogoBox}>
+              <Image
+                source={require("./assets/logo.png")}
+                style={styles.onboardingLogo}
+                resizeMode="contain"
+              />
             </View>
-            <Text style={styles.onboardingTitle}>PRIVATUM Mobile</Text>
+            <Text style={styles.onboardingTitle}>PRIVATUM</Text>
             <Text style={styles.onboardingSubtitle}>
-              Private 2-of-3 threshold self-custody on Robinhood Chain (Chain ID: 4663).
+              Private self-custody on Robinhood Chain.
             </Text>
 
             <View style={styles.onboardingFeatures}>
               <View style={styles.onboardingFeatureRow}>
                 <View style={styles.featureDot} />
-                <Text style={styles.featureText}>Device Shard A stored in hardware Android Keystore</Text>
+                <Text style={styles.featureText}>Hardware key protection on your device</Text>
               </View>
               <View style={styles.onboardingFeatureRow}>
                 <View style={styles.featureDot} />
-                <Text style={styles.featureText}>KMS Co-Signer Shard B protection with 2FA</Text>
+                <Text style={styles.featureText}>Two-factor authorization for transfers</Text>
               </View>
               <View style={styles.onboardingFeatureRow}>
                 <View style={styles.featureDot} />
-                <Text style={styles.featureText}>Real-time Address Poisoning Shield and Guardrails</Text>
+                <Text style={styles.featureText}>Transfer limits and fake address alerts</Text>
               </View>
             </View>
 
@@ -484,7 +490,7 @@ export default function App() {
               disabled={isCreatingAccount}
             >
               {isCreatingAccount ? (
-                <ActivityIndicator size="small" color="#000000" />
+                <ActivityIndicator size="small" color="#ffffff" />
               ) : (
                 <Text style={styles.primaryButtonText}>Create Smart Account</Text>
               )}
@@ -515,7 +521,7 @@ export default function App() {
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.modalSubtitle}>
-                  Enter your smart account address on Robinhood Chain to observe real on-chain balances and activity.
+                  Enter your smart account address to view balances and activity on Robinhood Chain.
                 </Text>
                 <TextInput
                   style={styles.textInput}
@@ -548,7 +554,14 @@ export default function App() {
         {/* Top Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>PRIVATUM</Text>
+            <View style={styles.headerBrandRow}>
+              <Image
+                source={require("./assets/logo.png")}
+                style={styles.headerLogo}
+                resizeMode="contain"
+              />
+              <Text style={styles.headerTitle}>PRIVATUM</Text>
+            </View>
             <View style={styles.networkDotRow}>
               <View style={styles.networkDot} />
               <Text style={styles.networkName}>Robinhood Chain</Text>
@@ -588,7 +601,7 @@ export default function App() {
                 <Text style={styles.totalBalanceText}>
                   ${totalBalanceUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
-                <Text style={styles.balanceSubtext}>Live On-Chain Balance (Robinhood Chain RPC)</Text>
+                <Text style={styles.balanceSubtext}>Live balance on Robinhood Chain</Text>
 
                 {/* Quick Action Dock */}
                 <View style={styles.actionDock}>
@@ -597,7 +610,7 @@ export default function App() {
                     onPress={() => setActiveTab("send")}
                   >
                     <View style={styles.actionIconCircle}>
-                      <ArrowUpRight size={18} color="#000000" />
+                      <ArrowUpRight size={18} color="#ffffff" />
                     </View>
                     <Text style={styles.actionText}>Send</Text>
                   </TouchableOpacity>
@@ -607,7 +620,7 @@ export default function App() {
                     onPress={() => setShowReceiveModal(true)}
                   >
                     <View style={styles.actionIconCircleSecondary}>
-                      <ArrowDownLeft size={18} color="#ffffff" />
+                      <ArrowDownLeft size={18} color="#000000" />
                     </View>
                     <Text style={styles.actionText}>Receive</Text>
                   </TouchableOpacity>
@@ -617,7 +630,7 @@ export default function App() {
                     onPress={() => setActiveTab("paylinks")}
                   >
                     <View style={styles.actionIconCircleSecondary}>
-                      <Link2 size={18} color="#ffffff" />
+                      <Link2 size={18} color="#000000" />
                     </View>
                     <Text style={styles.actionText}>Pay Links</Text>
                   </TouchableOpacity>
@@ -627,7 +640,7 @@ export default function App() {
                     onPress={() => setActiveTab("contacts")}
                   >
                     <View style={styles.actionIconCircleSecondary}>
-                      <BookUser size={18} color="#ffffff" />
+                      <BookUser size={18} color="#000000" />
                     </View>
                     <Text style={styles.actionText}>Contacts</Text>
                   </TouchableOpacity>
@@ -759,7 +772,7 @@ export default function App() {
             >
               <Text style={styles.screenHeading}>Transfer Funds</Text>
               <Text style={styles.screenSubheading}>
-                2-of-3 threshold transaction authenticated on Robinhood Chain
+                Transfer authenticated on Robinhood Chain
               </Text>
 
               {/* Recipient Input */}
@@ -1174,32 +1187,32 @@ export default function App() {
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
             >
-              <Text style={styles.screenHeading}>Security & Key Enclave</Text>
+              <Text style={styles.screenHeading}>Security & Key Protection</Text>
               <Text style={styles.screenSubheading}>
-                2-of-3 threshold shard health and protection controls
+                Device security and protection controls
               </Text>
 
-              {/* Shard Health Enclave Card */}
+              {/* Security Health Card */}
               <View style={styles.card}>
-                <Text style={styles.cardHeaderTitle}>Shard Health Monitor</Text>
+                <Text style={styles.cardHeaderTitle}>Security Status</Text>
 
                 <View style={styles.shardRow}>
                   <View style={styles.shardInfo}>
-                    <Text style={styles.shardName}>Shard A: Device Keystore</Text>
+                    <Text style={styles.shardName}>Device Key</Text>
                     <Text style={styles.shardStatus}>
-                      {hasShardA ? "Active: Hardware-backed on this device" : "Not generated yet"}
+                      {hasShardA ? "Protected in device secure storage" : "Not connected yet"}
                     </Text>
                   </View>
                   <Text style={hasShardA ? styles.shardStateActive : styles.shardStateCold}>
-                    {hasShardA ? "Ready" : "Missing"}
+                    {hasShardA ? "Active" : "Pending"}
                   </Text>
                 </View>
 
                 <View style={styles.shardRow}>
                   <View style={styles.shardInfo}>
-                    <Text style={styles.shardName}>Shard B: Cloud Co-Signer</Text>
+                    <Text style={styles.shardName}>Server Co-Signer</Text>
                     <Text style={styles.shardStatus}>
-                      Online: KMS-backed at api.privatumrh.com
+                      Online security server ready
                     </Text>
                   </View>
                   <Text style={styles.shardStateActive}>Online</Text>
@@ -1207,27 +1220,27 @@ export default function App() {
 
                 <View style={styles.shardRow}>
                   <View style={styles.shardInfo}>
-                    <Text style={styles.shardName}>Shard C: Emergency Recovery</Text>
+                    <Text style={styles.shardName}>Emergency Recovery</Text>
                     <Text style={styles.shardStatus}>
-                      Offline backup key (paper or cold storage)
+                      Offline backup for account recovery
                     </Text>
                   </View>
-                  <Text style={styles.shardStateCold}>Cold Storage</Text>
+                  <Text style={styles.shardStateCold}>Configured</Text>
                 </View>
               </View>
 
               {/* Panic Freeze Card */}
               <View style={styles.card}>
-                <Text style={styles.cardHeaderTitle}>Emergency Panic Freeze</Text>
+                <Text style={styles.cardHeaderTitle}>Emergency Lock</Text>
                 <Text style={styles.cardDescription}>
-                  Immediately lock local sessions and notify the co-signer to refuse Shard B authorizations.
+                  Immediately lock transfers and secure your wallet against unauthorized access.
                 </Text>
                 <TouchableOpacity
                   style={styles.dangerButton}
                   onPress={() => setShowPanicModal(true)}
                 >
                   <Lock size={14} color="#ffffff" />
-                  <Text style={styles.dangerButtonText}>Freeze Wallet Now</Text>
+                  <Text style={styles.dangerButtonText}>Lock Wallet Now</Text>
                 </TouchableOpacity>
               </View>
 
@@ -1317,7 +1330,7 @@ export default function App() {
           >
             <Shield
               size={20}
-              color={activeTab === "vault" ? "#ffffff" : THEME.colors.textMuted}
+              color={activeTab === "vault" ? THEME.colors.accent : THEME.colors.textMuted}
             />
             <Text
               style={[
@@ -1335,7 +1348,7 @@ export default function App() {
           >
             <ArrowUpRight
               size={20}
-              color={activeTab === "send" ? "#ffffff" : THEME.colors.textMuted}
+              color={activeTab === "send" ? THEME.colors.accent : THEME.colors.textMuted}
             />
             <Text
               style={[
@@ -1353,7 +1366,7 @@ export default function App() {
           >
             <Link2
               size={20}
-              color={activeTab === "paylinks" ? "#ffffff" : THEME.colors.textMuted}
+              color={activeTab === "paylinks" ? THEME.colors.accent : THEME.colors.textMuted}
             />
             <Text
               style={[
@@ -1371,7 +1384,7 @@ export default function App() {
           >
             <BookUser
               size={20}
-              color={activeTab === "contacts" ? "#ffffff" : THEME.colors.textMuted}
+              color={activeTab === "contacts" ? THEME.colors.accent : THEME.colors.textMuted}
             />
             <Text
               style={[
@@ -1389,7 +1402,7 @@ export default function App() {
           >
             <Lock
               size={20}
-              color={activeTab === "security" ? "#ffffff" : THEME.colors.textMuted}
+              color={activeTab === "security" ? THEME.colors.accent : THEME.colors.textMuted}
             />
             <Text
               style={[
@@ -1423,7 +1436,7 @@ export default function App() {
               </Text>
 
               <View style={styles.qrPlaceholderBox}>
-                <Text style={styles.qrPlaceholderText}>Robinhood Chain (4663)</Text>
+                <Text style={styles.qrPlaceholderText}>Robinhood Chain</Text>
                 <Text style={styles.qrAddressMono}>{walletAddress}</Text>
               </View>
 
@@ -1668,16 +1681,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  onboardingIconBox: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  onboardingLogoBox: {
+    width: 68,
+    height: 68,
+    borderRadius: 16,
     backgroundColor: THEME.colors.surfaceElevated,
     borderWidth: 1,
     borderColor: THEME.colors.border,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
+  },
+  onboardingLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    overflow: "hidden",
   },
   onboardingTitle: {
     fontSize: 24,
@@ -1712,7 +1731,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f54842",
   },
   featureText: {
     fontSize: 12,
@@ -1721,9 +1740,7 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     width: "100%",
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
+    backgroundColor: "#ffffff",
     borderRadius: THEME.borderRadius.md,
     paddingVertical: THEME.spacing.md,
     alignItems: "center",
@@ -1731,9 +1748,9 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   secondaryButtonText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#000000",
   },
   header: {
     flexDirection: "row",
@@ -1746,6 +1763,17 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     flexDirection: "column",
+  },
+  headerBrandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerLogo: {
+    width: 22,
+    height: 22,
+    borderRadius: 10,
+    overflow: "hidden",
   },
   headerTitle: {
     fontSize: 16,
@@ -1842,7 +1870,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f54842",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1850,9 +1878,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: THEME.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: THEME.colors.border,
+    backgroundColor: "#ffffff",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -2169,8 +2195,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   tokenPickerButtonActive: {
-    backgroundColor: "#ffffff",
-    borderColor: "#ffffff",
+    backgroundColor: "#f54842",
+    borderColor: "#f54842",
   },
   tokenPickerText: {
     fontSize: 12,
@@ -2178,7 +2204,7 @@ const styles = StyleSheet.create({
     color: THEME.colors.textSecondary,
   },
   tokenPickerTextActive: {
-    color: "#000000",
+    color: "#ffffff",
   },
   stealthToggleBox: {
     flexDirection: "row",
@@ -2213,7 +2239,7 @@ const styles = StyleSheet.create({
     padding: 2,
   },
   toggleTrackActive: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f54842",
   },
   toggleThumb: {
     width: 20,
@@ -2222,7 +2248,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.textMuted,
   },
   toggleThumbActive: {
-    backgroundColor: "#000000",
+    backgroundColor: "#ffffff",
     alignSelf: "flex-end",
   },
   spendBlockAlert: {
@@ -2245,7 +2271,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     width: "100%",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f54842",
     borderRadius: THEME.borderRadius.md,
     paddingVertical: THEME.spacing.md,
     alignItems: "center",
@@ -2253,9 +2279,9 @@ const styles = StyleSheet.create({
     marginTop: THEME.spacing.sm,
   },
   primaryButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
-    color: "#000000",
+    color: "#ffffff",
   },
   buttonDisabled: {
     opacity: 0.4,
@@ -2344,7 +2370,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f54842",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -2379,15 +2405,15 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.colors.surface,
   },
   categoryButtonActive: {
-    backgroundColor: "#ffffff",
-    borderColor: "#ffffff",
+    backgroundColor: "#f54842",
+    borderColor: "#f54842",
   },
   categoryButtonText: {
     fontSize: 11,
     color: THEME.colors.textSecondary,
   },
   categoryButtonTextActive: {
-    color: "#000000",
+    color: "#ffffff",
     fontWeight: "600",
   },
   contactsList: {
@@ -2546,7 +2572,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   navTabTextActive: {
-    color: "#ffffff",
+    color: "#f54842",
     fontWeight: "700",
   },
   modalBackdrop: {
@@ -2604,7 +2630,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   modalActionButton: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f54842",
     borderRadius: THEME.borderRadius.md,
     paddingVertical: THEME.spacing.md,
     flexDirection: "row",
@@ -2615,7 +2641,7 @@ const styles = StyleSheet.create({
   modalActionButtonText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#000000",
+    color: "#ffffff",
   },
   contactPickerItem: {
     paddingVertical: 12,
