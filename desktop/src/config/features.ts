@@ -17,7 +17,8 @@ export type FeatureKey =
   | "portfolio_sparkline"
   | "transaction_receipt"
   | "recent_contacts"
-  | "inference_receipt";
+  | "inference_receipt"
+  | "transaction_risk_score";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -39,6 +40,7 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   transaction_receipt: "0.1.15",
   recent_contacts: "0.1.16",
   inference_receipt: "0.1.17",
+  transaction_risk_score: "0.1.19",
 };
 
 export const RELEASE_VERSIONS = [
@@ -61,6 +63,7 @@ export const RELEASE_VERSIONS = [
   "0.1.16",
   "0.1.17",
   "0.1.18",
+  "0.1.19",
 ] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 
