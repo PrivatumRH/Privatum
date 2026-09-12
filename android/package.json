@@ -13,6 +13,7 @@
   "dependencies": {
     "@expo/ngrok": "^4.1.0",
     "expo": "~57.0.22",
+    "expo-crypto": "~57.0.3",
     "expo-linear-gradient": "~57.0.2",
     "expo-secure-store": "~57.0.4",
     "expo-status-bar": "~57.0.1",
