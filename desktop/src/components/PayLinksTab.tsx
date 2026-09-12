@@ -21,6 +21,7 @@ import {
   listUserPayLinks,
   cancelPayLink,
   checkAndSweepPayLink,
+  DEFAULT_API_URL,
 } from "@privatumrh/robinhood-chain-sdk";
 import { PRIV_TOKEN_ADDRESS } from "../lib/tokens";
 
@@ -34,6 +35,10 @@ const USDG_ADDRESS = "0x5fc5360d0400a0fd4f2af552add042d716f1d168";
 const NATIVE_ETH = "0x0000000000000000000000000000000000000000";
 
 export function PayLinksTab({ wallet, addToast, onBalanceRefresh }: PayLinksTabProps) {
+  // The SDK's paylink module still defaults to a retired backend host, so pin
+  // every call to the co-signer this wallet is actually talking to.
+  const payLinkApiUrl = wallet?.apiUrl || DEFAULT_API_URL;
+
   const [paylinks, setPaylinks] = useState<UserPayLinkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -57,14 +62,14 @@ export function PayLinksTab({ wallet, addToast, onBalanceRefresh }: PayLinksTabP
   const fetchPaylinks = useCallback(async () => {
     if (!wallet?.address) return;
     try {
-      const links = await listUserPayLinks(wallet.address);
+      const links = await listUserPayLinks(wallet.address, { apiUrl: payLinkApiUrl });
       setPaylinks(links);
     } catch (err: any) {
       console.error("Failed to load paylinks:", err);
     } finally {
       setLoading(false);
     }
-  }, [wallet?.address]);
+  }, [wallet?.address, payLinkApiUrl]);
 
   useEffect(() => {
     fetchPaylinks();
@@ -95,7 +100,7 @@ export function PayLinksTab({ wallet, addToast, onBalanceRefresh }: PayLinksTabP
         memo: memo.trim() || undefined,
         route_mode: routeMode,
         expires_in_hours: expiryHours,
-      });
+      }, { apiUrl: payLinkApiUrl });
 
       addToast("success", "Link Created", `Payment link ${res.slug} is ready to share.`);
       setShowCreateModal(false);
@@ -149,7 +154,7 @@ export function PayLinksTab({ wallet, addToast, onBalanceRefresh }: PayLinksTabP
   const handleCheckSweep = async (slug: string) => {
     setCheckingSlug(slug);
     try {
-      const res = await checkAndSweepPayLink(slug);
+      const res = await checkAndSweepPayLink(slug, { apiUrl: payLinkApiUrl });
       if (res.swept) {
         addToast("success", "Payment Swept", "Funds have been secured in your smart vault.");
         if (onBalanceRefresh) onBalanceRefresh();
@@ -167,7 +172,7 @@ export function PayLinksTab({ wallet, addToast, onBalanceRefresh }: PayLinksTabP
   const handleCancelLink = async (slug: string) => {
     if (!confirm("Are you sure you want to cancel this disposable payment link?")) return;
     try {
-      await cancelPayLink(slug);
+      await cancelPayLink(slug, { apiUrl: payLinkApiUrl });
       addToast("info", "Link Cancelled", `Payment link ${slug} is now deactivated.`);
       await fetchPaylinks();
     } catch (err: any) {
