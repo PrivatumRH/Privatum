@@ -12,6 +12,7 @@ import {
   Lock,
   Check,
   ExternalLink,
+  Info,
 } from "lucide-react";
 
 export const Route = createFileRoute("/mobile")({
@@ -132,6 +133,28 @@ function MobilePage() {
         fontFamily: "'Inter', sans-serif",
       }}
     >
+      {/* Early Preview Notice Banner */}
+      <aside
+        style={{
+          backgroundColor: "rgba(245, 72, 66, 0.08)",
+          borderBottom: "1px solid rgba(245, 72, 66, 0.2)",
+          padding: "0.625rem 1rem",
+          textAlign: "center",
+          fontSize: "0.8125rem",
+          color: "#d4d4d8",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "0.5rem",
+          lineHeight: 1.4,
+        }}
+      >
+        <Info style={{ width: "15px", height: "15px", color: "#f54842", flexShrink: 0 }} />
+        <span>
+          <strong style={{ color: "#ffffff", fontWeight: 600 }}>Android Early Preview:</strong> The current APK is a development preview for early testing. The official verified production release will be available soon.
+        </span>
+      </aside>
+
       {/* Header Navigation */}
       <header
         style={{
