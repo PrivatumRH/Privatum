@@ -3,10 +3,19 @@ import type { ModelLoadingProgress } from "./types";
 export const DEFAULT_WASM_MODEL = "HuggingFaceTB/SmolLM2-135M-Instruct";
 
 class SmolLM2WasmEngine {
-  private generator: any = null;
+  private worker: Worker | null = null;
+  private isWorkerReady = false;
   private isLoading = false;
   private progressListeners: ((p: ModelLoadingProgress) => void)[] = [];
   private currentProgress: ModelLoadingProgress = { status: "idle" };
+  private pendingRequests = new Map<
+    string,
+    { resolve: (val: string) => void; reject: (err: any) => void }
+  >();
+  private reqCounter = 0;
+
+  // Direct generator fallback (for non-browser test environments)
+  private directGenerator: any = null;
 
   public onProgress(listener: (p: ModelLoadingProgress) => void): () => void {
     this.progressListeners.push(listener);
@@ -26,76 +35,131 @@ class SmolLM2WasmEngine {
   }
 
   public isReady(): boolean {
-    return this.generator !== null;
+    return this.isWorkerReady || this.directGenerator !== null;
   }
 
   public isModelLoading(): boolean {
     return this.isLoading;
   }
 
+  private ensureWorker(): Worker | null {
+    if (this.worker) return this.worker;
+    if (typeof window === "undefined" || typeof Worker === "undefined") {
+      return null;
+    }
+
+    try {
+      this.worker = new Worker(new URL("./assistant.worker.ts", import.meta.url), {
+        type: "module",
+      });
+
+      this.worker.onmessage = (event: MessageEvent) => {
+        const { id, type, status, progress, text, error } = event.data || {};
+
+        if (type === "progress") {
+          this.notifyProgress({ status, progress, text });
+          if (status === "ready") {
+            this.isWorkerReady = true;
+            this.isLoading = false;
+          } else if (status === "error") {
+            this.isLoading = false;
+          }
+        } else if (type === "init_success") {
+          this.isWorkerReady = true;
+          this.isLoading = false;
+          this.notifyProgress({ status: "ready", progress: 100, text: "AI Ready" });
+        } else if (type === "init_error") {
+          this.isLoading = false;
+          this.notifyProgress({ status: "error", text: error || "Model initialization failed." });
+        } else if (type === "generate_success") {
+          const pending = this.pendingRequests.get(id);
+          if (pending) {
+            pending.resolve(text);
+            this.pendingRequests.delete(id);
+          }
+        } else if (type === "generate_error") {
+          const pending = this.pendingRequests.get(id);
+          if (pending) {
+            pending.reject(new Error(error || "Generation error"));
+            this.pendingRequests.delete(id);
+          }
+        }
+      };
+
+      this.worker.onerror = (err) => {
+        console.warn("[wasmEngine] Worker error:", err);
+        this.isLoading = false;
+        this.notifyProgress({ status: "error", text: "AI background worker error." });
+      };
+
+      return this.worker;
+    } catch (err) {
+      console.warn("[wasmEngine] Web Worker instantiation failed:", err);
+      return null;
+    }
+  }
+
   /**
-   * Initializes and caches the SmolLM2-135M model locally in browser IndexedDB.
+   * Initializes and caches the SmolLM2-135M model on a background Web Worker thread.
    */
-  public async init(modelId: string = DEFAULT_WASM_MODEL): Promise<void> {
-    if (this.generator) return;
+  public async init(): Promise<void> {
+    if (this.isReady()) return;
     if (this.isLoading) return;
 
     this.isLoading = true;
-    this.notifyProgress({ status: "loading", progress: 5, text: "Initializing on-device AI runtime..." });
+    const worker = this.ensureWorker();
 
+    if (worker) {
+      this.notifyProgress({ status: "loading", progress: 5, text: "Initializing on-device AI..." });
+      worker.postMessage({ type: "init" });
+      return;
+    }
+
+    // Direct fallback for non-worker test environments
     try {
-      // Dynamic import to prevent SSR or bundling issues
+      this.notifyProgress({ status: "loading", progress: 5, text: "Initializing on-device AI..." });
       const { pipeline, env } = await import("@huggingface/transformers");
-
-      // Configure browser cache for persistent on-device execution
       env.allowLocalModels = false;
       env.useBrowserCache = true;
-
-      // Handle environments without SharedArrayBuffer (e.g. desktop WebViews)
-      if (typeof window !== "undefined" && !window.crossOriginIsolated) {
-        if (env.backends?.onnx?.wasm) {
-          (env.backends.onnx.wasm as any).numThreads = 1;
-        }
-      }
-
-      this.notifyProgress({ status: "downloading", progress: 15, text: "Loading AI model..." });
-
-      this.generator = await pipeline("text-generation", modelId, {
+      this.directGenerator = await pipeline("text-generation", DEFAULT_WASM_MODEL, {
         dtype: "q4",
-        progress_callback: (p: any) => {
-          if (p && typeof p.progress === "number") {
-            const pct = Math.round(p.progress * 100);
-            this.notifyProgress({
-              status: "downloading",
-              progress: Math.min(95, Math.max(15, pct)),
-              text: `Downloading AI: ${pct}%`,
-            });
-          }
-        },
       });
-
       this.notifyProgress({ status: "ready", progress: 100, text: "AI Ready" });
     } catch (err: any) {
-      console.warn("[wasmEngine] Could not load in-browser Wasm model:", err);
-      this.notifyProgress({
-        status: "error",
-        text: err?.message || "Local AI model failed to initialize. Fast parser active.",
-      });
-      this.generator = null;
+      this.notifyProgress({ status: "error", text: err?.message || "Failed to load model." });
     } finally {
       this.isLoading = false;
     }
   }
 
   /**
-   * Generates a completion using local on-device SmolLM2.
+   * Generates text off-thread in the background Web Worker to ensure zero UI freezes.
    */
   public async generate(prompt: string, systemPrompt?: string): Promise<string> {
-    if (!this.generator) {
+    const worker = this.ensureWorker();
+
+    if (worker) {
+      const id = `req-${++this.reqCounter}-${Date.now()}`;
+      return new Promise<string>((resolve, reject) => {
+        this.pendingRequests.set(id, { resolve, reject });
+        worker.postMessage({ id, type: "generate", prompt, systemPrompt });
+
+        // Timeout safety (30 seconds)
+        setTimeout(() => {
+          if (this.pendingRequests.has(id)) {
+            this.pendingRequests.delete(id);
+            reject(new Error("AI generation timed out."));
+          }
+        }, 30000);
+      });
+    }
+
+    // Direct fallback if worker unavailable
+    if (!this.directGenerator) {
       await this.init();
     }
-    if (!this.generator) {
-      throw new Error("Local model is not available.");
+    if (!this.directGenerator) {
+      throw new Error("Local model unavailable.");
     }
 
     const messages = [
@@ -103,35 +167,27 @@ class SmolLM2WasmEngine {
         role: "system",
         content:
           systemPrompt ||
-          `You are Privatum Assistant, a non-custodial transaction copilot on Robinhood Chain. Current time: ${new Date().toLocaleTimeString()} (${new Date().toLocaleDateString()}). Answer concisely and helpfully. Explain transaction safety facts, address poisoning, and spending guardrails. Never reveal or request private keys.`,
+          `You are Privatum Assistant, a non-custodial transaction copilot on Robinhood Chain. Current time: ${new Date().toLocaleTimeString()} (${new Date().toLocaleDateString()}). Answer concisely and helpfully. Never reveal or request private keys.`,
       },
       { role: "user", content: prompt },
     ];
 
-    try {
-      const output = await this.generator(messages, {
-        max_new_tokens: 150,
-        temperature: 0.2,
-        do_sample: false,
-        return_full_text: false,
-      });
+    const output = await this.directGenerator(messages, {
+      max_new_tokens: 80,
+      temperature: 0.2,
+      do_sample: false,
+      return_full_text: false,
+    });
 
-      if (Array.isArray(output) && output[0]?.generated_text) {
-        const text = output[0].generated_text;
-        if (Array.isArray(text)) {
-          const last = text[text.length - 1];
-          return last?.content || "";
-        }
-        if (typeof text === "string") {
-          return text;
-        }
-        return JSON.stringify(text);
+    if (Array.isArray(output) && output[0]?.generated_text) {
+      const text = output[0].generated_text;
+      if (Array.isArray(text)) {
+        const last = text[text.length - 1];
+        return last?.content || "";
       }
-      return "";
-    } catch (err) {
-      console.error("[wasmEngine] Generation error:", err);
-      throw err;
+      return String(text);
     }
+    return "";
   }
 }
 
