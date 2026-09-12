@@ -6,3 +6,6 @@ export * from "./transfer.js";
 export * from "./staking.js";
 export * from "./bridge.js";
 export * from "./paylinks.js";
+export * from "./addressGuard.js";
+export * from "./spendGuardrails.js";
+export * from "./contacts.js";
