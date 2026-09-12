@@ -72,6 +72,7 @@ import {
   loadContacts,
   findContactByAddress,
   recordContactUsage,
+  getRecentContacts,
   type Contact,
 } from "./lib/contacts";
 import { buildStealthSendBatch, parseMetaAddress } from "./lib/stealth";
@@ -113,6 +114,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.13": "Private Address Book",
   "0.1.14": "Portfolio Sparkline & 24h PnL",
   "0.1.15": "Signed Transaction Receipts",
+  "0.1.16": "Recent Contacts Quick Send",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -322,7 +324,7 @@ export function App() {
   >("wallet");
 
   // Versioning and feature release stage preview
-  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.15");
+  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.16");
   const [previewVersion, setPreviewVersion] = useState<ReleaseVersion | null>(null);
 
   // Gasless Staking state
@@ -507,6 +509,7 @@ export function App() {
 
   // Private Address Book & Local Contacts (v0.1.13)
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const recentContacts = useMemo(() => getRecentContacts(contacts, 3), [contacts]);
   const [showContactsModal, setShowContactsModal] = useState<boolean>(false);
 
   // Animated popup toast alerts
@@ -1728,6 +1731,8 @@ export function App() {
           try {
             localStorage.setItem(`privatum_transactions_${wallet.address.toLowerCase()}`, JSON.stringify(updatedList));
           } catch {}
+          recordContactUsage(wallet.address, trimmedRecipient);
+          setContacts(loadContacts(wallet.address));
           if (isFeatureActive("spending_guardrails", appVersion, previewVersion)) {
             const amountUsd = estimateUsdValue(sendAmount, sendAssetType);
             recordSpend(wallet.address, {
@@ -1849,6 +1854,8 @@ export function App() {
         try {
           localStorage.setItem(`privatum_transactions_${wallet.address.toLowerCase()}`, JSON.stringify(updatedList));
         } catch {}
+        recordContactUsage(wallet.address, trimmedRecipient);
+        setContacts(loadContacts(wallet.address));
         if (isFeatureActive("spending_guardrails", appVersion, previewVersion)) {
           const amountUsd = estimateUsdValue(sendAmount, sendAssetType);
           recordSpend(wallet.address, {
@@ -3226,6 +3233,34 @@ export function App() {
                         </button>
                       )}
                     </div>
+                    {isFeatureActive("recent_contacts", appVersion, previewVersion) &&
+                      recentContacts.length > 0 && (
+                        <div className="flex items-center gap-1.5 mb-2 overflow-x-auto pb-0.5">
+                          <span className="text-[10px] uppercase tracking-wider text-slate-500 shrink-0">
+                            Recent
+                          </span>
+                          {recentContacts.map((contact) => {
+                            const isActive =
+                              sendRecipient.trim().toLowerCase() ===
+                              contact.address.trim().toLowerCase();
+                            return (
+                              <button
+                                key={contact.id}
+                                type="button"
+                                title={contact.address}
+                                onClick={() => setSendRecipient(contact.address)}
+                                className={`shrink-0 px-2.5 py-1 rounded-full border text-[11px] font-medium transition cursor-pointer ${
+                                  isActive
+                                    ? "bg-white/15 border-white/30 text-white"
+                                    : "bg-white/[0.04] border-white/10 text-slate-300 hover:bg-white/[0.08] hover:border-white/20 hover:text-white"
+                                }`}
+                              >
+                                {contact.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     <div className="relative">
                       <input
                         type="text"

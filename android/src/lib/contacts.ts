@@ -133,3 +133,42 @@ export function searchMobileContacts(
     );
   });
 }
+
+/**
+ * Stamps a contact as just used so it surfaces in the recent-contacts strip.
+ * No-ops when the address is not in the address book.
+ */
+export async function recordMobileContactUsage(
+  walletAddress: string,
+  address: string
+): Promise<Contact[]> {
+  const contacts = await loadMobileContacts(walletAddress);
+  if (!walletAddress || !address) return contacts;
+
+  const clean = address.trim().toLowerCase();
+  let changed = false;
+
+  const updated = contacts.map((c) => {
+    if (c.address.trim().toLowerCase() === clean) {
+      changed = true;
+      return { ...c, lastUsedAt: Date.now() };
+    }
+    return c;
+  });
+
+  if (changed) {
+    await saveMobileContacts(walletAddress, updated);
+  }
+  return updated;
+}
+
+/**
+ * Returns the most recently used contacts, newest first.
+ * Contacts never sent to are excluded.
+ */
+export function getRecentMobileContacts(contacts: Contact[], limit = 3): Contact[] {
+  return contacts
+    .filter((c) => typeof c.lastUsedAt === "number" && c.lastUsedAt > 0)
+    .sort((a, b) => (b.lastUsedAt || 0) - (a.lastUsedAt || 0))
+    .slice(0, limit);
+}

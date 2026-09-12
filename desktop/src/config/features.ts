@@ -15,7 +15,8 @@ export type FeatureKey =
   | "spending_guardrails"
   | "address_book"
   | "portfolio_sparkline"
-  | "transaction_receipt";
+  | "transaction_receipt"
+  | "recent_contacts";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -35,6 +36,7 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   address_book: "0.1.13",
   portfolio_sparkline: "0.1.14",
   transaction_receipt: "0.1.15",
+  recent_contacts: "0.1.16",
 };
 
 export const RELEASE_VERSIONS = [
@@ -54,6 +56,7 @@ export const RELEASE_VERSIONS = [
   "0.1.13",
   "0.1.14",
   "0.1.15",
+  "0.1.16",
 ] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 
