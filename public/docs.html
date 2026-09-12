@@ -184,40 +184,132 @@ Execution layer
   <section class="pv-docs-sec" id="sdk">
     <div class="pv-docs-num">10</div>
     <h2>The open SDK</h2>
-    <p><code>@privatumrh/robinhood-chain-sdk</code> is an open-source TypeScript SDK built on Viem. Developers generate shards, assemble 2-of-3 wallets, and submit threshold transactions programmatically.</p>
-    <pre class="pv-docs-pre"><code>npm install @privatumrh/robinhood-chain-sdk viem</code></pre>
-    <pre class="pv-docs-pre"><code>import {
-  generateShardA,
-  registerWalletWithCosigner,
-  RemoteCosigner,
-  buildFactoryInitCode,
-  buildUserOperation,
-  signUserOpHash,
-  combineSignatures,
-  PRIVATUM_FACTORY_ADDRESS,
-} from "@privatumrh/robinhood-chain-sdk";
+    <p><code>@privatumrh/robinhood-chain-sdk</code> is an open-source, Viem-native TypeScript SDK enabling developers to embed PRIVATUM 2-of-3 threshold self-custody and privacy primitives directly into applications on Robinhood Chain (Chain ID: <code>4663</code>).</p>
+    <pre class="pv-docs-pre"><code>bun add @privatumrh/robinhood-chain-sdk viem
+# or
+npm install @privatumrh/robinhood-chain-sdk viem</code></pre>
 
-// 1. Generate client Shard A locally
-const shardA = generateShardA();
+    <h3>10.1 Quick Start: Create and Register Wallet</h3>
+    <p>Generate device Shard A locally and register a deterministic 2-of-3 threshold smart account with the live PRIVATUM co-signer:</p>
+    <pre class="pv-docs-pre"><code>import { PrivatumWallet, LocalShard } from "@privatumrh/robinhood-chain-sdk";
 
-// 2. Register with co-signer to receive Shard B and recovery Shard C
-const cosigner = new RemoteCosigner({ apiUrl: "https://api.privatumrh.com" });
-const registration = await registerWalletWithCosigner(cosigner, {
-  shardAPubKey: shardA.publicKey,
+// 1. Generate local device key (Shard A)
+const shardA = LocalShard.create("device");
+
+// 2. Register wallet with the live PRIVATUM co-signer
+const { wallet, shardC } = await PrivatumWallet.create({
+  existingShardA: shardA,
 });
 
-// 3. Compute deterministic account address via PrivatumFactory
-const factoryInitCode = buildFactoryInitCode(
-  shardA.publicKey,
-  registration.shardBPublicKey,
-  registration.shardCPublicKey,
-  0n
-);
+console.log("Wallet address:", wallet.address);
+console.log("Co-signer Shard B address:", wallet.shardB.address);
+console.log("Recovery Shard C address:", shardC.address);
+console.log("API Key for co-signing:", wallet.apiKey);</code></pre>
 
-// 4. Build and dual-sign UserOp (2-of-3 threshold)
-const sigA = signUserOpHash(userOpHash, shardA.privateKey);
-const sigB = await cosigner.signUserOp(userOpHash, registration.walletId);
-const finalSignature = combineSignatures(sigA, sigB);</code></pre>
+    <h3>10.2 ERC-4337 Threshold Transfers (USDG &amp; Native ETH)</h3>
+    <p>Transfers are executed as ERC-4337 UserOperations. Shard A signs locally and requests a threshold co-signature from Shard B over TLS. Both 65-byte signatures are combined into a 130-byte payload verified by <code>PrivatumAccount.sol</code>:</p>
+    <pre class="pv-docs-pre"><code>import { parseEther, parseUnits } from "viem";
+
+// Send native ETH on Robinhood Chain
+const ethReceipt = await wallet.sendAsset({
+  to: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+  amount: parseEther("0.05"),
+  asset: "ETH",
+});
+console.log("ETH UserOp hash:", ethReceipt.userOpHash);
+
+// Send USDG stablecoin (6 decimals)
+const usdgReceipt = await wallet.sendAsset({
+  to: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+  amount: parseUnits("25.0", 6),
+  asset: "USDG",
+});
+console.log("USDG UserOp hash:", usdgReceipt.userOpHash);</code></pre>
+
+    <h3>10.3 Emergency Recovery (Shard C + TOTP 2FA)</h3>
+    <p>If the user loses their primary device, Shard C combines with Co-signer Shard B through standard RFC 6238 TOTP two-factor authentication to rotate Shard A on-chain without revealing private keys:</p>
+    <pre class="pv-docs-pre"><code>import { PrivatumWallet, LocalShard } from "@privatumrh/robinhood-chain-sdk";
+
+// Generate replacement device key
+const newShardA = LocalShard.create("device");
+
+// Submit recovery rotation signed by Shard C + Shard B
+const receipt = await PrivatumWallet.recoverWallet({
+  walletAddress: "0xYourWalletAddress",
+  shardC: savedRecoveryShardC,
+  totpCode: "654321",
+  newShardAAddress: newShardA.address,
+});
+console.log("Recovery UserOp broadcast:", receipt.userOpHash);</code></pre>
+
+    <h3>10.4 Address Poisoning Sentinel</h3>
+    <p>Prevent users from sending funds to vanity look-alike dust addresses copied from transaction history. The sentinel calculates prefix/suffix edit distances and detects spoofing attempts before Shard A signs:</p>
+    <pre class="pv-docs-pre"><code>import {
+  checkAddressPoisoning,
+  requiresAcknowledgement,
+} from "@privatumrh/robinhood-chain-sdk";
+
+const verdict = checkAddressPoisoning({
+  recipient: "0x1234c0532925a3b844bc454e4438f44e1234abcd",
+  history: [
+    {
+      type: "send",
+      counterparty: "0x123488888888888888888888888888888888abcd",
+      amount: "10.0",
+      asset: "USDG",
+    },
+  ],
+  ownAddresses: [wallet.address],
+});
+
+if (requiresAcknowledgement(verdict)) {
+  console.warn("Security Alert:", verdict.title);
+  console.warn(verdict.detail);
+  console.warn("Look-alike of:", verdict.lookalikeOf);
+}</code></pre>
+
+    <h3>10.5 In-App Spending Guardrails</h3>
+    <p>Client-side financial limits protect against fat-finger errors and unauthorized drainage with 24-hour rolling velocity tracking and configurable strictness:</p>
+    <pre class="pv-docs-pre"><code>import {
+  evaluateSpend,
+  recordSpend,
+  loadGuardrailConfig,
+  loadSpendingHistory,
+  estimateUsdValue,
+} from "@privatumrh/robinhood-chain-sdk";
+
+const config = loadGuardrailConfig(wallet.address);
+const history = loadSpendingHistory(wallet.address);
+
+const amountUsd = estimateUsdValue("150", "USDG");
+const verdict = evaluateSpend(config, amountUsd, history);
+
+if (!verdict.allowed) {
+  throw new Error(`Transfer blocked by strict guardrail: ${verdict.message}`);
+}</code></pre>
+
+    <h3>10.6 Disposable Escrow PayLinks</h3>
+    <p>Generate non-interactive, single-use burner payment links that keep primary wallet addresses completely hidden from third parties:</p>
+    <pre class="pv-docs-pre"><code>import {
+  createPayLink,
+  getPayLink,
+  checkAndSweepPayLink,
+} from "@privatumrh/robinhood-chain-sdk";
+
+// Create shielded paylink
+const paylink = await createPayLink({
+  senderWallet: wallet.address,
+  amount: "50",
+  asset: "USDG",
+  expiryHours: 24,
+  memo: "Invoice #1042",
+  singleUse: true,
+});
+
+// Check and sweep funds to recipient
+const sweep = await checkAndSweepPayLink(paylink.slug);
+console.log("Swept:", sweep.swept, "Tx Hash:", sweep.txHash);</code></pre>
+
     <p class="pv-docs-note">Published on npm as <a href="https://www.npmjs.com/package/@privatumrh/robinhood-chain-sdk" target="_blank" rel="noopener noreferrer"><code>@privatumrh/robinhood-chain-sdk</code></a>. Supports custom co-signer URLs, headers, and pluggable cosign callbacks.</p>
   </section>
 
