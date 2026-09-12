@@ -190,5 +190,8 @@ export function parseDeterministicIntent(
     };
   }
 
-  return null;
+  return {
+    type: "general_query",
+    query: normalized,
+  };
 }

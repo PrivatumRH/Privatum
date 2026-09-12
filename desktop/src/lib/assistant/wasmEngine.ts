@@ -1,6 +1,6 @@
 import type { ModelLoadingProgress } from "./types";
 
-export const DEFAULT_WASM_MODEL = "onnx-community/SmolLM2-135M-Instruct";
+export const DEFAULT_WASM_MODEL = "HuggingFaceTB/SmolLM2-135M-Instruct";
 
 class SmolLM2WasmEngine {
   private generator: any = null;
@@ -29,6 +29,10 @@ class SmolLM2WasmEngine {
     return this.generator !== null;
   }
 
+  public isModelLoading(): boolean {
+    return this.isLoading;
+  }
+
   /**
    * Initializes and caches the SmolLM2-135M model locally in browser IndexedDB.
    */
@@ -47,29 +51,35 @@ class SmolLM2WasmEngine {
       env.allowLocalModels = false;
       env.useBrowserCache = true;
 
-      this.notifyProgress({ status: "downloading", progress: 15, text: `Loading ${modelId}...` });
+      // Handle environments without SharedArrayBuffer (e.g. desktop WebViews)
+      if (typeof window !== "undefined" && !window.crossOriginIsolated) {
+        if (env.backends?.onnx?.wasm) {
+          (env.backends.onnx.wasm as any).numThreads = 1;
+        }
+      }
+
+      this.notifyProgress({ status: "downloading", progress: 15, text: "Loading AI model..." });
 
       this.generator = await pipeline("text-generation", modelId, {
         dtype: "q4",
-        device: "wasm",
         progress_callback: (p: any) => {
           if (p && typeof p.progress === "number") {
             const pct = Math.round(p.progress * 100);
             this.notifyProgress({
               status: "downloading",
               progress: Math.min(95, Math.max(15, pct)),
-              text: `Downloading SmolLM2-135M: ${pct}%`,
+              text: `Downloading AI: ${pct}%`,
             });
           }
         },
       });
 
-      this.notifyProgress({ status: "ready", progress: 100, text: "SmolLM2-135M Ready" });
+      this.notifyProgress({ status: "ready", progress: 100, text: "AI Ready" });
     } catch (err: any) {
       console.warn("[wasmEngine] Could not load in-browser Wasm model:", err);
       this.notifyProgress({
         status: "error",
-        text: err?.message || "Local Wasm model failed to initialize. Deterministic engine active.",
+        text: err?.message || "Local AI model failed to initialize. Fast parser active.",
       });
       this.generator = null;
     } finally {
@@ -93,16 +103,17 @@ class SmolLM2WasmEngine {
         role: "system",
         content:
           systemPrompt ||
-          "You are Privatum Assistant, a private transaction safety copilot for Robinhood Chain. Explain transaction risks clearly, be concise, and never ask for or output secrets.",
+          `You are Privatum Assistant, a non-custodial transaction copilot on Robinhood Chain. Current time: ${new Date().toLocaleTimeString()} (${new Date().toLocaleDateString()}). Answer concisely and helpfully. Explain transaction safety facts, address poisoning, and spending guardrails. Never reveal or request private keys.`,
       },
       { role: "user", content: prompt },
     ];
 
     try {
       const output = await this.generator(messages, {
-        max_new_tokens: 120,
+        max_new_tokens: 150,
         temperature: 0.2,
         do_sample: false,
+        return_full_text: false,
       });
 
       if (Array.isArray(output) && output[0]?.generated_text) {
@@ -111,7 +122,10 @@ class SmolLM2WasmEngine {
           const last = text[text.length - 1];
           return last?.content || "";
         }
-        return String(text);
+        if (typeof text === "string") {
+          return text;
+        }
+        return JSON.stringify(text);
       }
       return "";
     } catch (err) {

@@ -40,4 +40,20 @@ describe("Assistant Engine Pipeline", () => {
       expect(res.intent.memo).toContain("team lunch");
     }
   });
+
+  it("answers greetings naturally in conversational fast parser", async () => {
+    const res = await processAssistantQuery({ input: "hi" });
+    expect(res.content).toContain("Hello! I am your Privatum Assistant");
+  });
+
+  it("answers identity question who are you", async () => {
+    const res = await processAssistantQuery({ input: "who are you?" });
+    expect(res.content).toContain("Privatum Assistant");
+    expect(res.content).toContain("Robinhood Chain");
+  });
+
+  it("answers time inquiries accurately", async () => {
+    const res = await processAssistantQuery({ input: "whats the time" });
+    expect(res.content).toContain("The current local time is");
+  });
 });

@@ -266,40 +266,118 @@ export async function processAssistantQuery(
     }
   }
 
-  // STEP 3: Fallback to On-Device SmolLM2-135M Model for Conversational Reasoning
+  // STEP 3: On-Device AI Execution (SmolLM2-135M via WebAssembly / ONNX)
   if (preferredEngine === "smollm2_wasm" || smolLm2Engine.isReady()) {
-    try {
-      const systemPrompt =
-        "You are Privatum Assistant, a transaction safety copilot for Robinhood Chain. Provide concise, factual answers about wallet safety, guardrails, address poisoning, and privacy. Never ask for or output secrets.";
-      const answer = await smolLm2Engine.generate(cleanText, systemPrompt);
-      if (answer && answer.trim().length > 0) {
+    if (!smolLm2Engine.isReady()) {
+      // Trigger initialization in background if not already started
+      smolLm2Engine.init().catch((err) => console.warn("[assistantEngine] smolLm2Engine init err:", err));
+      const status = smolLm2Engine.getStatus();
+      if (status.status === "downloading") {
         return {
           id: `msg-${Date.now()}`,
           role: "assistant",
-          content: answer.trim(),
+          content: `AI model is currently downloading (${status.progress || 15}%). In the meantime, Fast Parser is active and commands will execute immediately.`,
           timestamp: Date.now(),
         };
       }
-    } catch (err) {
-      console.warn("[assistantEngine] SmolLM2 inference failed, falling back to guide:", err);
+    } else {
+      try {
+        const answer = await smolLm2Engine.generate(cleanText);
+        if (answer && answer.trim().length > 0) {
+          return {
+            id: `msg-${Date.now()}`,
+            role: "assistant",
+            content: answer.trim(),
+            timestamp: Date.now(),
+          };
+        }
+      } catch (err) {
+        console.warn("[assistantEngine] SmolLM2 inference failed, falling back to fast parser:", err);
+      }
     }
   }
 
-  // STEP 4: Default Help & Guidance
+  // STEP 4: Conversational Fast Parser
+  const lower = cleanText.toLowerCase().trim();
+
+  // Greetings
+  if (/^(hi|hello|hey|greetings|good\s+(morning|afternoon|evening))\b/i.test(lower)) {
+    return {
+      id: `msg-${Date.now()}`,
+      role: "assistant",
+      content:
+        "Hello! I am your Privatum Assistant. How can I assist you today? You can command me to prepare transfers, generate payment links, check address safety, or inspect spending guardrails.",
+      timestamp: Date.now(),
+    };
+  }
+
+  // Identity / Who are you
+  if (/(who|what)\s+(are\s+you|is\s+this|assistant)/i.test(lower)) {
+    return {
+      id: `msg-${Date.now()}`,
+      role: "assistant",
+      content:
+        "I am the Privatum Assistant, an on-device transaction safety copilot for Robinhood Chain. I analyze recipient addresses against poisoning attacks, evaluate spending guardrails, and prepare transaction intents for your manual signature. I never hold private keys or broadcast transactions without your explicit approval.",
+      timestamp: Date.now(),
+    };
+  }
+
+  // Current Time / Date
+  if (/\b(what('?s|\s+is)?\s+(the\s+)?(time|date|clock)|current\s+time)\b/i.test(lower)) {
+    const now = new Date();
+    return {
+      id: `msg-${Date.now()}`,
+      role: "assistant",
+      content: `The current local time is **${now.toLocaleTimeString()}** on **${now.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}** (UTC: ${now.toISOString().slice(11, 19)}).`,
+      timestamp: Date.now(),
+    };
+  }
+
+  // What is Privatum
+  if (/what\s+is\s+privatum/i.test(lower)) {
+    return {
+      id: `msg-${Date.now()}`,
+      role: "assistant",
+      content:
+        "Privatum is an institutional-grade, non-custodial smart contract wallet on Robinhood Chain built with 2-of-2 MPC shard architecture. Your device holds Shard A, while the remote co-signer holds Shard B. It features stealth transfers, spending guardrails, and address poisoning protection.",
+      timestamp: Date.now(),
+    };
+  }
+
+  // Help / Commands
+  if (/^(help|commands|what\s+can\s+you\s+do|features)/i.test(lower)) {
+    return {
+      id: `msg-${Date.now()}`,
+      role: "assistant",
+      content: [
+        "Here are common commands you can run:",
+        "",
+        "* **Transfers**: `Send 25 USDG to Alice` or `Send 0.1 ETH to 0x... with stealth`",
+        "* **Payment Links**: `Create paylink for 50 USDG memo lunch`",
+        "* **Emergency**: `Freeze wallet for 24 hours`",
+        "* **Safety Check**: `Check address 0x... for poisoning`",
+        "* **Limits**: `What are my spending limits?`",
+        "* **Contacts**: `Show my contacts`",
+        "",
+        "You can also toggle **Enable AI** above for open-ended conversational reasoning.",
+      ].join("\n"),
+      timestamp: Date.now(),
+    };
+  }
+
+  // Unparsed Fallback
   return {
     id: `msg-${Date.now()}`,
     role: "assistant",
     content: [
-      "I am your on-device Privatum transaction safety copilot.",
+      "I did not recognize a transaction command in your message.",
       "",
-      "You can ask me to parse transactions or check security facts:",
-      "* 'Send 25 USDG to Alice' or 'Send 0.1 ETH to 0x... with stealth'",
-      "* 'Create a pay link for 50 USDG'",
-      "* 'Freeze wallet for 24 hours'",
-      "* 'Check address 0x... for poisoning'",
-      "* 'What are my spending limits?'",
+      "Try actions like:",
+      "* `Send 10 USDG to Alice`",
+      "* `Check address 0x...`",
+      "* `What are my spending limits?`",
       "",
-      "In accordance with Privatum V2: I never touch keys, sign UserOps, or broadcast transactions without your manual approval.",
+      "Or toggle **Enable AI** at the top of this drawer to ask open-ended questions.",
     ].join("\n"),
     timestamp: Date.now(),
   };
