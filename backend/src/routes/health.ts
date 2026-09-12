@@ -14,7 +14,7 @@ healthRouter.get("/health", async (_req: Request, res: Response) => {
   res.status(200).json({
     status: "ok",
     timestamp: new Date().toISOString(),
-    version: "0.1.8",
+    version: "0.1.11",
     service: "privatum-cosigner-backend",
     network: "Robinhood Chain",
     chainId: 4663,
