@@ -156,6 +156,7 @@ export async function checkAndSweepPaylink(slug: string): Promise<SweepResult> {
 
       const sendAmount = balanceWei - gasFee;
       sweepTxHash = await burnerWallet.sendTransaction({
+        chain: null,
         to: recipientAddress,
         value: sendAmount,
       });
@@ -173,6 +174,7 @@ export async function checkAndSweepPaylink(slug: string): Promise<SweepResult> {
         });
 
         const grantTx = await poolWallet.sendTransaction({
+          chain: null,
           to: depositAddress,
           value: parseEther("0.000035"),
         });
@@ -185,6 +187,7 @@ export async function checkAndSweepPaylink(slug: string): Promise<SweepResult> {
       const destination = paylink.route_mode === "pool_shielded" ? POOL_ADDRESS : recipientAddress;
 
       sweepTxHash = await burnerWallet.writeContract({
+        chain: null,
         address: paylink.token_address as Address,
         abi: ERC20_ABI,
         functionName: "transfer",
@@ -201,6 +204,7 @@ export async function checkAndSweepPaylink(slug: string): Promise<SweepResult> {
         });
 
         const poolForwardTx = await poolWallet.writeContract({
+          chain: null,
           address: paylink.token_address as Address,
           abi: ERC20_ABI,
           functionName: "transfer",
