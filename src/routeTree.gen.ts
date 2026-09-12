@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FreezeRouteImport } from './routes/freeze'
+import { Route as MobileRouteImport } from './routes/mobile'
 import { Route as PaySlugRouteImport } from './routes/pay/$slug'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const FreezeRoute = FreezeRouteImport.update({
   path: '/freeze',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MobileRoute = MobileRouteImport.update({
+  id: '/mobile',
+  path: '/mobile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PaySlugRoute = PaySlugRouteImport.update({
   id: '/pay/$slug',
   path: '/pay/$slug',
@@ -32,30 +38,34 @@ const PaySlugRoute = PaySlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/freeze': typeof FreezeRoute
+  '/mobile': typeof MobileRoute
   '/pay/$slug': typeof PaySlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/freeze': typeof FreezeRoute
+  '/mobile': typeof MobileRoute
   '/pay/$slug': typeof PaySlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/freeze': typeof FreezeRoute
+  '/mobile': typeof MobileRoute
   '/pay/$slug': typeof PaySlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/freeze' | '/pay/$slug'
+  fullPaths: '/' | '/freeze' | '/mobile' | '/pay/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/freeze' | '/pay/$slug'
-  id: '__root__' | '/' | '/freeze' | '/pay/$slug'
+  to: '/' | '/freeze' | '/mobile' | '/pay/$slug'
+  id: '__root__' | '/' | '/freeze' | '/mobile' | '/pay/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   FreezeRoute: typeof FreezeRoute
+  MobileRoute: typeof MobileRoute
   PaySlugRoute: typeof PaySlugRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FreezeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mobile': {
+      id: '/mobile'
+      path: '/mobile'
+      fullPath: '/mobile'
+      preLoaderRoute: typeof MobileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pay/$slug': {
       id: '/pay/$slug'
       path: '/pay/$slug'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FreezeRoute: FreezeRoute,
+  MobileRoute: MobileRoute,
   PaySlugRoute: PaySlugRoute,
 }
 export const routeTree = rootRouteImport
