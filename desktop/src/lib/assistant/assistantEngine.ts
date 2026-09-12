@@ -17,6 +17,7 @@ import {
   type AddressGuardHistoryEntry,
 } from "../addressGuard";
 import type { AssistantMessage, EngineMode, ParsedIntent } from "./types";
+import { generateInferenceReceipt } from "./inferenceReceipt";
 
 export interface ProcessAssistantInputParams {
   input: string;
@@ -52,11 +53,14 @@ export async function processAssistantQuery(
   // STEP 1: Ingress Redaction Gateway
   const redaction = sanitizePromptIngress(input);
   if (!redaction.allowed) {
+    const alertContent = `Security Alert: ${redaction.reason}`;
+    const alertReceipt = await generateInferenceReceipt(input, alertContent, "deterministic");
     return {
       id: `msg-${Date.now()}`,
       role: "assistant",
-      content: `Security Alert: ${redaction.reason}`,
+      content: alertContent,
       timestamp: Date.now(),
+      inferenceReceipt: alertReceipt,
       safetyEvidence: {
         poisonVerdict: "danger",
         intentSummary: "Prompt rejected by client-side secret redaction gateway.",
@@ -65,6 +69,27 @@ export async function processAssistantQuery(
   }
 
   const cleanText = redaction.sanitized;
+
+  const createResponse = async (
+    content: string,
+    options?: {
+      intent?: ParsedIntent;
+      safetyEvidence?: AssistantMessage["safetyEvidence"];
+      engine?: "deterministic" | "smollm2_wasm";
+    }
+  ): Promise<AssistantMessage> => {
+    const engineMode = options?.engine || (preferredEngine === "smollm2_wasm" ? "smollm2_wasm" : "deterministic");
+    const inferenceReceipt = await generateInferenceReceipt(cleanText, content, engineMode);
+    return {
+      id: `msg-${Date.now()}`,
+      role: "assistant",
+      content,
+      timestamp: Date.now(),
+      intent: options?.intent,
+      safetyEvidence: options?.safetyEvidence,
+      inferenceReceipt,
+    };
+  };
 
   // STEP 2: Deterministic NLP Parsing
   const parsed = parseDeterministicIntent(cleanText, contacts);
@@ -109,11 +134,7 @@ export async function processAssistantQuery(
         "Click below to review parameters and authorize with your device shard.",
       ];
 
-      return {
-        id: `msg-${Date.now()}`,
-        role: "assistant",
-        content: lines.join("\n"),
-        timestamp: Date.now(),
+      return await createResponse(lines.join("\n"), {
         intent: parsed,
         safetyEvidence: {
           poisonVerdict: explanation.safetyState,
@@ -123,7 +144,7 @@ export async function processAssistantQuery(
           contactMatch: matchedContact ? matchedContact.name : undefined,
           intentSummary: `Send ${parsed.amount} ${parsed.asset} to ${parsed.recipientName || parsed.recipient.slice(0, 8) + "..."}`,
         },
-      };
+      });
     }
 
     // 2B: Pay Link Intent
@@ -137,16 +158,12 @@ export async function processAssistantQuery(
         "Click below to generate this payment link on Robinhood Chain.",
       ];
 
-      return {
-        id: `msg-${Date.now()}`,
-        role: "assistant",
-        content: lines.join("\n"),
-        timestamp: Date.now(),
+      return await createResponse(lines.join("\n"), {
         intent: parsed,
         safetyEvidence: {
           intentSummary: `Create ${parsed.amount} ${parsed.asset} Pay Link`,
         },
-      };
+      });
     }
 
     // 2C: Panic Freeze Intent
@@ -160,33 +177,28 @@ export async function processAssistantQuery(
         "Click below to execute panic freeze on the Co-Signer backend.",
       ];
 
-      return {
-        id: `msg-${Date.now()}`,
-        role: "assistant",
-        content: lines.join("\n"),
-        timestamp: Date.now(),
+      return await createResponse(lines.join("\n"), {
         intent: parsed,
         safetyEvidence: {
           poisonVerdict: "warning",
           intentSummary: `Freeze Wallet (${parsed.hours ? `${parsed.hours}h` : "Permanent"})`,
         },
-      };
+      });
     }
 
     // 2D: Unfreeze Intent
     if (parsed.type === "unfreeze_wallet") {
-      return {
-        id: `msg-${Date.now()}`,
-        role: "assistant",
-        content: parsed.code
+      return await createResponse(
+        parsed.code
           ? `Unfreeze request ready with authenticator code ${parsed.code}. Click below to unlock Shard B.`
           : "To lift the emergency freeze, you must enter the 6-digit code from your authenticator app.",
-        timestamp: Date.now(),
-        intent: parsed,
-        safetyEvidence: {
-          intentSummary: "Unlock Wallet",
-        },
-      };
+        {
+          intent: parsed,
+          safetyEvidence: {
+            intentSummary: "Unlock Wallet",
+          },
+        }
+      );
     }
 
     // 2E: Check Address
@@ -210,31 +222,28 @@ export async function processAssistantQuery(
 
       const status = verdict.level === "danger" ? "Danger" : verdict.level === "warning" ? "Warning" : "Clean";
 
-      return {
-        id: `msg-${Date.now()}`,
-        role: "assistant",
-        content: [
+      return await createResponse(
+        [
           `Address Inspection: ${parsed.address}`,
           `Status: ${status}`,
           `Verdict: ${verdict.detail}`,
           matchedContact ? `Known Contact: ${matchedContact.name} (${matchedContact.category})` : "Not present in local address book.",
         ].join("\n"),
-        timestamp: Date.now(),
-        intent: parsed,
-        safetyEvidence: {
-          poisonVerdict: verdict.level === "danger" ? "danger" : verdict.level === "warning" ? "warning" : "safe",
-          poisonMessage: verdict.detail,
-          contactMatch: matchedContact?.name,
-        },
-      };
+        {
+          intent: parsed,
+          safetyEvidence: {
+            poisonVerdict: verdict.level === "danger" ? "danger" : verdict.level === "warning" ? "warning" : "safe",
+            poisonMessage: verdict.detail,
+            contactMatch: matchedContact?.name,
+          },
+        }
+      );
     }
 
     // 2F: View Guardrails
     if (parsed.type === "view_guardrails") {
-      return {
-        id: `msg-${Date.now()}`,
-        role: "assistant",
-        content: guardrailConfig
+      return await createResponse(
+        guardrailConfig
           ? [
               "Spending Guardrails Status:",
               `Status: ${guardrailConfig.enabled ? "Active" : "Disabled"}`,
@@ -243,26 +252,21 @@ export async function processAssistantQuery(
               `Strict Enforcement: ${guardrailConfig.strictMode ? "Enabled (Blocks violators)" : "Advisory (Prompts confirmation)"}`,
             ].join("\n")
           : "Spending guardrails are currently active on this device.",
-        timestamp: Date.now(),
-        intent: parsed,
-      };
+        { intent: parsed }
+      );
     }
 
     // 2G: View Contacts
     if (parsed.type === "view_contacts") {
-      return {
-        id: `msg-${Date.now()}`,
-        role: "assistant",
-        content:
-          contacts.length === 0
-            ? "Your private address book is currently empty. You can add contacts in the Contacts modal."
-            : [
-                `Address Book (${contacts.length} entries):`,
-                ...contacts.slice(0, 8).map((c) => `* ${c.name}: ${c.address.slice(0, 6)}...${c.address.slice(-4)} (${c.category})`),
-              ].join("\n"),
-        timestamp: Date.now(),
-        intent: parsed,
-      };
+      return await createResponse(
+        contacts.length === 0
+          ? "Your private address book is currently empty. You can add contacts in the Contacts modal."
+          : [
+              `Address Book (${contacts.length} entries):`,
+              ...contacts.slice(0, 8).map((c) => `* ${c.name}: ${c.address.slice(0, 6)}...${c.address.slice(-4)} (${c.category})`),
+            ].join("\n"),
+        { intent: parsed }
+      );
     }
   }
 
@@ -273,23 +277,16 @@ export async function processAssistantQuery(
       smolLm2Engine.init().catch((err) => console.warn("[assistantEngine] smolLm2Engine init err:", err));
       const status = smolLm2Engine.getStatus();
       if (status.status === "downloading") {
-        return {
-          id: `msg-${Date.now()}`,
-          role: "assistant",
-          content: `AI model is currently downloading (${status.progress || 15}%). In the meantime, Fast Parser is active and commands will execute immediately.`,
-          timestamp: Date.now(),
-        };
+        return await createResponse(
+          `AI model is currently downloading (${status.progress || 15}%). In the meantime, Fast Parser is active and commands will execute immediately.`,
+          { engine: "deterministic" }
+        );
       }
     } else {
       try {
         const answer = await smolLm2Engine.generate(cleanText);
         if (answer && answer.trim().length > 0) {
-          return {
-            id: `msg-${Date.now()}`,
-            role: "assistant",
-            content: answer.trim(),
-            timestamp: Date.now(),
-          };
+          return await createResponse(answer.trim(), { engine: "smollm2_wasm" });
         }
       } catch (err) {
         console.warn("[assistantEngine] SmolLM2 inference failed, falling back to fast parser:", err);
@@ -302,54 +299,37 @@ export async function processAssistantQuery(
 
   // Greetings
   if (/^(hi|hello|hey|greetings|good\s+(morning|afternoon|evening))\b/i.test(lower)) {
-    return {
-      id: `msg-${Date.now()}`,
-      role: "assistant",
-      content:
-        "Hello! I am your Privatum Assistant. How can I assist you today? You can command me to prepare transfers, generate payment links, check address safety, or inspect spending guardrails.",
-      timestamp: Date.now(),
-    };
+    return await createResponse(
+      "Hello! I am your Privatum Assistant. How can I assist you today? You can command me to prepare transfers, generate payment links, check address safety, or inspect spending guardrails."
+    );
   }
 
   // Identity / Who are you
   if (/(who|what)\s+(are\s+you|is\s+this|assistant)/i.test(lower)) {
-    return {
-      id: `msg-${Date.now()}`,
-      role: "assistant",
-      content:
-        "I am the Privatum Assistant, an on-device transaction safety copilot for Robinhood Chain. I analyze recipient addresses against poisoning attacks, evaluate spending guardrails, and prepare transaction intents for your manual signature. I never hold private keys or broadcast transactions without your explicit approval.",
-      timestamp: Date.now(),
-    };
+    return await createResponse(
+      "I am the Privatum Assistant, an on-device transaction safety copilot for Robinhood Chain. I analyze recipient addresses against poisoning attacks, evaluate spending guardrails, and prepare transaction intents for your manual signature. I never hold private keys or broadcast transactions without your explicit approval."
+    );
   }
 
   // Current Time / Date
   if (/\b(what('?s|\s+is)?\s+(the\s+)?(time|date|clock)|current\s+time)\b/i.test(lower)) {
     const now = new Date();
-    return {
-      id: `msg-${Date.now()}`,
-      role: "assistant",
-      content: `The current local time is **${now.toLocaleTimeString()}** on **${now.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}** (UTC: ${now.toISOString().slice(11, 19)}).`,
-      timestamp: Date.now(),
-    };
+    return await createResponse(
+      `The current local time is **${now.toLocaleTimeString()}** on **${now.toLocaleDateString(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}** (UTC: ${now.toISOString().slice(11, 19)}).`
+    );
   }
 
   // What is Privatum
   if (/what\s+is\s+privatum/i.test(lower)) {
-    return {
-      id: `msg-${Date.now()}`,
-      role: "assistant",
-      content:
-        "Privatum is an institutional-grade, non-custodial smart contract wallet on Robinhood Chain built with 2-of-2 MPC shard architecture. Your device holds Shard A, while the remote co-signer holds Shard B. It features stealth transfers, spending guardrails, and address poisoning protection.",
-      timestamp: Date.now(),
-    };
+    return await createResponse(
+      "Privatum is an institutional-grade, non-custodial smart contract wallet on Robinhood Chain built with 2-of-2 MPC shard architecture. Your device holds Shard A, while the remote co-signer holds Shard B. It features stealth transfers, spending guardrails, and address poisoning protection."
+    );
   }
 
   // Help / Commands
   if (/^(help|commands|what\s+can\s+you\s+do|features)/i.test(lower)) {
-    return {
-      id: `msg-${Date.now()}`,
-      role: "assistant",
-      content: [
+    return await createResponse(
+      [
         "Here are common commands you can run:",
         "",
         "* **Transfers**: `Send 25 USDG to Alice` or `Send 0.1 ETH to 0x... with stealth`",
@@ -360,16 +340,13 @@ export async function processAssistantQuery(
         "* **Contacts**: `Show my contacts`",
         "",
         "You can also toggle **Enable AI** above for open-ended conversational reasoning.",
-      ].join("\n"),
-      timestamp: Date.now(),
-    };
+      ].join("\n")
+    );
   }
 
   // Unparsed Fallback
-  return {
-    id: `msg-${Date.now()}`,
-    role: "assistant",
-    content: [
+  return await createResponse(
+    [
       "I did not recognize a transaction command in your message.",
       "",
       "Try actions like:",
@@ -378,7 +355,6 @@ export async function processAssistantQuery(
       "* `What are my spending limits?`",
       "",
       "Or toggle **Enable AI** at the top of this drawer to ask open-ended questions.",
-    ].join("\n"),
-    timestamp: Date.now(),
-  };
+    ].join("\n")
+  );
 }

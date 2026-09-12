@@ -20,6 +20,10 @@ describe("Assistant Engine Pipeline", () => {
       expect(res.intent.amount).toBe("100");
       expect(res.intent.asset).toBe("USDG");
     }
+    expect(res.inferenceReceipt).toBeDefined();
+    expect(res.inferenceReceipt?.codeHash).toHaveLength(64);
+    expect(res.inferenceReceipt?.engine).toBe("client-cpu-deterministic");
+    expect(res.inferenceReceipt?.shortRef).toHaveLength(8);
   });
 
   it("processes freeze command", async () => {

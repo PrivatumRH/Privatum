@@ -1,9 +1,11 @@
 import React from "react";
 import { ArrowUpRight, Shield, ShieldAlert, Link2, Lock, Unlock, ArrowRight, X } from "lucide-react";
 import type { ParsedIntent } from "../../lib/assistant/types";
+import type { InferenceReceipt } from "../../lib/assistant/inferenceReceipt";
 
 interface IntentProposalCardProps {
   intent: ParsedIntent;
+  receipt?: InferenceReceipt;
   safetyEvidence?: {
     poisonVerdict?: "safe" | "warning" | "danger";
     poisonMessage?: string;
@@ -18,6 +20,7 @@ interface IntentProposalCardProps {
 
 export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
   intent,
+  receipt,
   safetyEvidence,
   onApplyIntent,
   onDismiss,
@@ -94,6 +97,13 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
               </span>
             </div>
           )}
+
+          {receipt && (
+            <div className="flex items-center justify-between pt-1 border-t border-white/5">
+              <span className="text-white/40">Inference Proof:</span>
+              <span className="font-mono text-[10px] text-white/50">{receipt.shortRef}</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -150,6 +160,12 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
               <span className="text-white">{intent.memo}</span>
             </div>
           )}
+          {receipt && (
+            <div className="flex items-center justify-between pt-1 border-t border-white/5">
+              <span className="text-white/40">Inference Proof:</span>
+              <span className="font-mono text-[10px] text-white/50">{receipt.shortRef}</span>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -197,6 +213,12 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
         <p className="text-white/70 mb-3 leading-relaxed">
           Duration: {intent.hours ? `${intent.hours} hours` : "Until manual unlock"}. Co-Signer Shard B will be locked against outgoing transfers.
         </p>
+        {receipt && (
+          <div className="flex items-center justify-between mb-3 text-[10px] pt-1 border-t border-white/5">
+            <span className="text-white/40">Inference Proof:</span>
+            <span className="font-mono text-white/50">{receipt.shortRef}</span>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -243,6 +265,12 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
         <p className="text-white/70 mb-3 leading-relaxed">
           {intent.code ? `Ready to submit authenticator code ${intent.code}.` : "Requires 6-digit authenticator code from recovery device."}
         </p>
+        {receipt && (
+          <div className="flex items-center justify-between mb-3 text-[10px] pt-1 border-t border-white/5">
+            <span className="text-white/40">Inference Proof:</span>
+            <span className="font-mono text-white/50">{receipt.shortRef}</span>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <button
             type="button"

@@ -40,7 +40,7 @@ export function PayLinksTab({ wallet, addToast, onBalanceRefresh }: PayLinksTabP
   const [submitting, setSubmitting] = useState(false);
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
 
-  // Inline QR preview (v0.1.17) - rendered in the row, no separate modal
+  // Inline QR preview (v0.1.18) - rendered in the row, no separate modal
   const [expandedQrSlug, setExpandedQrSlug] = useState<string | null>(null);
   const [qrCache, setQrCache] = useState<Record<string, string>>({});
 
@@ -104,7 +104,7 @@ export function PayLinksTab({ wallet, addToast, onBalanceRefresh }: PayLinksTabP
       setIsFlexible(false);
       await fetchPaylinks();
 
-      // Surface the new link's QR inline straight away (v0.1.17)
+      // Surface the new link's QR inline straight away (v0.1.18)
       setExpandedQrSlug(res.slug);
       await ensureQr(res.slug);
     } catch (err: any) {
