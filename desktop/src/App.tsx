@@ -2383,9 +2383,9 @@ export function App() {
             </div>
 
             {/* Spending Guardrails Card (v0.1.12) */}
-            {isFeatureActive("spending_guardrails", appVersion, previewVersion) && wallet && (
+            {isFeatureActive("spending_guardrails", appVersion, previewVersion) && (
               <GuardrailCard
-                walletAddress={wallet.address}
+                walletAddress={wallet?.address || walletAddress || accounts[0]?.address || "0x0000000000000000000000000000000000000000"}
                 config={guardrailConfig}
                 history={guardrailHistory}
                 onConfigChange={(newCfg) => setGuardrailConfig(newCfg)}
