@@ -40,12 +40,22 @@ import {
   Wallet,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Key,
+  Settings,
+  Sliders,
+  Server,
+  ExternalLink,
 } from "lucide-react-native";
 
 import {
   ROBINHOOD_CHAIN_NAME,
   ROBINHOOD_CHAIN_ID,
+  ROBINHOOD_RPC_URL,
+  PRIVATUM_FACTORY_ADDRESS,
+  USDG_TOKEN_ADDRESS,
+  ROBINHOOD_EXPLORER_URL,
 } from "./src/config/chain";
 import { THEME } from "./src/config/theme";
 import {
@@ -59,6 +69,7 @@ import {
   type AddressGuardHistoryEntry,
 } from "./src/lib/addressGuard";
 import {
+  DEFAULT_GUARDRAIL_CONFIG,
   loadMobileGuardrails,
   saveMobileGuardrails,
   evaluateSpend,
@@ -67,7 +78,6 @@ import {
   type SpendingGuardrailConfig,
   type SpendingRecord,
   type GuardrailVerdict,
-  DEFAULT_GUARDRAIL_CONFIG,
 } from "./src/lib/spendGuardrails";
 import {
   loadMobileContacts,
@@ -88,6 +98,7 @@ import {
   loadStoredPayLinks,
   saveStoredPayLinks,
   loadStoredRecoveryKey,
+  resetAllAppData,
   type LiveBalance,
   type LiveTransaction,
   type MobilePayLink,
@@ -95,7 +106,8 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-type TabKey = "vault" | "send" | "paylinks" | "contacts" | "security";
+type TabKey = "vault" | "paylinks" | "contacts" | "settings";
+type SettingsSubPage = null | "keys" | "guardrails" | "security" | "network" | "data";
 
 const CATEGORIES: (ContactCategory | "All")[] = [
   "All",
@@ -108,6 +120,10 @@ const CATEGORIES: (ContactCategory | "All")[] = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("vault");
+  const [settingsSubPage, setSettingsSubPage] = useState<SettingsSubPage>(null);
+  const [showSendModal, setShowSendModal] = useState<boolean>(false);
+  const [selectedAsset, setSelectedAsset] = useState<LiveBalance | null>(null);
+  const [showAssetDrawer, setShowAssetDrawer] = useState<boolean>(false);
 
   // Wallet State
   const [walletAddress, setWalletAddress] = useState<string>("");
@@ -320,6 +336,46 @@ export default function App() {
     }
   };
 
+  const handleOpenAssetDrawer = (asset: LiveBalance) => {
+    setSelectedAsset(asset);
+    setShowAssetDrawer(true);
+  };
+
+  const handleResetApp = () => {
+    Alert.alert(
+      "Reset Application",
+      "This will permanently erase all local shards, saved contacts, and transaction history from this device. Make sure you have recorded your Shard C recovery key.\n\nAre you sure you want to proceed?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset Everything",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await resetAllAppData(walletAddress);
+              setWalletAddress("");
+              setHasShardA(false);
+              setBalances([
+                { symbol: "USDG", name: "Robinhood USD", balance: "0.00", usdValue: "0.00" },
+                { symbol: "ETH", name: "Ethereum", balance: "0.0000", usdValue: "0.00" },
+              ]);
+              setTransactions([]);
+              setContacts([]);
+              setPayLinks([]);
+              setActiveTab("vault");
+              setSettingsSubPage(null);
+              setShowAssetDrawer(false);
+              setShowSendModal(false);
+              Alert.alert("App Reset", "Local application data and shards have been wiped.");
+            } catch (err: any) {
+              Alert.alert("Reset Error", err?.message || "Failed to reset application.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   // Import existing account
   const handleImportAccount = async () => {
     if (!importAddressInput.trim() || !importAddressInput.trim().startsWith("0x")) {
@@ -455,6 +511,7 @@ export default function App() {
         "Transfer Broadcasted",
         `Sent ${newTx.amount} ${newTx.token} on Robinhood Chain.`
       );
+      setShowSendModal(false);
       setActiveTab("vault");
     }, 1200);
   };
@@ -628,7 +685,7 @@ export default function App() {
                 <View style={styles.actionDock}>
                   <TouchableOpacity
                     style={styles.actionButton}
-                    onPress={() => setActiveTab("send")}
+                    onPress={() => setShowSendModal(true)}
                   >
                     <View style={styles.actionIconCircle}>
                       <ArrowUpRight size={18} color="#ffffff" />
@@ -718,7 +775,10 @@ export default function App() {
 
                     <TouchableOpacity
                       style={styles.guardrailConfigureBtn}
-                      onPress={() => setActiveTab("security")}
+                      onPress={() => {
+                        setActiveTab("settings");
+                        setSettingsSubPage("guardrails");
+                      }}
                     >
                       <Text style={styles.guardrailConfigureText}>Configure Limit Settings</Text>
                     </TouchableOpacity>
@@ -730,7 +790,12 @@ export default function App() {
               <Text style={styles.sectionHeader}>Assets (On-Chain)</Text>
               <View style={styles.assetsList}>
                 {balances.map((item) => (
-                  <View key={item.symbol} style={styles.assetRow}>
+                  <TouchableOpacity
+                    key={item.symbol}
+                    style={styles.assetRow}
+                    onPress={() => handleOpenAssetDrawer(item)}
+                    activeOpacity={0.7}
+                  >
                     <View style={styles.assetLeft}>
                       <Image
                         source={
@@ -750,7 +815,7 @@ export default function App() {
                       <Text style={styles.assetBalance}>{item.balance}</Text>
                       <Text style={styles.assetUsd}>${item.usdValue}</Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
 
@@ -813,189 +878,7 @@ export default function App() {
             </ScrollView>
           )}
 
-          {/* TAB 2: SEND */}
-          {activeTab === "send" && (
-            <ScrollView
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={false}
-            >
-              <Text style={styles.screenHeading}>Transfer Funds</Text>
-              <Text style={styles.screenSubheading}>
-                Transfer authenticated on Robinhood Chain
-              </Text>
-
-              {/* Recipient Input */}
-              <View style={styles.inputGroup}>
-                <View style={styles.labelRow}>
-                  <Text style={styles.inputLabel}>Recipient Address</Text>
-                  <TouchableOpacity onPress={() => setShowAddressBookPicker(true)}>
-                    <Text style={styles.labelActionText}>Address Book</Text>
-                  </TouchableOpacity>
-                </View>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="0x... or st:eth:0x..."
-                  placeholderTextColor={THEME.colors.textDim}
-                  value={sendRecipient}
-                  onChangeText={(val) => {
-                    setSendRecipient(val.trim());
-                    setPoisonWarningAcknowledged(false);
-                  }}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {matchedContact && (
-                  <View style={styles.contactMatchedRow}>
-                    <Text style={styles.contactMatchedLabel}>
-                      Contact: {matchedContact.name} ({matchedContact.category})
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Address Poisoning Defense Warning */}
-              {(poisoningVerdict.level === "danger" || poisoningVerdict.level === "warning") && (
-                <View style={styles.poisonWarningBox}>
-                  <View style={styles.poisonWarningHeader}>
-                    <AlertTriangle size={16} color={THEME.colors.danger} />
-                    <Text style={styles.poisonWarningTitle}>{poisoningVerdict.title}</Text>
-                  </View>
-                  <Text style={styles.poisonWarningDetail}>{poisoningVerdict.detail}</Text>
-                  <TouchableOpacity
-                    style={styles.poisonCheckRow}
-                    onPress={() => setPoisonWarningAcknowledged(!poisonWarningAcknowledged)}
-                  >
-                    <View
-                      style={[
-                        styles.poisonCheckbox,
-                        poisonWarningAcknowledged && styles.poisonCheckboxActive,
-                      ]}
-                    >
-                      {poisonWarningAcknowledged && <Check size={12} color="#000000" />}
-                    </View>
-                    <Text style={styles.poisonCheckText}>
-                      I have verified every character of this address.
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* Token Selector */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Asset</Text>
-                <View style={styles.tokenPickerRow}>
-                  {["USDG", "ETH"].map((sym) => (
-                    <TouchableOpacity
-                      key={sym}
-                      style={[
-                        styles.tokenPickerButton,
-                        sendToken === sym && styles.tokenPickerButtonActive,
-                      ]}
-                      onPress={() => setSendToken(sym)}
-                    >
-                      <Image
-                        source={
-                          sym === "USDG"
-                            ? require("./assets/usdg_logo.png")
-                            : require("./assets/eth.jpeg")
-                        }
-                        style={styles.tokenPickerIcon}
-                        resizeMode="contain"
-                      />
-                      <Text
-                        style={[
-                          styles.tokenPickerText,
-                          sendToken === sym && styles.tokenPickerTextActive,
-                        ]}
-                      >
-                        {sym}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Amount Input */}
-              <View style={styles.inputGroup}>
-                <View style={styles.labelRow}>
-                  <Text style={styles.inputLabel}>Amount</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      const match = balances.find((b) => b.symbol === sendToken);
-                      if (match) setSendAmount(match.balance.replace(/,/g, ""));
-                    }}
-                  >
-                    <Text style={styles.labelActionText}>Max Balance</Text>
-                  </TouchableOpacity>
-                </View>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="0.00"
-                  placeholderTextColor={THEME.colors.textDim}
-                  value={sendAmount}
-                  onChangeText={setSendAmount}
-                  keyboardType="numeric"
-                />
-                {sendAmount ? (
-                  <Text style={styles.inputHelperText}>
-                    Approx. ${estimateUsdValue(sendAmount, sendToken).toFixed(2)} USD
-                  </Text>
-                ) : null}
-              </View>
-
-              {/* Stealth Transfer Toggle */}
-              <TouchableOpacity
-                style={styles.stealthToggleBox}
-                onPress={() => setIsStealth(!isStealth)}
-              >
-                <View style={styles.stealthLeft}>
-                  <Text style={styles.stealthTitle}>Stealth Receiver Mode</Text>
-                  <Text style={styles.stealthDescription}>
-                    Derives a one-time unlinked address for recipient privacy
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.toggleTrack,
-                    isStealth && styles.toggleTrackActive,
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.toggleThumb,
-                      isStealth && styles.toggleThumbActive,
-                    ]}
-                  />
-                </View>
-              </TouchableOpacity>
-
-              {/* Spending Guardrail Inline Notice */}
-              {sendAmount && !spendVerdict.allowed && (
-                <View style={styles.spendBlockAlert}>
-                  <Text style={styles.spendBlockTitle}>{spendVerdict.title}</Text>
-                  <Text style={styles.spendBlockDetail}>{spendVerdict.message}</Text>
-                </View>
-              )}
-
-              {/* Send Button */}
-              <TouchableOpacity
-                style={[
-                  styles.primaryButton,
-                  (!sendRecipient || !sendAmount || isSending) && styles.buttonDisabled,
-                ]}
-                disabled={!sendRecipient || !sendAmount || isSending}
-                onPress={handleConfirmSend}
-              >
-                {isSending ? (
-                  <ActivityIndicator size="small" color="#000000" />
-                ) : (
-                  <Text style={styles.primaryButtonText}>Authorize Transfer</Text>
-                )}
-              </TouchableOpacity>
-            </ScrollView>
-          )}
-
-          {/* TAB 3: PAY LINKS */}
+          {/* TAB 2: PAY LINKS */}
           {activeTab === "paylinks" && (
             <ScrollView
               contentContainerStyle={styles.scrollContent}
@@ -1229,7 +1112,7 @@ export default function App() {
                           style={styles.contactSendBtn}
                           onPress={() => {
                             setSendRecipient(contact.address);
-                            setActiveTab("send");
+                            setShowSendModal(true);
                           }}
                         >
                           <Text style={styles.contactSendBtnText}>Send</Text>
@@ -1248,148 +1131,374 @@ export default function App() {
             </ScrollView>
           )}
 
-          {/* TAB 5: SECURITY */}
-          {activeTab === "security" && (
+          {/* TAB 4: SETTINGS (MULTI-PAGE) */}
+          {activeTab === "settings" && (
             <ScrollView
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
             >
-              <Text style={styles.screenHeading}>Security & Key Protection</Text>
-              <Text style={styles.screenSubheading}>
-                Device security and protection controls
-              </Text>
-
-              {/* Security Health Card */}
-              <View style={styles.card}>
-                <Text style={styles.cardHeaderTitle}>Security Status</Text>
-
-                <View style={styles.shardRow}>
-                  <View style={styles.shardInfo}>
-                    <Text style={styles.shardName}>Device Key</Text>
-                    <Text style={styles.shardStatus}>
-                      {hasShardA ? "Protected in device secure storage" : "Not connected yet"}
-                    </Text>
-                  </View>
-                  <Text style={hasShardA ? styles.shardStateActive : styles.shardStateCold}>
-                    {hasShardA ? "Active" : "Pending"}
+              {settingsSubPage === null ? (
+                <>
+                  <Text style={styles.screenHeading}>Settings</Text>
+                  <Text style={styles.screenSubheading}>
+                    Security, guardrails, network infrastructure, and device data
                   </Text>
-                </View>
 
-                <View style={styles.shardRow}>
-                  <View style={styles.shardInfo}>
-                    <Text style={styles.shardName}>Server Co-Signer</Text>
-                    <Text style={styles.shardStatus}>
-                      Online security server ready
-                    </Text>
-                  </View>
-                  <Text style={styles.shardStateActive}>Online</Text>
-                </View>
+                  <View style={styles.settingsGroup}>
+                    {/* 1. Key Shards & Recovery */}
+                    <TouchableOpacity
+                      style={styles.settingsRow}
+                      onPress={() => setSettingsSubPage("keys")}
+                    >
+                      <View style={styles.settingsRowIconBox}>
+                        <Key size={18} color="#ffffff" />
+                      </View>
+                      <View style={styles.settingsRowTextCol}>
+                        <Text style={styles.settingsRowTitle}>Key Shards & Recovery</Text>
+                        <Text style={styles.settingsRowSubtitle}>
+                          2-of-3 threshold state and emergency Shard C recovery key
+                        </Text>
+                      </View>
+                      <ChevronRight size={18} color={THEME.colors.textMuted} />
+                    </TouchableOpacity>
 
-                <View style={styles.shardRow}>
-                  <View style={styles.shardInfo}>
-                    <Text style={styles.shardName}>Emergency Recovery (Shard C)</Text>
-                    <Text style={styles.shardStatus}>
-                      Offline backup for account recovery
-                    </Text>
+                    {/* 2. Spending Guardrails */}
+                    <TouchableOpacity
+                      style={styles.settingsRow}
+                      onPress={() => setSettingsSubPage("guardrails")}
+                    >
+                      <View style={styles.settingsRowIconBox}>
+                        <Sliders size={18} color="#ffffff" />
+                      </View>
+                      <View style={styles.settingsRowTextCol}>
+                        <Text style={styles.settingsRowTitle}>Spending Guardrails</Text>
+                        <Text style={styles.settingsRowSubtitle}>
+                          Single-transfer caps, daily limits, and velocity protections
+                        </Text>
+                      </View>
+                      <ChevronRight size={18} color={THEME.colors.textMuted} />
+                    </TouchableOpacity>
+
+                    {/* 3. Security & Panic Controls */}
+                    <TouchableOpacity
+                      style={styles.settingsRow}
+                      onPress={() => setSettingsSubPage("security")}
+                    >
+                      <View style={styles.settingsRowIconBox}>
+                        <Lock size={18} color="#ffffff" />
+                      </View>
+                      <View style={styles.settingsRowTextCol}>
+                        <Text style={styles.settingsRowTitle}>Security & Panic Controls</Text>
+                        <Text style={styles.settingsRowSubtitle}>
+                          Emergency freeze, panic locks, and TOTP authentication
+                        </Text>
+                      </View>
+                      <ChevronRight size={18} color={THEME.colors.textMuted} />
+                    </TouchableOpacity>
+
+                    {/* 4. Network & Contracts */}
+                    <TouchableOpacity
+                      style={styles.settingsRow}
+                      onPress={() => setSettingsSubPage("network")}
+                    >
+                      <View style={styles.settingsRowIconBox}>
+                        <Server size={18} color="#ffffff" />
+                      </View>
+                      <View style={styles.settingsRowTextCol}>
+                        <Text style={styles.settingsRowTitle}>Network & Contracts</Text>
+                        <Text style={styles.settingsRowSubtitle}>
+                          Robinhood Chain RPC, Factory, and token contracts
+                        </Text>
+                      </View>
+                      <ChevronRight size={18} color={THEME.colors.textMuted} />
+                    </TouchableOpacity>
+
+                    {/* 5. Data & Reset */}
+                    <TouchableOpacity
+                      style={[styles.settingsRow, styles.settingsRowLast]}
+                      onPress={() => setSettingsSubPage("data")}
+                    >
+                      <View style={[styles.settingsRowIconBox, styles.settingsRowIconBoxDanger]}>
+                        <Trash2 size={18} color={THEME.colors.danger} />
+                      </View>
+                      <View style={styles.settingsRowTextCol}>
+                        <Text style={[styles.settingsRowTitle, { color: THEME.colors.danger }]}>
+                          Data & Reset
+                        </Text>
+                        <Text style={styles.settingsRowSubtitle}>
+                          Wipe local device shards and reset application
+                        </Text>
+                      </View>
+                      <ChevronRight size={18} color={THEME.colors.textMuted} />
+                    </TouchableOpacity>
                   </View>
+
+                  <View style={styles.settingsFooterBox}>
+                    <Text style={styles.settingsFooterText}>Privatum Mobile v0.1.14</Text>
+                    <Text style={styles.settingsFooterSub}>Robinhood Chain (Chain ID: 4663)</Text>
+                  </View>
+                </>
+              ) : (
+                <>
                   <TouchableOpacity
-                    style={styles.viewRecoveryKeyBtn}
-                    onPress={handleViewRecoveryKey}
+                    style={styles.subpageBackBar}
+                    onPress={() => setSettingsSubPage(null)}
                   >
-                    <Text style={styles.viewRecoveryKeyText}>View Key</Text>
+                    <ChevronLeft size={18} color="#ffffff" />
+                    <Text style={styles.subpageBackText}>Settings</Text>
                   </TouchableOpacity>
-                </View>
-              </View>
 
-              {/* Panic Freeze Card */}
-              <View style={styles.card}>
-                <Text style={styles.cardHeaderTitle}>Emergency Lock</Text>
-                <Text style={styles.cardDescription}>
-                  Immediately lock transfers and secure your wallet against unauthorized access.
-                </Text>
-                <TouchableOpacity
-                  style={styles.dangerButton}
-                  onPress={() => setShowPanicModal(true)}
-                >
-                  <Lock size={14} color="#ffffff" />
-                  <Text style={styles.dangerButtonText}>Lock Wallet Now</Text>
-                </TouchableOpacity>
-              </View>
+                  {/* SUBPAGE 1: KEYS */}
+                  {settingsSubPage === "keys" && (
+                    <>
+                      <Text style={styles.screenHeading}>Key Shards & Recovery</Text>
+                      <Text style={styles.screenSubheading}>
+                        2-of-3 threshold smart account security architecture
+                      </Text>
 
-              {/* Spending Guardrail Settings */}
-              <View style={styles.card}>
-                <Text style={styles.cardHeaderTitle}>Configure Guardrail Limits</Text>
+                      <View style={styles.card}>
+                        <Text style={styles.cardHeaderTitle}>Threshold Shard Status</Text>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Daily Spending Limit (USD)</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={String(guardrailConfig.dailyLimitUsd)}
-                    onChangeText={(v) =>
-                      setGuardrailConfig({
-                        ...guardrailConfig,
-                        dailyLimitUsd: parseFloat(v) || 0,
-                      })
-                    }
-                    keyboardType="numeric"
-                  />
-                </View>
+                        <View style={styles.shardRow}>
+                          <View style={styles.shardInfo}>
+                            <Text style={styles.shardName}>Device Key (Shard A)</Text>
+                            <Text style={styles.shardStatus}>
+                              {hasShardA ? "Protected in device secure storage" : "Not connected yet"}
+                            </Text>
+                          </View>
+                          <Text style={hasShardA ? styles.shardStateActive : styles.shardStateCold}>
+                            {hasShardA ? "Active" : "Pending"}
+                          </Text>
+                        </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Single Transfer Limit (USD)</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={String(guardrailConfig.singleTxLimitUsd)}
-                    onChangeText={(v) =>
-                      setGuardrailConfig({
-                        ...guardrailConfig,
-                        singleTxLimitUsd: parseFloat(v) || 0,
-                      })
-                    }
-                    keyboardType="numeric"
-                  />
-                </View>
+                        <View style={styles.shardRow}>
+                          <View style={styles.shardInfo}>
+                            <Text style={styles.shardName}>Server Co-Signer (Shard B)</Text>
+                            <Text style={styles.shardStatus}>
+                              Online security co-signer ready
+                            </Text>
+                          </View>
+                          <Text style={styles.shardStateActive}>Online</Text>
+                        </View>
 
-                <TouchableOpacity
-                  style={styles.stealthToggleBox}
-                  onPress={() =>
-                    setGuardrailConfig({
-                      ...guardrailConfig,
-                      strictMode: !guardrailConfig.strictMode,
-                    })
-                  }
-                >
-                  <View style={styles.stealthLeft}>
-                    <Text style={styles.stealthTitle}>Strict Limit Enforcement</Text>
-                    <Text style={styles.stealthDescription}>
-                      Completely block transactions that breach caps rather than requesting confirmation
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.toggleTrack,
-                      guardrailConfig.strictMode && styles.toggleTrackActive,
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.toggleThumb,
-                        guardrailConfig.strictMode && styles.toggleThumbActive,
-                      ]}
-                    />
-                  </View>
-                </TouchableOpacity>
+                        <View style={styles.shardRow}>
+                          <View style={styles.shardInfo}>
+                            <Text style={styles.shardName}>Emergency Recovery (Shard C)</Text>
+                            <Text style={styles.shardStatus}>
+                              Offline backup key for account recovery
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            style={styles.viewRecoveryKeyBtn}
+                            onPress={handleViewRecoveryKey}
+                          >
+                            <Text style={styles.viewRecoveryKeyText}>View Key</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </>
+                  )}
 
-                <TouchableOpacity
-                  style={styles.primaryButton}
-                  onPress={() => {
-                    saveMobileGuardrails(walletAddress, guardrailConfig);
-                    Alert.alert("Saved", "Spending limits updated.");
-                  }}
-                >
-                  <Text style={styles.primaryButtonText}>Save Limit Settings</Text>
-                </TouchableOpacity>
-              </View>
+                  {/* SUBPAGE 2: GUARDRAILS */}
+                  {settingsSubPage === "guardrails" && (
+                    <>
+                      <Text style={styles.screenHeading}>Spending Guardrails</Text>
+                      <Text style={styles.screenSubheading}>
+                        Set protection caps for automated transaction approval
+                      </Text>
+
+                      <View style={styles.card}>
+                        <Text style={styles.cardHeaderTitle}>Configure Guardrail Limits</Text>
+
+                        <View style={styles.inputGroup}>
+                          <Text style={styles.inputLabel}>Daily Spending Limit (USD)</Text>
+                          <TextInput
+                            style={styles.textInput}
+                            value={String(guardrailConfig.dailyLimitUsd)}
+                            onChangeText={(v) =>
+                              setGuardrailConfig({
+                                ...guardrailConfig,
+                                dailyLimitUsd: parseFloat(v) || 0,
+                              })
+                            }
+                            keyboardType="numeric"
+                          />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                          <Text style={styles.inputLabel}>Single Transfer Limit (USD)</Text>
+                          <TextInput
+                            style={styles.textInput}
+                            value={String(guardrailConfig.singleTxLimitUsd)}
+                            onChangeText={(v) =>
+                              setGuardrailConfig({
+                                ...guardrailConfig,
+                                singleTxLimitUsd: parseFloat(v) || 0,
+                              })
+                            }
+                            keyboardType="numeric"
+                          />
+                        </View>
+
+                        <TouchableOpacity
+                          style={styles.stealthToggleBox}
+                          onPress={() =>
+                            setGuardrailConfig({
+                              ...guardrailConfig,
+                              strictMode: !guardrailConfig.strictMode,
+                            })
+                          }
+                        >
+                          <View style={styles.stealthLeft}>
+                            <Text style={styles.stealthTitle}>Strict Limit Enforcement</Text>
+                            <Text style={styles.stealthDescription}>
+                              Completely block transactions that breach caps rather than requesting confirmation
+                            </Text>
+                          </View>
+                          <View
+                            style={[
+                              styles.toggleTrack,
+                              guardrailConfig.strictMode && styles.toggleTrackActive,
+                            ]}
+                          >
+                            <View
+                              style={[
+                                styles.toggleThumb,
+                                guardrailConfig.strictMode && styles.toggleThumbActive,
+                              ]}
+                            />
+                          </View>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.primaryButton}
+                          onPress={() => {
+                            saveMobileGuardrails(walletAddress, guardrailConfig);
+                            Alert.alert("Saved", "Spending limits updated.");
+                          }}
+                        >
+                          <Text style={styles.primaryButtonText}>Save Limit Settings</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
+
+                  {/* SUBPAGE 3: SECURITY & PANIC */}
+                  {settingsSubPage === "security" && (
+                    <>
+                      <Text style={styles.screenHeading}>Security & Panic Controls</Text>
+                      <Text style={styles.screenSubheading}>
+                        Account freeze, biometric authorization, and panic protection
+                      </Text>
+
+                      <View style={styles.card}>
+                        <Text style={styles.cardHeaderTitle}>Emergency Lock</Text>
+                        <Text style={styles.cardDescription}>
+                          Immediately lock transfers and secure your wallet against unauthorized access.
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.dangerButton}
+                          onPress={() => setShowPanicModal(true)}
+                        >
+                          <Lock size={14} color="#ffffff" />
+                          <Text style={styles.dangerButtonText}>Lock Wallet Now</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
+
+                  {/* SUBPAGE 4: NETWORK & CONTRACTS */}
+                  {settingsSubPage === "network" && (
+                    <>
+                      <Text style={styles.screenHeading}>Network & Contracts</Text>
+                      <Text style={styles.screenSubheading}>
+                        Verified smart contract deployments on Robinhood Chain
+                      </Text>
+
+                      <View style={styles.card}>
+                        <Text style={styles.cardHeaderTitle}>Robinhood Chain</Text>
+
+                        <View style={styles.networkSpecRow}>
+                          <Text style={styles.networkSpecLabel}>Chain ID</Text>
+                          <Text style={styles.networkSpecValue}>{ROBINHOOD_CHAIN_ID}</Text>
+                        </View>
+
+                        <View style={styles.networkSpecDivider} />
+
+                        <View style={styles.networkSpecRow}>
+                          <Text style={styles.networkSpecLabel}>RPC Endpoint</Text>
+                          <Text style={styles.networkSpecValue}>{ROBINHOOD_RPC_URL}</Text>
+                        </View>
+
+                        <View style={styles.networkSpecDivider} />
+
+                        <View style={styles.networkSpecRow}>
+                          <Text style={styles.networkSpecLabel}>Factory Contract</Text>
+                          <TouchableOpacity
+                            onPress={() => copyToClipboard("factory-ca", PRIVATUM_FACTORY_ADDRESS)}
+                            style={styles.drawerCaCopyRow}
+                          >
+                            <Text style={styles.drawerCaText}>
+                              {shortenAddress(PRIVATUM_FACTORY_ADDRESS)}
+                            </Text>
+                            <Copy size={12} color={THEME.colors.textSecondary} />
+                          </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.networkSpecDivider} />
+
+                        <View style={styles.networkSpecRow}>
+                          <Text style={styles.networkSpecLabel}>USDG Stablecoin</Text>
+                          <TouchableOpacity
+                            onPress={() => copyToClipboard("usdg-ca", USDG_TOKEN_ADDRESS)}
+                            style={styles.drawerCaCopyRow}
+                          >
+                            <Text style={styles.drawerCaText}>
+                              {shortenAddress(USDG_TOKEN_ADDRESS)}
+                            </Text>
+                            <Copy size={12} color={THEME.colors.textSecondary} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </>
+                  )}
+
+                  {/* SUBPAGE 5: DATA & RESET */}
+                  {settingsSubPage === "data" && (
+                    <>
+                      <Text style={styles.screenHeading}>Data & Reset</Text>
+                      <Text style={styles.screenSubheading}>
+                        Local storage management and complete application reset
+                      </Text>
+
+                      <View style={styles.card}>
+                        <Text style={styles.cardHeaderTitle}>Device Storage</Text>
+                        <Text style={styles.cardDescription}>
+                          All private keys and personal contacts are held strictly on your device inside hardware-backed secure storage.
+                        </Text>
+                      </View>
+
+                      <View style={[styles.card, styles.dangerCardBorder]}>
+                        <Text style={[styles.cardHeaderTitle, { color: THEME.colors.danger }]}>
+                          Reset Application
+                        </Text>
+                        <Text style={styles.cardDescription}>
+                          This will erase your device key shard, active account address, saved contacts, and transaction history from this phone.
+                          {"\n\n"}
+                          Make sure you have safely recorded your Shard C recovery key before continuing.
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.dangerButton}
+                          onPress={handleResetApp}
+                        >
+                          <Trash2 size={14} color="#ffffff" />
+                          <Text style={styles.dangerButtonText}>Reset All Local Data</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
+                </>
+              )}
             </ScrollView>
           )}
         </View>
@@ -1416,24 +1525,6 @@ export default function App() {
                 ]}
               >
                 Vault
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.navTab, activeTab === "send" && styles.navTabActive]}
-              onPress={() => setActiveTab("send")}
-            >
-              <ArrowUpRight
-                size={18}
-                color={activeTab === "send" ? THEME.colors.accent : THEME.colors.textMuted}
-              />
-              <Text
-                style={[
-                  styles.navTabText,
-                  activeTab === "send" && styles.navTabTextActive,
-                ]}
-              >
-                Send
               </Text>
             </TouchableOpacity>
 
@@ -1474,24 +1565,352 @@ export default function App() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.navTab, activeTab === "security" && styles.navTabActive]}
-              onPress={() => setActiveTab("security")}
+              style={[styles.navTab, activeTab === "settings" && styles.navTabActive]}
+              onPress={() => {
+                setActiveTab("settings");
+                setSettingsSubPage(null);
+              }}
             >
-              <Lock
+              <Settings
                 size={18}
-                color={activeTab === "security" ? THEME.colors.accent : THEME.colors.textMuted}
+                color={activeTab === "settings" ? THEME.colors.accent : THEME.colors.textMuted}
               />
               <Text
                 style={[
                   styles.navTabText,
-                  activeTab === "security" && styles.navTabTextActive,
+                  activeTab === "settings" && styles.navTabTextActive,
                 ]}
               >
-                Security
+                Settings
               </Text>
             </TouchableOpacity>
           </BlurView>
         </View>
+
+        {/* MODAL: Token Asset Detail Drawer */}
+        <Modal
+          visible={showAssetDrawer}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowAssetDrawer(false)}
+        >
+          <View style={styles.drawerBackdrop}>
+            <View style={styles.drawerCard}>
+              <View style={styles.drawerHandleBar} />
+
+              <View style={styles.drawerHeaderRow}>
+                <View style={styles.drawerHeaderLeft}>
+                  <Image
+                    source={
+                      selectedAsset?.symbol === "USDG"
+                        ? require("./assets/usdg_logo.png")
+                        : require("./assets/eth.jpeg")
+                    }
+                    style={styles.drawerTokenIcon}
+                    resizeMode="contain"
+                  />
+                  <View>
+                    <Text style={styles.drawerTokenSymbol}>{selectedAsset?.symbol}</Text>
+                    <Text style={styles.drawerTokenName}>{selectedAsset?.name}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.drawerCloseBtn}
+                  onPress={() => setShowAssetDrawer(false)}
+                >
+                  <X size={18} color="#ffffff" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Price & Balance Box */}
+              <View style={styles.drawerValueBox}>
+                <Text style={styles.drawerValueLabel}>Your Balance</Text>
+                <Text style={styles.drawerLargeValue}>
+                  ${selectedAsset?.usdValue} <Text style={styles.drawerLargeValueSub}>USD</Text>
+                </Text>
+                <Text style={styles.drawerBalanceSub}>
+                  {selectedAsset?.balance} {selectedAsset?.symbol}
+                </Text>
+              </View>
+
+              {/* Specifications Card */}
+              <View style={styles.drawerSpecCard}>
+                <View style={styles.drawerSpecRow}>
+                  <Text style={styles.drawerSpecLabel}>Unit Price</Text>
+                  <Text style={styles.drawerSpecValue}>
+                    {selectedAsset?.symbol === "USDG" ? "$1.00 USD (Pegged)" : "$2,500.00 USD"}
+                  </Text>
+                </View>
+
+                <View style={styles.drawerSpecDivider} />
+
+                <View style={styles.drawerSpecRow}>
+                  <Text style={styles.drawerSpecLabel}>Contract Address (CA)</Text>
+                  {selectedAsset?.symbol === "USDG" ? (
+                    <TouchableOpacity
+                      style={styles.drawerCaCopyRow}
+                      onPress={() => copyToClipboard("usdg-ca", USDG_TOKEN_ADDRESS)}
+                    >
+                      <Text style={styles.drawerCaText}>
+                        {shortenAddress(USDG_TOKEN_ADDRESS)}
+                      </Text>
+                      {copiedKey === "usdg-ca" ? (
+                        <Check size={12} color={THEME.colors.success} />
+                      ) : (
+                        <Copy size={12} color={THEME.colors.textSecondary} />
+                      )}
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={styles.drawerSpecValue}>Native Robinhood Chain</Text>
+                  )}
+                </View>
+
+                <View style={styles.drawerSpecDivider} />
+
+                <View style={styles.drawerSpecRow}>
+                  <Text style={styles.drawerSpecLabel}>Network</Text>
+                  <Text style={styles.drawerSpecValue}>Robinhood Chain</Text>
+                </View>
+
+                <View style={styles.drawerSpecDivider} />
+
+                <View style={styles.drawerSpecRow}>
+                  <Text style={styles.drawerSpecLabel}>Standard</Text>
+                  <Text style={styles.drawerSpecValue}>
+                    {selectedAsset?.symbol === "USDG" ? "ERC-20" : "Native Gas Token"}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.drawerActionRow}>
+                <TouchableOpacity
+                  style={styles.drawerPrimaryBtn}
+                  onPress={() => {
+                    if (selectedAsset) {
+                      setSendToken(selectedAsset.symbol);
+                    }
+                    setShowAssetDrawer(false);
+                    setShowSendModal(true);
+                  }}
+                >
+                  <ArrowUpRight size={16} color="#ffffff" />
+                  <Text style={styles.drawerPrimaryBtnText}>
+                    Send {selectedAsset?.symbol}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.drawerSecondaryBtn}
+                  onPress={() => {
+                    setShowAssetDrawer(false);
+                    setShowReceiveModal(true);
+                  }}
+                >
+                  <ArrowDownLeft size={16} color="#000000" />
+                  <Text style={styles.drawerSecondaryBtnText}>Receive</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* MODAL: Send Funds */}
+        <Modal
+          visible={showSendModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowSendModal(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.modalCard, styles.sendModalCard]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Send Tokens</Text>
+                <TouchableOpacity onPress={() => setShowSendModal(false)}>
+                  <X size={18} color="#ffffff" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalSubtitle}>
+                Transfer authenticated on Robinhood Chain
+              </Text>
+
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* Recipient Input */}
+                <View style={styles.inputGroup}>
+                  <View style={styles.labelRow}>
+                    <Text style={styles.inputLabel}>Recipient Address</Text>
+                    <TouchableOpacity onPress={() => setShowAddressBookPicker(true)}>
+                      <Text style={styles.labelActionText}>Address Book</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="0x... or st:eth:0x..."
+                    placeholderTextColor={THEME.colors.textDim}
+                    value={sendRecipient}
+                    onChangeText={(val) => {
+                      setSendRecipient(val.trim());
+                      setPoisonWarningAcknowledged(false);
+                    }}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  {matchedContact && (
+                    <View style={styles.contactMatchedRow}>
+                      <Text style={styles.contactMatchedLabel}>
+                        Contact: {matchedContact.name} ({matchedContact.category})
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Address Poisoning Defense Warning */}
+                {(poisoningVerdict.level === "danger" || poisoningVerdict.level === "warning") && (
+                  <View style={styles.poisonWarningBox}>
+                    <View style={styles.poisonWarningHeader}>
+                      <AlertTriangle size={16} color={THEME.colors.danger} />
+                      <Text style={styles.poisonWarningTitle}>{poisoningVerdict.title}</Text>
+                    </View>
+                    <Text style={styles.poisonWarningDetail}>{poisoningVerdict.detail}</Text>
+                    <TouchableOpacity
+                      style={styles.poisonCheckRow}
+                      onPress={() => setPoisonWarningAcknowledged(!poisonWarningAcknowledged)}
+                    >
+                      <View
+                        style={[
+                          styles.poisonCheckbox,
+                          poisonWarningAcknowledged && styles.poisonCheckboxActive,
+                        ]}
+                      >
+                        {poisonWarningAcknowledged && <Check size={12} color="#000000" />}
+                      </View>
+                      <Text style={styles.poisonCheckText}>
+                        I have verified every character of this address.
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Token Selector */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Asset</Text>
+                  <View style={styles.tokenPickerRow}>
+                    {["USDG", "ETH"].map((sym) => (
+                      <TouchableOpacity
+                        key={sym}
+                        style={[
+                          styles.tokenPickerButton,
+                          sendToken === sym && styles.tokenPickerButtonActive,
+                        ]}
+                        onPress={() => setSendToken(sym)}
+                      >
+                        <Image
+                          source={
+                            sym === "USDG"
+                              ? require("./assets/usdg_logo.png")
+                              : require("./assets/eth.jpeg")
+                          }
+                          style={styles.tokenPickerIcon}
+                          resizeMode="contain"
+                        />
+                        <Text
+                          style={[
+                            styles.tokenPickerText,
+                            sendToken === sym && styles.tokenPickerTextActive,
+                          ]}
+                        >
+                          {sym}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                {/* Amount Input */}
+                <View style={styles.inputGroup}>
+                  <View style={styles.labelRow}>
+                    <Text style={styles.inputLabel}>Amount</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        const match = balances.find((b) => b.symbol === sendToken);
+                        if (match) setSendAmount(match.balance.replace(/,/g, ""));
+                      }}
+                    >
+                      <Text style={styles.labelActionText}>Max Balance</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="0.00"
+                    placeholderTextColor={THEME.colors.textDim}
+                    value={sendAmount}
+                    onChangeText={setSendAmount}
+                    keyboardType="numeric"
+                  />
+                  {sendAmount ? (
+                    <Text style={styles.inputHelperText}>
+                      Approx. ${estimateUsdValue(sendAmount, sendToken).toFixed(2)} USD
+                    </Text>
+                  ) : null}
+                </View>
+
+                {/* Stealth Transfer Toggle */}
+                <TouchableOpacity
+                  style={styles.stealthToggleBox}
+                  onPress={() => setIsStealth(!isStealth)}
+                >
+                  <View style={styles.stealthLeft}>
+                    <Text style={styles.stealthTitle}>Stealth Receiver Mode</Text>
+                    <Text style={styles.stealthDescription}>
+                      Derives a one-time unlinked address for recipient privacy
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.toggleTrack,
+                      isStealth && styles.toggleTrackActive,
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.toggleThumb,
+                        isStealth && styles.toggleThumbActive,
+                      ]}
+                    />
+                  </View>
+                </TouchableOpacity>
+
+                {/* Spending Guardrail Inline Notice */}
+                {sendAmount && !spendVerdict.allowed && (
+                  <View style={styles.spendBlockAlert}>
+                    <Text style={styles.spendBlockTitle}>{spendVerdict.title}</Text>
+                    <Text style={styles.spendBlockDetail}>{spendVerdict.message}</Text>
+                  </View>
+                )}
+
+                {/* Send Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.primaryButton,
+                    (!sendRecipient || !sendAmount || isSending) && styles.buttonDisabled,
+                  ]}
+                  disabled={!sendRecipient || !sendAmount || isSending}
+                  onPress={handleConfirmSend}
+                >
+                  {isSending ? (
+                    <ActivityIndicator size="small" color="#000000" />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Authorize Transfer</Text>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
 
         {/* MODAL: Receive Funds */}
         <Modal
@@ -2312,7 +2731,6 @@ const styles = StyleSheet.create({
     paddingVertical: THEME.spacing.sm + 4,
     color: THEME.colors.textPrimary,
     fontSize: 13,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
   inputHelperText: {
     fontSize: 11,
@@ -2954,5 +3372,265 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     color: THEME.colors.textMuted,
     marginTop: 2,
+  },
+  // Token Asset Detail Drawer Styles
+  drawerBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    justifyContent: "flex-end",
+  },
+  drawerCard: {
+    backgroundColor: THEME.colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    padding: THEME.spacing.xl,
+    paddingBottom: Platform.OS === "ios" ? 36 : 24,
+  },
+  drawerHandleBar: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  drawerHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  drawerHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  drawerTokenIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    overflow: "hidden",
+  },
+  drawerTokenSymbol: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: THEME.colors.textPrimary,
+  },
+  drawerTokenName: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    marginTop: 1,
+  },
+  drawerCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: THEME.colors.surfaceElevated,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  drawerValueBox: {
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: THEME.borderRadius.md,
+    padding: THEME.spacing.lg,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  drawerValueLabel: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    marginBottom: 4,
+  },
+  drawerLargeValue: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: THEME.colors.textPrimary,
+  },
+  drawerLargeValueSub: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: THEME.colors.textSecondary,
+  },
+  drawerBalanceSub: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  drawerSpecCard: {
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderRadius: THEME.borderRadius.md,
+    padding: THEME.spacing.md,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    marginBottom: 16,
+  },
+  drawerSpecRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 6,
+  },
+  drawerSpecLabel: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+  },
+  drawerSpecValue: {
+    fontSize: 12,
+    color: THEME.colors.textPrimary,
+    fontWeight: "500",
+  },
+  drawerSpecDivider: {
+    height: 1,
+    backgroundColor: THEME.colors.borderSubtle,
+    marginVertical: 4,
+  },
+  drawerCaCopyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  drawerCaText: {
+    fontSize: 11,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    color: THEME.colors.textPrimary,
+  },
+  drawerActionRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  drawerPrimaryBtn: {
+    flex: 1,
+    backgroundColor: "#f54842",
+    borderRadius: THEME.borderRadius.md,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  drawerPrimaryBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#ffffff",
+  },
+  drawerSecondaryBtn: {
+    flex: 1,
+    backgroundColor: "#ffffff",
+    borderRadius: THEME.borderRadius.md,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  drawerSecondaryBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#000000",
+  },
+  // Send Modal Style
+  sendModalCard: {
+    maxHeight: "88%",
+  },
+  // Multi-page Settings Styles
+  settingsGroup: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    overflow: "hidden",
+    marginBottom: 16,
+  },
+  settingsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: THEME.spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.colors.borderSubtle,
+  },
+  settingsRowLast: {
+    borderBottomWidth: 0,
+  },
+  settingsRowIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: THEME.colors.surfaceElevated,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  settingsRowIconBoxDanger: {
+    backgroundColor: "rgba(244, 63, 94, 0.12)",
+    borderColor: "rgba(244, 63, 94, 0.2)",
+  },
+  settingsRowTextCol: {
+    flex: 1,
+  },
+  settingsRowTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: THEME.colors.textPrimary,
+    marginBottom: 2,
+  },
+  settingsRowSubtitle: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+  },
+  settingsFooterBox: {
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 16,
+  },
+  settingsFooterText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: THEME.colors.textMuted,
+  },
+  settingsFooterSub: {
+    fontSize: 10,
+    color: THEME.colors.textDim,
+    marginTop: 2,
+  },
+  subpageBackBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 16,
+    paddingVertical: 4,
+  },
+  subpageBackText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#ffffff",
+  },
+  networkSpecRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  networkSpecLabel: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+  },
+  networkSpecValue: {
+    fontSize: 12,
+    color: THEME.colors.textPrimary,
+    fontWeight: "500",
+  },
+  networkSpecDivider: {
+    height: 1,
+    backgroundColor: THEME.colors.borderSubtle,
+    marginVertical: 4,
+  },
+  dangerCardBorder: {
+    borderColor: "rgba(244, 63, 94, 0.3)",
+    marginTop: 12,
   },
 });

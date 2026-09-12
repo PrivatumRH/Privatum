@@ -9,9 +9,12 @@ import {
 import {
   saveDeviceShard,
   loadDeviceShard,
+  deleteDeviceShard,
   saveActiveAccount,
+  clearActiveAccount,
   saveEncryptedItem,
   loadEncryptedItem,
+  deleteEncryptedItem,
 } from "./secureStorage";
 
 export interface LiveBalance {
@@ -298,3 +301,38 @@ export async function saveStoredPayLinks(
     console.error("Failed to save pay links:", err);
   }
 }
+
+/**
+ * Resets all local application data, erasing active account, shards,
+ * contacts, transactions, and preferences from encrypted device storage.
+ */
+export async function resetAllAppData(address?: string | null): Promise<void> {
+  try {
+    await clearActiveAccount();
+
+    if (address) {
+      const cleanAddr = address.trim().toLowerCase();
+      await deleteDeviceShard(cleanAddr);
+      await deleteEncryptedItem(`privatum_shard_b_${cleanAddr}`);
+      await deleteEncryptedItem(`privatum_shard_c_${cleanAddr}`);
+      await deleteEncryptedItem(`privatum_apikey_${cleanAddr}`);
+      await deleteEncryptedItem(`privatum_txs_${cleanAddr}`);
+      await deleteEncryptedItem(`privatum_paylinks_${cleanAddr}`);
+      await deleteEncryptedItem(`privatum_guardrails_${cleanAddr}`);
+      await deleteEncryptedItem(`privatum_contacts_${cleanAddr}`);
+      await deleteEncryptedItem(`privatum_totp_${cleanAddr}`);
+      await deleteEncryptedItem(`privatum_totp_secret_${cleanAddr}`);
+    }
+
+    await deleteEncryptedItem("privatum_contacts");
+    await deleteEncryptedItem("privatum_history");
+    await deleteEncryptedItem("privatum_paylinks");
+    await deleteEncryptedItem("privatum_guardrails");
+    await deleteEncryptedItem("privatum_totp");
+    await deleteEncryptedItem("privatum_totp_secret");
+  } catch (err) {
+    console.error("Failed to reset local app data:", err);
+    throw err;
+  }
+}
+
