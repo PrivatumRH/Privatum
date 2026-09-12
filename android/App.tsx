@@ -50,6 +50,7 @@ import {
   Sliders,
   Server,
   ExternalLink,
+  QrCode,
 } from "lucide-react-native";
 
 import {
@@ -179,6 +180,7 @@ export default function App() {
   const [newPayLinkMemo, setNewPayLinkMemo] = useState("");
   const [isCreatingPayLink, setIsCreatingPayLink] = useState(false);
   const [checkingPayLinkSlug, setCheckingPayLinkSlug] = useState<string | null>(null);
+  const [expandedQrSlug, setExpandedQrSlug] = useState<string | null>(null);
 
   // Send Form State
   const [sendRecipient, setSendRecipient] = useState("");
@@ -1168,7 +1170,8 @@ export default function App() {
                 </View>
               ) : (
                 payLinks.map((link) => (
-                  <View key={link.id} style={styles.payLinkRow}>
+                  <View key={link.id} style={styles.payLinkCardWrap}>
+                    <View style={styles.payLinkRowInner}>
                     <View style={styles.payLinkInfo}>
                       <View style={styles.payLinkAmountRow}>
                         <Text style={styles.payLinkAmount}>
@@ -1214,7 +1217,42 @@ export default function App() {
                       >
                         <Share2 size={14} color={THEME.colors.textPrimary} />
                       </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.payLinkActionBtn,
+                          expandedQrSlug === link.slug && styles.payLinkActionBtnActive,
+                        ]}
+                        onPress={() =>
+                          setExpandedQrSlug(expandedQrSlug === link.slug ? null : link.slug)
+                        }
+                      >
+                        <QrCode
+                          size={14}
+                          color={
+                            expandedQrSlug === link.slug
+                              ? THEME.colors.background
+                              : THEME.colors.textPrimary
+                          }
+                        />
+                      </TouchableOpacity>
                     </View>
+                    </View>
+
+                    {expandedQrSlug === link.slug && (
+                      <View style={styles.payLinkQrPanel}>
+                        <View style={styles.payLinkQrWrapper}>
+                          <QRCode
+                            value={`https://privatumrh.com/pay/${link.slug}`}
+                            size={150}
+                            color="#000000"
+                            backgroundColor="#ffffff"
+                          />
+                        </View>
+                        <Text style={styles.payLinkQrCaption}>
+                          Scan to pay {link.amount} {link.token}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 ))
               )}
@@ -3296,6 +3334,40 @@ const styles = StyleSheet.create({
     color: THEME.colors.textSecondary,
     marginBottom: THEME.spacing.md,
     lineHeight: 18,
+  },
+  payLinkCardWrap: {
+    backgroundColor: THEME.colors.surface,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    borderRadius: THEME.borderRadius.md,
+    padding: THEME.spacing.md,
+    marginBottom: THEME.spacing.sm,
+  },
+  payLinkRowInner: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  payLinkActionBtnActive: {
+    backgroundColor: THEME.colors.textPrimary,
+    borderColor: THEME.colors.textPrimary,
+  },
+  payLinkQrPanel: {
+    alignItems: "center",
+    marginTop: THEME.spacing.md,
+    paddingTop: THEME.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.borderSubtle,
+  },
+  payLinkQrWrapper: {
+    backgroundColor: "#ffffff",
+    padding: 10,
+    borderRadius: THEME.borderRadius.md,
+  },
+  payLinkQrCaption: {
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+    marginTop: THEME.spacing.sm,
   },
   payLinkRow: {
     flexDirection: "row",
