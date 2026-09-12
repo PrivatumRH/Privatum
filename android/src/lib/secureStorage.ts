@@ -68,3 +68,20 @@ export async function loadEncryptedItem(key: string): Promise<string | null> {
     return null;
   }
 }
+
+export async function deleteEncryptedItem(key: string): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(key);
+  } catch (err) {
+    console.error(`Failed to delete ${key}:`, err);
+  }
+}
+
+export async function clearActiveAccount(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(KEY_ACTIVE_ACCOUNT);
+  } catch (err) {
+    console.error("Failed to clear active account:", err);
+  }
+}
+
