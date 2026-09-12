@@ -1,0 +1,28 @@
+# Line endings are pinned so Linux and Windows clones agree. Every text blob in
+# this repository is stored with LF; without this, core.autocrlf on a Windows
+# clone rewrites working-tree files to CRLF and generated files such as
+# src/routeTree.gen.ts report as modified with an empty diff.
+* text=auto eol=lf
+
+# Windows-native scripts need CRLF to run.
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Never touch binaries.
+*.png      binary
+*.jpg      binary
+*.jpeg     binary
+*.gif      binary
+*.ico      binary
+*.webp     binary
+*.woff     binary
+*.woff2    binary
+*.ttf      binary
+*.otf      binary
+*.wasm     binary
+*.pdf      binary
+*.exe      binary
+*.dll      binary
+*.dmg      binary
+*.AppImage binary
