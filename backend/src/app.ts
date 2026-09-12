@@ -1,3 +1,9 @@
+import path from "node:path";
+import dotenv from "dotenv";
+
+dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
+
 import express, { type Express } from "express";
 import cors from "cors";
 import { healthRouter } from "./routes/health";
