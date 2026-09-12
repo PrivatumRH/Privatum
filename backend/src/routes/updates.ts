@@ -13,24 +13,24 @@ interface PlatformRelease {
 // Current official releases by platform
 const PLATFORM_RELEASES: Record<string, PlatformRelease> = {
   "linux-x86_64": {
-    version: "0.1.10",
+    version: "0.1.11",
     pubDate: "2026-09-12T12:00:00Z",
-    notes: "v0.1.10: Address Poisoning Guard: recipients that imitate an address you have paid before are flagged before signing, with a character-level comparison.",
-    downloadUrl: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.10/PRIVATUM_0.1.10_amd64.AppImage",
+    notes: "v0.1.11: Panic Freeze: stop the co-signer from signing anything, from any phone, with your authenticator code.",
+    downloadUrl: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.11/PRIVATUM_0.1.11_amd64.AppImage",
     mandatory: false,
   },
   "darwin-arm64": {
-    version: "0.1.10",
+    version: "0.1.11",
     pubDate: "2026-09-12T12:00:00Z",
-    notes: "v0.1.10: Address Poisoning Guard: recipients that imitate an address you have paid before are flagged before signing, with a character-level comparison.",
-    downloadUrl: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.10/PRIVATUM_0.1.10_aarch64.dmg",
+    notes: "v0.1.11: Panic Freeze: stop the co-signer from signing anything, from any phone, with your authenticator code.",
+    downloadUrl: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.11/PRIVATUM_0.1.11_aarch64.dmg",
     mandatory: false,
   },
   "windows-x86_64": {
-    version: "0.1.10",
+    version: "0.1.11",
     pubDate: "2026-09-12T12:00:00Z",
-    notes: "v0.1.10: Address Poisoning Guard: recipients that imitate an address you have paid before are flagged before signing, with a character-level comparison.",
-    downloadUrl: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.10/PRIVATUM_0.1.10_x64-setup.exe",
+    notes: "v0.1.11: Panic Freeze: stop the co-signer from signing anything, from any phone, with your authenticator code.",
+    downloadUrl: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.11/PRIVATUM_0.1.11_x64-setup.exe",
     mandatory: false,
   },
 };
@@ -73,18 +73,18 @@ updatesRouter.get("/v1/updates/desktop/:platform/:version", (req: Request, res: 
 
 updatesRouter.get("/v1/updates/desktop/latest.json", (_req: Request, res: Response) => {
   return res.json({
-    version: "0.1.10",
+    version: "0.1.11",
     pub_date: "2026-09-12T12:00:00Z",
-    notes: "v0.1.10: Address Poisoning Guard: recipients that imitate an address you have paid before are flagged before signing, with a character-level comparison.",
+    notes: "v0.1.11: Panic Freeze: stop the co-signer from signing anything, from any phone, with your authenticator code.",
     platforms: {
       "linux-x86_64": {
-        url: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.10/PRIVATUM_0.1.10_amd64.AppImage",
+        url: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.11/PRIVATUM_0.1.11_amd64.AppImage",
       },
       "darwin-aarch64": {
-        url: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.10/PRIVATUM_0.1.10_aarch64.dmg",
+        url: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.11/PRIVATUM_0.1.11_aarch64.dmg",
       },
       "windows-x86_64": {
-        url: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.10/PRIVATUM_0.1.10_x64-setup.exe",
+        url: "https://github.com/PrivatumRH/privatum/releases/download/v0.1.11/PRIVATUM_0.1.11_x64-setup.exe",
       },
     },
   });

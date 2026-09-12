@@ -10,7 +10,8 @@ export type FeatureKey =
   | "gasless_staking"
   | "bridge_rebates"
   | "disposable_pay_links"
-  | "address_guard";
+  | "address_guard"
+  | "panic_freeze";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -25,6 +26,7 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   bridge_rebates: "0.1.8",
   disposable_pay_links: "0.1.9",
   address_guard: "0.1.10",
+  panic_freeze: "0.1.11",
 };
 
 export const RELEASE_VERSIONS = [
@@ -39,6 +41,7 @@ export const RELEASE_VERSIONS = [
   "0.1.8",
   "0.1.9",
   "0.1.10",
+  "0.1.11",
 ] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 
@@ -62,7 +65,7 @@ export function isFeatureActive(
   appVersion: string,
   previewVersionOverride?: string | null
 ): boolean {
-  const activeVersion = previewVersionOverride || (import.meta.env.DEV ? "0.1.10" : appVersion);
+  const activeVersion = previewVersionOverride || (import.meta.env.DEV ? "0.1.11" : appVersion);
   const milestone = FEATURE_MILESTONES[feature];
   return compareSemver(activeVersion, milestone) >= 0;
 }
