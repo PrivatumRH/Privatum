@@ -76,7 +76,7 @@ const CORE_CAPABILITIES = [
   },
 ];
 
-const ONBOARDING_STEPS = [
+const INSTALL_STEPS = [
   {
     step: "1",
     title: "Download APK",
