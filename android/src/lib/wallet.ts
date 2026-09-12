@@ -163,6 +163,8 @@ export async function createRealSmartAccount(): Promise<{
   address: string;
   shardAKey: string;
   shardBAddress: string;
+  shardCKey: string;
+  shardCAddress: string;
   apiKey: string;
 }> {
   const shardAKey = generateDevicePrivateKey();
@@ -201,11 +203,14 @@ export async function createRealSmartAccount(): Promise<{
     await saveActiveAccount(realAddress);
     await saveEncryptedItem(`privatum_apikey_${realAddress}`, data.apiKey || "");
     await saveEncryptedItem(`privatum_shard_b_${realAddress}`, data.shardBAddress || "");
+    await saveEncryptedItem(`privatum_shard_c_${realAddress}`, shardCKey);
 
     return {
       address: realAddress,
       shardAKey,
       shardBAddress: data.shardBAddress || "",
+      shardCKey,
+      shardCAddress,
       apiKey: data.apiKey || "",
     };
   } catch (err: any) {
@@ -218,6 +223,18 @@ export async function createRealSmartAccount(): Promise<{
       );
     }
     throw err;
+  }
+}
+
+/**
+ * Loads the stored emergency recovery key (Shard C) for an account.
+ */
+export async function loadStoredRecoveryKey(address: string): Promise<string | null> {
+  if (!address) return null;
+  try {
+    return await loadEncryptedItem(`privatum_shard_c_${address.toLowerCase()}`);
+  } catch {
+    return null;
   }
 }
 

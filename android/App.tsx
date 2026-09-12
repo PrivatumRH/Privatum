@@ -18,6 +18,9 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
+import * as Clipboard from "expo-clipboard";
+import QRCode from "react-native-qrcode-svg";
+import { BlurView } from "expo-blur";
 import {
   Shield,
   ArrowUpRight,
@@ -35,6 +38,9 @@ import {
   Trash2,
   Share2,
   Wallet,
+  ChevronDown,
+  ChevronUp,
+  Key,
 } from "lucide-react-native";
 
 import {
@@ -81,6 +87,7 @@ import {
   saveStoredTransactions,
   loadStoredPayLinks,
   saveStoredPayLinks,
+  loadStoredRecoveryKey,
   type LiveBalance,
   type LiveTransaction,
   type MobilePayLink,
@@ -148,6 +155,10 @@ export default function App() {
   const [showPanicModal, setShowPanicModal] = useState(false);
   const [showTotpPrompt, setShowTotpPrompt] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showRecoveryBackupModal, setShowRecoveryBackupModal] = useState(false);
+  const [recoveryKeyToDisplay, setRecoveryKeyToDisplay] = useState<string>("");
+  const [recoveryBackupConfirmed, setRecoveryBackupConfirmed] = useState(false);
+  const [isGuardrailsOpen, setIsGuardrailsOpen] = useState(false);
   const [importAddressInput, setImportAddressInput] = useState("");
   const [totpCode, setTotpCode] = useState("");
 
@@ -213,10 +224,15 @@ export default function App() {
     init();
   }, [syncBalances]);
 
-  const copyToClipboard = (key: string, text: string) => {
+  const copyToClipboard = async (key: string, text: string) => {
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
-    Alert.alert("Copied", "Address copied to clipboard.");
+    try {
+      await Clipboard.setStringAsync(text);
+      Alert.alert("Copied", "Address copied to clipboard.");
+    } catch (err) {
+      console.warn("Failed to copy:", err);
+    }
   };
 
   const shortenAddress = (addr: string) => {
@@ -283,14 +299,24 @@ export default function App() {
       setWalletAddress(created.address);
       setHasShardA(true);
       await syncBalances(created.address);
-      Alert.alert(
-        "Smart Account Ready",
-        `Created smart account on Robinhood Chain:\n${shortenAddress(created.address)}\nProtected by your device security.`
-      );
+      setRecoveryKeyToDisplay(created.shardCKey);
+      setRecoveryBackupConfirmed(false);
+      setShowRecoveryBackupModal(true);
     } catch (err: any) {
       Alert.alert("Creation Error", err?.message || "Failed to register smart account.");
     } finally {
       setIsCreatingAccount(false);
+    }
+  };
+
+  const handleViewRecoveryKey = async () => {
+    if (!walletAddress) return;
+    const key = await loadStoredRecoveryKey(walletAddress);
+    if (key) {
+      setRecoveryKeyToDisplay(key);
+      setShowRecoveryBackupModal(true);
+    } else {
+      Alert.alert("Recovery Key", "No stored recovery key found on this device.");
     }
   };
 
@@ -553,28 +579,23 @@ export default function App() {
 
         {/* Top Header */}
         <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <View style={styles.headerBrandRow}>
-              <Image
-                source={require("./assets/logo.png")}
-                style={styles.headerLogo}
-                resizeMode="contain"
-              />
-              <Text style={styles.headerTitle}>PRIVATUM</Text>
-            </View>
-            <View style={styles.networkDotRow}>
-              <View style={styles.networkDot} />
-              <Text style={styles.networkName}>Robinhood Chain</Text>
-            </View>
+          <View style={styles.headerBrandRow}>
+            <Image
+              source={require("./assets/logo.png")}
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.headerTitle}>PRIVATUM</Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.headerAccount}
-            onPress={() => copyToClipboard("header-addr", walletAddress)}
-          >
-            <Text style={styles.headerAccountText}>{shortenAddress(walletAddress)}</Text>
-            <Copy size={12} color={THEME.colors.textMuted} />
-          </TouchableOpacity>
+          <View style={styles.headerRightRow}>
+            <Image
+              source={require("./assets/rh-icon.png")}
+              style={styles.networkRhLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.networkName}>Robinhood Chain</Text>
+          </View>
         </View>
 
         {/* Main Content Area */}
@@ -647,40 +668,62 @@ export default function App() {
                 </View>
               </View>
 
-              {/* In-App Spending Guardrail Widget */}
+              {/* In-App Spending Guardrail Accordion */}
               <View style={styles.guardrailWidget}>
-                <View style={styles.guardrailWidgetHeader}>
+                <TouchableOpacity
+                  style={styles.guardrailWidgetHeader}
+                  onPress={() => setIsGuardrailsOpen(!isGuardrailsOpen)}
+                  activeOpacity={0.7}
+                >
                   <View style={styles.guardrailTitleRow}>
-                    <Shield size={14} color={THEME.colors.textPrimary} />
+                    <Shield size={14} color={THEME.colors.accent} />
                     <Text style={styles.guardrailWidgetTitle}>Spending Guardrails</Text>
                   </View>
-                  <TouchableOpacity onPress={() => setActiveTab("security")}>
-                    <Text style={styles.guardrailConfigureText}>Configure</Text>
-                  </TouchableOpacity>
-                </View>
+                  <View style={styles.guardrailHeaderRight}>
+                    <Text style={styles.guardrailSummaryText}>
+                      ${current24hSpend.toFixed(0)} / ${guardrailConfig.dailyLimitUsd.toFixed(0)}
+                    </Text>
+                    {isGuardrailsOpen ? (
+                      <ChevronUp size={16} color={THEME.colors.textSecondary} />
+                    ) : (
+                      <ChevronDown size={16} color={THEME.colors.textSecondary} />
+                    )}
+                  </View>
+                </TouchableOpacity>
 
-                <View style={styles.guardrailProgressTrack}>
-                  <View
-                    style={[
-                      styles.guardrailProgressFill,
-                      {
-                        width: `${Math.min(
-                          100,
-                          (current24hSpend / guardrailConfig.dailyLimitUsd) * 100
-                        )}%`,
-                      },
-                    ]}
-                  />
-                </View>
+                {isGuardrailsOpen && (
+                  <View style={styles.guardrailAccordionBody}>
+                    <View style={styles.guardrailProgressTrack}>
+                      <View
+                        style={[
+                          styles.guardrailProgressFill,
+                          {
+                            width: `${Math.min(
+                              100,
+                              (current24hSpend / guardrailConfig.dailyLimitUsd) * 100
+                            )}%`,
+                          },
+                        ]}
+                      />
+                    </View>
 
-                <View style={styles.guardrailMetaRow}>
-                  <Text style={styles.guardrailMetaText}>
-                    ${current24hSpend.toFixed(2)} spent today
-                  </Text>
-                  <Text style={styles.guardrailMetaText}>
-                    ${guardrailConfig.dailyLimitUsd.toFixed(2)} daily limit
-                  </Text>
-                </View>
+                    <View style={styles.guardrailMetaRow}>
+                      <Text style={styles.guardrailMetaText}>
+                        ${current24hSpend.toFixed(2)} spent today
+                      </Text>
+                      <Text style={styles.guardrailMetaText}>
+                        ${guardrailConfig.dailyLimitUsd.toFixed(2)} limit
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.guardrailConfigureBtn}
+                      onPress={() => setActiveTab("security")}
+                    >
+                      <Text style={styles.guardrailConfigureText}>Configure Limit Settings</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
 
               {/* Real Token Assets */}
@@ -689,9 +732,15 @@ export default function App() {
                 {balances.map((item) => (
                   <View key={item.symbol} style={styles.assetRow}>
                     <View style={styles.assetLeft}>
-                      <View style={styles.assetAvatar}>
-                        <Text style={styles.assetAvatarText}>{item.symbol[0]}</Text>
-                      </View>
+                      <Image
+                        source={
+                          item.symbol === "USDG"
+                            ? require("./assets/usdg_logo.png")
+                            : require("./assets/eth.jpeg")
+                        }
+                        style={styles.tokenAssetIcon}
+                        resizeMode="contain"
+                      />
                       <View>
                         <Text style={styles.assetSymbol}>{item.symbol}</Text>
                         <Text style={styles.assetName}>{item.name}</Text>
@@ -844,6 +893,15 @@ export default function App() {
                       ]}
                       onPress={() => setSendToken(sym)}
                     >
+                      <Image
+                        source={
+                          sym === "USDG"
+                            ? require("./assets/usdg_logo.png")
+                            : require("./assets/eth.jpeg")
+                        }
+                        style={styles.tokenPickerIcon}
+                        resizeMode="contain"
+                      />
                       <Text
                         style={[
                           styles.tokenPickerText,
@@ -964,6 +1022,15 @@ export default function App() {
                         ]}
                         onPress={() => setNewPayLinkToken(sym)}
                       >
+                        <Image
+                          source={
+                            sym === "USDG"
+                              ? require("./assets/usdg_logo.png")
+                              : require("./assets/eth.jpeg")
+                          }
+                          style={styles.tokenPickerIcon}
+                          resizeMode="contain"
+                        />
                         <Text
                           style={[
                             styles.tokenPickerText,
@@ -1220,12 +1287,17 @@ export default function App() {
 
                 <View style={styles.shardRow}>
                   <View style={styles.shardInfo}>
-                    <Text style={styles.shardName}>Emergency Recovery</Text>
+                    <Text style={styles.shardName}>Emergency Recovery (Shard C)</Text>
                     <Text style={styles.shardStatus}>
                       Offline backup for account recovery
                     </Text>
                   </View>
-                  <Text style={styles.shardStateCold}>Configured</Text>
+                  <TouchableOpacity
+                    style={styles.viewRecoveryKeyBtn}
+                    onPress={handleViewRecoveryKey}
+                  >
+                    <Text style={styles.viewRecoveryKeyText}>View Key</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
 
@@ -1322,97 +1394,103 @@ export default function App() {
           )}
         </View>
 
-        {/* Bottom Navigation Dock */}
-        <View style={styles.bottomNav}>
-          <TouchableOpacity
-            style={styles.navTab}
-            onPress={() => setActiveTab("vault")}
+        {/* Floating Liquid Glass Pill Navigation Bar */}
+        <View style={styles.floatingNavWrapper}>
+          <BlurView
+            intensity={Platform.OS === "ios" ? 70 : 40}
+            tint="dark"
+            style={styles.floatingNavPill}
           >
-            <Shield
-              size={20}
-              color={activeTab === "vault" ? THEME.colors.accent : THEME.colors.textMuted}
-            />
-            <Text
-              style={[
-                styles.navTabText,
-                activeTab === "vault" && styles.navTabTextActive,
-              ]}
+            <TouchableOpacity
+              style={[styles.navTab, activeTab === "vault" && styles.navTabActive]}
+              onPress={() => setActiveTab("vault")}
             >
-              Vault
-            </Text>
-          </TouchableOpacity>
+              <Shield
+                size={18}
+                color={activeTab === "vault" ? THEME.colors.accent : THEME.colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.navTabText,
+                  activeTab === "vault" && styles.navTabTextActive,
+                ]}
+              >
+                Vault
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.navTab}
-            onPress={() => setActiveTab("send")}
-          >
-            <ArrowUpRight
-              size={20}
-              color={activeTab === "send" ? THEME.colors.accent : THEME.colors.textMuted}
-            />
-            <Text
-              style={[
-                styles.navTabText,
-                activeTab === "send" && styles.navTabTextActive,
-              ]}
+            <TouchableOpacity
+              style={[styles.navTab, activeTab === "send" && styles.navTabActive]}
+              onPress={() => setActiveTab("send")}
             >
-              Send
-            </Text>
-          </TouchableOpacity>
+              <ArrowUpRight
+                size={18}
+                color={activeTab === "send" ? THEME.colors.accent : THEME.colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.navTabText,
+                  activeTab === "send" && styles.navTabTextActive,
+                ]}
+              >
+                Send
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.navTab}
-            onPress={() => setActiveTab("paylinks")}
-          >
-            <Link2
-              size={20}
-              color={activeTab === "paylinks" ? THEME.colors.accent : THEME.colors.textMuted}
-            />
-            <Text
-              style={[
-                styles.navTabText,
-                activeTab === "paylinks" && styles.navTabTextActive,
-              ]}
+            <TouchableOpacity
+              style={[styles.navTab, activeTab === "paylinks" && styles.navTabActive]}
+              onPress={() => setActiveTab("paylinks")}
             >
-              Pay Links
-            </Text>
-          </TouchableOpacity>
+              <Link2
+                size={18}
+                color={activeTab === "paylinks" ? THEME.colors.accent : THEME.colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.navTabText,
+                  activeTab === "paylinks" && styles.navTabTextActive,
+                ]}
+              >
+                Pay Links
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.navTab}
-            onPress={() => setActiveTab("contacts")}
-          >
-            <BookUser
-              size={20}
-              color={activeTab === "contacts" ? THEME.colors.accent : THEME.colors.textMuted}
-            />
-            <Text
-              style={[
-                styles.navTabText,
-                activeTab === "contacts" && styles.navTabTextActive,
-              ]}
+            <TouchableOpacity
+              style={[styles.navTab, activeTab === "contacts" && styles.navTabActive]}
+              onPress={() => setActiveTab("contacts")}
             >
-              Contacts
-            </Text>
-          </TouchableOpacity>
+              <BookUser
+                size={18}
+                color={activeTab === "contacts" ? THEME.colors.accent : THEME.colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.navTabText,
+                  activeTab === "contacts" && styles.navTabTextActive,
+                ]}
+              >
+                Contacts
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.navTab}
-            onPress={() => setActiveTab("security")}
-          >
-            <Lock
-              size={20}
-              color={activeTab === "security" ? THEME.colors.accent : THEME.colors.textMuted}
-            />
-            <Text
-              style={[
-                styles.navTabText,
-                activeTab === "security" && styles.navTabTextActive,
-              ]}
+            <TouchableOpacity
+              style={[styles.navTab, activeTab === "security" && styles.navTabActive]}
+              onPress={() => setActiveTab("security")}
             >
-              Security
-            </Text>
-          </TouchableOpacity>
+              <Lock
+                size={18}
+                color={activeTab === "security" ? THEME.colors.accent : THEME.colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.navTabText,
+                  activeTab === "security" && styles.navTabTextActive,
+                ]}
+              >
+                Security
+              </Text>
+            </TouchableOpacity>
+          </BlurView>
         </View>
 
         {/* MODAL: Receive Funds */}
@@ -1432,20 +1510,101 @@ export default function App() {
               </View>
 
               <Text style={styles.modalSubtitle}>
-                Your Robinhood Chain Smart Account Address
+                Scan or copy your Robinhood Chain address
               </Text>
 
-              <View style={styles.qrPlaceholderBox}>
-                <Text style={styles.qrPlaceholderText}>Robinhood Chain</Text>
+              <View style={styles.qrCodeContainer}>
+                <View style={styles.qrCodeWrapper}>
+                  <QRCode
+                    value={walletAddress || "0x0000000000000000000000000000000000000000"}
+                    size={170}
+                    color="#000000"
+                    backgroundColor="#ffffff"
+                    logo={require("./assets/logo.png")}
+                    logoSize={34}
+                    logoBackgroundColor="#ffffff"
+                    logoBorderRadius={8}
+                  />
+                </View>
                 <Text style={styles.qrAddressMono}>{walletAddress}</Text>
               </View>
 
               <TouchableOpacity
                 style={styles.modalActionButton}
-                onPress={() => copyToClipboard("modal-addr", walletAddress)}
+                onPress={() => copyToClipboard("receive-addr", walletAddress)}
               >
-                <Copy size={14} color="#000000" />
+                <Copy size={16} color="#ffffff" />
                 <Text style={styles.modalActionButtonText}>Copy Address</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* MODAL: Shard C Emergency Recovery Key Backup */}
+        <Modal
+          visible={showRecoveryBackupModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => {
+            if (recoveryBackupConfirmed) setShowRecoveryBackupModal(false);
+          }}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <View style={styles.recoveryHeaderTitleRow}>
+                  <Key size={18} color={THEME.colors.accent} />
+                  <Text style={styles.modalTitle}>Emergency Recovery Key</Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowRecoveryBackupModal(false)}>
+                  <X size={18} color="#ffffff" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalSubtitle}>
+                This key is your emergency recovery backup. If you lose this device, you need this key to restore your funds. Write it down or save it safely offline.
+              </Text>
+
+              <View style={styles.recoveryKeyBox}>
+                <Text style={styles.recoveryKeyMono} selectable>
+                  {recoveryKeyToDisplay}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={() => copyToClipboard("recovery-key", recoveryKeyToDisplay)}
+              >
+                <Text style={styles.secondaryButtonText}>Copy Recovery Key</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.recoveryCheckboxRow}
+                onPress={() => setRecoveryBackupConfirmed(!recoveryBackupConfirmed)}
+                activeOpacity={0.8}
+              >
+                <View
+                  style={[
+                    styles.recoveryCheckbox,
+                    recoveryBackupConfirmed && styles.recoveryCheckboxActive,
+                  ]}
+                >
+                  {recoveryBackupConfirmed && <Check size={12} color="#ffffff" />}
+                </View>
+                <Text style={styles.recoveryCheckboxText}>
+                  I have saved this emergency recovery key safely offline
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.primaryButton,
+                  !recoveryBackupConfirmed && styles.buttonDisabled,
+                ]}
+                disabled={!recoveryBackupConfirmed}
+                onPress={() => setShowRecoveryBackupModal(false)}
+              >
+                <Text style={styles.primaryButtonText}>Complete Setup</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1781,10 +1940,20 @@ const styles = StyleSheet.create({
     color: THEME.colors.textPrimary,
     letterSpacing: 1.5,
   },
+  headerRightRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   networkDotRow: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: 2,
+  },
+  networkRhLogo: {
+    width: 14,
+    height: 14,
+    borderRadius: 3,
+    marginRight: 6,
   },
   networkDot: {
     width: 6,
@@ -1819,7 +1988,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: THEME.spacing.lg,
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
   balanceCard: {
     backgroundColor: THEME.colors.surface,
@@ -1906,6 +2075,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
+  guardrailHeaderRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  guardrailSummaryText: {
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+  },
+  guardrailAccordionBody: {
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.borderSubtle,
+  },
+  guardrailConfigureBtn: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+  },
   guardrailWidgetTitle: {
     fontSize: 12,
     fontWeight: "600",
@@ -1962,6 +2151,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+  },
+  tokenAssetIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    overflow: "hidden",
   },
   assetAvatar: {
     width: 32,
@@ -2187,16 +2382,25 @@ const styles = StyleSheet.create({
   },
   tokenPickerButton: {
     flex: 1,
+    flexDirection: "row",
+    gap: 6,
     paddingVertical: 10,
     borderRadius: THEME.borderRadius.md,
     borderWidth: 1,
     borderColor: THEME.colors.border,
     backgroundColor: THEME.colors.surface,
     alignItems: "center",
+    justifyContent: "center",
   },
   tokenPickerButtonActive: {
     backgroundColor: "#f54842",
     borderColor: "#f54842",
+  },
+  tokenPickerIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    overflow: "hidden",
   },
   tokenPickerText: {
     fontSize: 12,
@@ -2539,6 +2743,17 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     color: THEME.colors.textMuted,
   },
+  viewRecoveryKeyBtn: {
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  viewRecoveryKeyText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#000000",
+  },
   dangerButton: {
     backgroundColor: THEME.colors.danger,
     borderRadius: THEME.borderRadius.md,
@@ -2553,6 +2768,28 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#ffffff",
   },
+  floatingNavWrapper: {
+    position: "absolute",
+    bottom: Platform.OS === "ios" ? 24 : 14,
+    left: 16,
+    right: 16,
+    alignItems: "center",
+  },
+  floatingNavPill: {
+    flexDirection: "row",
+    width: "100%",
+    maxWidth: 440,
+    backgroundColor: Platform.OS === "ios" ? "rgba(20, 22, 30, 0.70)" : "rgba(18, 20, 28, 0.94)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    borderRadius: 36,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    justifyContent: "space-between",
+    overflow: "hidden",
+    elevation: 12,
+  },
   bottomNav: {
     flexDirection: "row",
     backgroundColor: THEME.colors.surface,
@@ -2565,6 +2802,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
+    paddingVertical: 4,
+  },
+  navTabActive: {
+    backgroundColor: "rgba(245, 72, 66, 0.12)",
+    borderRadius: 20,
   },
   navTabText: {
     fontSize: 10,
@@ -2596,6 +2838,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: THEME.spacing.sm,
   },
+  recoveryHeaderTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   modalTitle: {
     fontSize: 16,
     fontWeight: "700",
@@ -2606,6 +2853,17 @@ const styles = StyleSheet.create({
     color: THEME.colors.textSecondary,
     marginBottom: THEME.spacing.lg,
     lineHeight: 18,
+  },
+  qrCodeContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: THEME.spacing.lg,
+  },
+  qrCodeWrapper: {
+    padding: 14,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    marginBottom: 12,
   },
   qrPlaceholderBox: {
     backgroundColor: THEME.colors.surfaceElevated,
@@ -2628,6 +2886,44 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     color: THEME.colors.textPrimary,
     textAlign: "center",
+  },
+  recoveryKeyBox: {
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    borderRadius: THEME.borderRadius.md,
+    padding: THEME.spacing.md,
+    marginBottom: THEME.spacing.md,
+  },
+  recoveryKeyMono: {
+    fontSize: 12,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    color: THEME.colors.textPrimary,
+    lineHeight: 18,
+  },
+  recoveryCheckboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginVertical: 12,
+  },
+  recoveryCheckbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recoveryCheckboxActive: {
+    backgroundColor: THEME.colors.accent,
+    borderColor: THEME.colors.accent,
+  },
+  recoveryCheckboxText: {
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+    flex: 1,
   },
   modalActionButton: {
     backgroundColor: "#f54842",
