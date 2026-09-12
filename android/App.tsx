@@ -105,6 +105,8 @@ import {
   deleteMobileContact,
   findMobileContactByAddress,
   searchMobileContacts,
+  recordMobileContactUsage,
+  getRecentMobileContacts,
   type Contact,
   type ContactCategory,
 } from "./src/lib/contacts";
@@ -327,6 +329,11 @@ export default function App() {
   const matchedContact = useMemo(() => {
     return findMobileContactByAddress(contacts, sendRecipient);
   }, [contacts, sendRecipient]);
+
+  const recentContacts = useMemo(
+    () => getRecentMobileContacts(contacts, 3),
+    [contacts]
+  );
 
   // Filtered contacts
   const filteredContacts = useMemo(() => {
@@ -589,6 +596,10 @@ export default function App() {
       await saveStoredTransactions(walletAddress, updatedTxs);
 
       setSpendingHistory([newRecord, ...spendingHistory]);
+
+      // Stamp the recipient as recently used for the quick-send strip (v0.1.16)
+      const refreshedContacts = await recordMobileContactUsage(walletAddress, sendRecipient);
+      setContacts(refreshedContacts);
 
       // Signed TX receipt (v0.1.15) - snapshot before the form is cleared
       setSendReceipt({
@@ -1960,6 +1971,36 @@ export default function App() {
                       <Text style={styles.labelActionText}>Address Book</Text>
                     </TouchableOpacity>
                   </View>
+                  {recentContacts.length > 0 && (
+                    <View style={styles.recentChipRow}>
+                      {recentContacts.map((contact) => {
+                        const isActive =
+                          sendRecipient.trim().toLowerCase() ===
+                          contact.address.trim().toLowerCase();
+                        return (
+                          <TouchableOpacity
+                            key={contact.id}
+                            style={[styles.recentChip, isActive && styles.recentChipActive]}
+                            onPress={() => {
+                              setSendRecipient(contact.address);
+                              setPoisonWarningAcknowledged(false);
+                            }}
+                            activeOpacity={0.8}
+                          >
+                            <Text
+                              style={[
+                                styles.recentChipText,
+                                isActive && styles.recentChipTextActive,
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {contact.name}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
                   <TextInput
                     style={styles.textInput}
                     placeholder="0x... or st:eth:0x..."
@@ -3038,6 +3079,33 @@ const styles = StyleSheet.create({
     color: THEME.colors.textMuted,
     marginTop: 4,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+  },
+  recentChipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: THEME.spacing.sm,
+    marginBottom: THEME.spacing.sm,
+  },
+  recentChip: {
+    paddingHorizontal: THEME.spacing.md,
+    paddingVertical: 6,
+    borderRadius: THEME.borderRadius.full,
+    backgroundColor: THEME.colors.secondaryMuted,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    maxWidth: 160,
+  },
+  recentChipActive: {
+    backgroundColor: "rgba(255, 255, 255, 0.16)",
+    borderColor: THEME.colors.borderHighlight,
+  },
+  recentChipText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: THEME.colors.textSecondary,
+  },
+  recentChipTextActive: {
+    color: THEME.colors.textPrimary,
   },
   contactMatchedRow: {
     marginTop: 6,

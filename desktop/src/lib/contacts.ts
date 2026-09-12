@@ -146,3 +146,15 @@ export function recordContactUsage(walletAddress: string, address: string): void
     saveContacts(walletAddress, updated);
   }
 }
+
+/**
+ * Returns the most recently used contacts, newest first.
+ * Contacts that have never been sent to are excluded so the strip only ever
+ * surfaces counterparties the user has actually transacted with.
+ */
+export function getRecentContacts(contacts: Contact[], limit = 3): Contact[] {
+  return contacts
+    .filter((c) => typeof c.lastUsedAt === "number" && c.lastUsedAt > 0)
+    .sort((a, b) => (b.lastUsedAt || 0) - (a.lastUsedAt || 0))
+    .slice(0, limit);
+}

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import {
   findContactByAddress,
   searchContacts,
+  getRecentContacts,
   type Contact,
 } from "./contacts";
 
@@ -78,5 +79,31 @@ describe("Private Address Book & Local Contacts", () => {
 
     const mismatchFilter = searchContacts(sampleContacts, "kraken", "Personal");
     expect(mismatchFilter.length).toBe(0);
+  });
+
+  it("returns recently used contacts newest first", () => {
+    const used: Contact[] = [
+      { ...sampleContacts[0], lastUsedAt: 500 },
+      { ...sampleContacts[1], lastUsedAt: 900 },
+      { ...sampleContacts[2], lastUsedAt: 700 },
+    ];
+    const recent = getRecentContacts(used);
+    expect(recent.map((c) => c.id)).toEqual(["c2", "c3", "c1"]);
+  });
+
+  it("excludes contacts that have never been used", () => {
+    const mixed: Contact[] = [
+      { ...sampleContacts[0], lastUsedAt: 500 },
+      sampleContacts[1],
+      sampleContacts[2],
+    ];
+    const recent = getRecentContacts(mixed);
+    expect(recent).toHaveLength(1);
+    expect(recent[0].id).toBe("c1");
+  });
+
+  it("caps the recent contacts strip at the requested limit", () => {
+    const used = sampleContacts.map((c, i) => ({ ...c, lastUsedAt: 100 + i }));
+    expect(getRecentContacts(used, 2)).toHaveLength(2);
   });
 });
