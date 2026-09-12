@@ -96,6 +96,8 @@ import {
 import { executeAccountBatch } from "./lib/execute";
 import { isFeatureActive, RELEASE_VERSIONS, type ReleaseVersion } from "./config/features";
 import { PortfolioSparklineCard } from "./components/PortfolioSparklineCard";
+import { evaluateTransactionRisk } from "./lib/riskScore";
+import { TransactionRiskScoreRow } from "./components/TransactionRiskScoreRow";
 
 const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.0": "Genesis 2-of-3 MPC",
@@ -117,6 +119,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.16": "Recent Contacts Quick Send",
   "0.1.17": "AI Inference Receipts",
   "0.1.18": "Inline Pay Link QR Preview",
+  "0.1.19": "Transaction Risk Scoring",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -513,6 +516,19 @@ export function App() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const recentContacts = useMemo(() => getRecentContacts(contacts, 3), [contacts]);
   const [showContactsModal, setShowContactsModal] = useState<boolean>(false);
+
+  // Transaction Risk Scoring (v0.1.18)
+  const riskAssessment = useMemo(() => {
+    return evaluateTransactionRisk({
+      recipient: sendRecipient,
+      addressVerdict,
+      guardrailVerdict,
+      contacts,
+      transactions,
+      simulationReverted: simulationData ? simulationData.status !== "success" : false,
+      isStealth: isStealthSend,
+    });
+  }, [sendRecipient, addressVerdict, guardrailVerdict, contacts, transactions, simulationData, isStealthSend]);
 
   // Animated popup toast alerts
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -3609,6 +3625,10 @@ export function App() {
                     <span className="text-slate-400">Security</span>
                     <span className="text-slate-200 font-medium">2-of-3 Threshold Quorum</span>
                   </div>
+
+                  {isFeatureActive("transaction_risk_score", appVersion, previewVersion) && (
+                    <TransactionRiskScoreRow assessment={riskAssessment} />
+                  )}
                 </div>
 
                 {/* Action buttons */}

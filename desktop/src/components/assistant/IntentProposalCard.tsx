@@ -2,6 +2,7 @@ import React from "react";
 import { ArrowUpRight, Shield, ShieldAlert, Link2, Lock, Unlock, ArrowRight, X } from "lucide-react";
 import type { ParsedIntent } from "../../lib/assistant/types";
 import type { InferenceReceipt } from "../../lib/assistant/inferenceReceipt";
+import { evaluateTransactionRisk } from "../../lib/riskScore";
 
 interface IntentProposalCardProps {
   intent: ParsedIntent;
@@ -27,6 +28,21 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
 }) => {
   if (intent.type === "send_transfer") {
     const isDanger = safetyEvidence?.poisonVerdict === "danger" || safetyEvidence?.guardrailVerdict === "blocked";
+    const risk = evaluateTransactionRisk({
+      recipient: intent.recipient,
+      addressVerdict: safetyEvidence?.poisonVerdict ? {
+        level: safetyEvidence.poisonVerdict === "danger" ? "danger" : safetyEvidence.poisonVerdict === "warning" ? "warning" : "ok",
+        title: "Address Screening",
+        detail: safetyEvidence.poisonMessage || "",
+      } : null,
+      guardrailVerdict: safetyEvidence?.guardrailVerdict ? {
+        allowed: safetyEvidence.guardrailVerdict === "allowed",
+        warning: safetyEvidence.guardrailVerdict === "warning",
+        message: safetyEvidence.guardrailMessage || "",
+      } : null,
+      contacts: safetyEvidence?.contactMatch ? [{ address: intent.recipient }] : [],
+      isStealth: intent.isStealth,
+    });
 
     return (
       <div className={`mt-3 rounded-xl border p-3.5 text-xs transition-colors ${
@@ -97,6 +113,13 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
               </span>
             </div>
           )}
+
+          <div className="flex items-center justify-between pt-1 border-t border-white/5">
+            <span className="text-white/40">Risk Score:</span>
+            <span className="font-semibold text-[11px]" style={{ color: risk.color }}>
+              {risk.label}
+            </span>
+          </div>
 
           {receipt && (
             <div className="flex items-center justify-between pt-1 border-t border-white/5">
