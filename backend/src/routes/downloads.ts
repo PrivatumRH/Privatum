@@ -422,6 +422,8 @@ const FALLBACK_DIRECT_URLS: Record<string, string> = {
   linux: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_amd64.deb`,
   deb: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_amd64.deb`,
   appimage: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_amd64.deb`,
+  android: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/download/v0.1.13/privatum-mobile.apk`,
+  apk: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/download/v0.1.13/privatum-mobile.apk`,
 };
 
 // Aliases for mobile download routes
