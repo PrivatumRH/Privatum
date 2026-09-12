@@ -9,7 +9,6 @@ import {
   BookUser,
   Link2,
   Lock,
-  ArrowRight,
   Check,
   ExternalLink,
 } from "lucide-react";
@@ -97,6 +96,8 @@ const INSTALL_STEPS = [
 function MobilePage() {
   const [releaseInfo, setReleaseInfo] = useState<MobileReleaseInfo | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string>(`${API_BASE}/v1/downloads/android`);
+  const [androidBtnHover, setAndroidBtnHover] = useState(false);
+  const [cardBtnHover, setCardBtnHover] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,7 +112,6 @@ function MobilePage() {
           }
         }
       } catch {
-        // Fall back to direct release download URL
         if (!cancelled) {
           setDownloadUrl(FALLBACK_APK_URL);
         }
@@ -124,107 +124,359 @@ function MobilePage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-[#ffffff] font-['Inter',sans-serif] selection:bg-[#f54842]/30 selection:text-[#ffffff]">
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "#0a0a0b",
+        color: "#ffffff",
+        fontFamily: "'Inter', sans-serif",
+      }}
+    >
       {/* Header Navigation */}
-      <header className="border-b border-[#27272a] bg-[#0a0a0b]/90 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-3">
+      <header
+        style={{
+          borderBottom: "1px solid #27272a",
+          backgroundColor: "rgba(10, 10, 11, 0.95)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          position: "sticky",
+          top: 0,
+          zIndex: 50,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: "1152px",
+            margin: "0 auto",
+            padding: "0 1.5rem",
+            height: "64px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          {/* Logo Brand Item */}
+          <a
+            href="/"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "10px",
+              textDecoration: "none",
+            }}
+          >
             <img
               alt="PRIVATUM logo"
               src="/assets/privatum-mark-black.png"
-              className="w-7 h-7 invert object-contain"
+              style={{
+                width: "32px",
+                height: "32px",
+                maxWidth: "32px",
+                maxHeight: "32px",
+                objectFit: "contain",
+                display: "block",
+                filter: "invert(1)",
+                flexShrink: 0,
+              }}
             />
-            <span className="font-bold text-lg tracking-tight text-[#ffffff]">PRIVATUM</span>
+            <span
+              style={{
+                fontWeight: 700,
+                fontSize: "1.125rem",
+                letterSpacing: "-0.025em",
+                color: "#ffffff",
+              }}
+            >
+              PRIVATUM
+            </span>
           </a>
 
-          <nav className="flex items-center gap-6 text-sm">
-            <a href="/" className="text-[#a1a1aa] hover:text-[#ffffff] transition-colors hidden sm:inline-block">
+          {/* Nav Links */}
+          <nav
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "1.5rem",
+              fontSize: "0.875rem",
+            }}
+          >
+            <a
+              href="/"
+              style={{
+                color: "#a1a1aa",
+                textDecoration: "none",
+                transition: "color 0.2s ease",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#ffffff")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#a1a1aa")}
+            >
               Home
             </a>
-            <a href="/#download" className="text-[#a1a1aa] hover:text-[#ffffff] transition-colors hidden sm:inline-block">
+            <a
+              href="/#download"
+              style={{
+                color: "#a1a1aa",
+                textDecoration: "none",
+                transition: "color 0.2s ease",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#ffffff")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#a1a1aa")}
+            >
               Desktop
             </a>
-            <a href="/docs.html" className="text-[#a1a1aa] hover:text-[#ffffff] transition-colors hidden sm:inline-block">
+            <a
+              href="/docs.html"
+              style={{
+                color: "#a1a1aa",
+                textDecoration: "none",
+                transition: "color 0.2s ease",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#ffffff")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#a1a1aa")}
+            >
               Docs
             </a>
             <a
               href="https://github.com/PrivatumRH/privatum"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#a1a1aa] hover:text-[#ffffff] transition-colors flex items-center gap-1.5"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.375rem",
+                color: "#a1a1aa",
+                textDecoration: "none",
+                transition: "color 0.2s ease",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#ffffff")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#a1a1aa")}
             >
               <span>GitHub</span>
-              <ExternalLink className="w-3.5 h-3.5" />
+              <ExternalLink style={{ width: "14px", height: "14px" }} />
             </a>
           </nav>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+      <main
+        style={{
+          maxWidth: "1152px",
+          margin: "0 auto",
+          padding: "3.5rem 1.5rem 6rem",
+        }}
+      >
         {/* Hero Section */}
-        <div className="max-w-3xl mx-auto text-center mb-16 sm:mb-24">
-          <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#f54842] tracking-wider uppercase mb-4">
-            <Smartphone className="w-4 h-4" />
+        <div
+          style={{
+            maxWidth: "768px",
+            margin: "0 auto 5rem",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              color: "#f54842",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              marginBottom: "1rem",
+            }}
+          >
+            <Smartphone style={{ width: "16px", height: "16px" }} />
             <span>Mobile Self-Custody</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-[#ffffff] mb-6 leading-tight">
+          <h1
+            style={{
+              fontSize: "clamp(2rem, 5vw, 3.25rem)",
+              fontWeight: 800,
+              letterSpacing: "-0.03em",
+              color: "#ffffff",
+              lineHeight: 1.15,
+              marginBottom: "1.5rem",
+            }}
+          >
             Private payments on Robinhood Chain, in your pocket.
           </h1>
 
-          <p className="text-base sm:text-lg text-[#a1a1aa] leading-relaxed mb-10">
+          <p
+            style={{
+              fontSize: "1.125rem",
+              color: "#a1a1aa",
+              lineHeight: 1.6,
+              marginBottom: "2.5rem",
+              maxWidth: "680px",
+              marginLeft: "auto",
+              marginRight: "auto",
+            }}
+          >
             A fast, non-custodial mobile wallet built for Robinhood Chain. Threshold 2-of-3 quorum,
             in-app spending guardrails, and disposable pay links without seed phrase vulnerabilities.
           </p>
 
-          {/* Quick Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          {/* Action CTAs */}
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "1rem",
+            }}
+          >
             <a
               href={downloadUrl}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-3 px-8 py-3.5 rounded-xl bg-[#f54842] text-[#ffffff] font-semibold text-sm hover:bg-[#d93832] transition-colors shadow-lg shadow-[#f54842]/20"
+              onMouseEnter={() => setAndroidBtnHover(true)}
+              onMouseLeave={() => setAndroidBtnHover(false)}
+              style={{
+                backgroundColor: androidBtnHover ? "#d93832" : "#f54842",
+                color: "#ffffff",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.625rem",
+                padding: "0.875rem 2rem",
+                borderRadius: "0.75rem",
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                textDecoration: "none",
+                boxShadow: "0 10px 25px -5px rgba(245, 72, 66, 0.3)",
+                transition: "background-color 0.2s ease",
+              }}
             >
-              <Download className="w-4 h-4" />
+              <Download style={{ width: "16px", height: "16px" }} />
               <span>Download for Android (APK)</span>
             </a>
 
-            <div className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl border border-[#27272a] bg-[#141416] text-[#a1a1aa] text-sm font-medium">
-              <span className="w-2 h-2 rounded-full bg-[#f54842]/60 animate-pulse" />
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.625rem",
+                padding: "0.875rem 1.5rem",
+                borderRadius: "0.75rem",
+                border: "1px solid #27272a",
+                backgroundColor: "#141416",
+                color: "#a1a1aa",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+              }}
+            >
+              <span
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  backgroundColor: "#f54842",
+                }}
+              />
               <span>iOS: Coming soon</span>
             </div>
           </div>
 
           {releaseInfo?.version && (
-            <p className="text-xs text-[#71717a] mt-4">
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: "#71717a",
+                marginTop: "1rem",
+              }}
+            >
               Latest release: {releaseInfo.version} • Android 8.0+ (ARM64 / x86_64)
             </p>
           )}
         </div>
 
         {/* Feature Grid */}
-        <div className="mb-20 sm:mb-28">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#ffffff] mb-3">
+        <div style={{ marginBottom: "6rem" }}>
+          <div style={{ textAlign: "center", marginBottom: "3rem" }}>
+            <h2
+              style={{
+                fontSize: "1.75rem",
+                fontWeight: 700,
+                letterSpacing: "-0.025em",
+                color: "#ffffff",
+                marginBottom: "0.75rem",
+              }}
+            >
               Engineered for Mobile Freedom
             </h2>
-            <p className="text-sm sm:text-base text-[#a1a1aa] max-w-xl mx-auto">
+            <p
+              style={{
+                fontSize: "1rem",
+                color: "#a1a1aa",
+                maxWidth: "560px",
+                margin: "0 auto",
+              }}
+            >
               Everything you need to transact safely on Robinhood Chain without central counterparty risk.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gap: "1.5rem",
+            }}
+          >
             {CORE_CAPABILITIES.map((cap) => {
               const Icon = cap.icon;
               return (
                 <div
                   key={cap.title}
-                  className="rounded-2xl border border-[#27272a] bg-[#111113] p-6 hover:border-[#3f3f46] transition-colors flex flex-col justify-between"
+                  style={{
+                    borderRadius: "1rem",
+                    border: "1px solid #27272a",
+                    backgroundColor: "#111113",
+                    padding: "1.75rem",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                  }}
                 >
                   <div>
-                    <div className="w-10 h-10 rounded-xl bg-[#18181b] border border-[#27272a] flex items-center justify-center text-[#f54842] mb-5">
-                      <Icon className="w-5 h-5" />
+                    <div
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        borderRadius: "0.75rem",
+                        backgroundColor: "#18181b",
+                        border: "1px solid #27272a",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#f54842",
+                        marginBottom: "1.25rem",
+                      }}
+                    >
+                      <Icon style={{ width: "20px", height: "20px" }} />
                     </div>
-                    <h3 className="text-base font-semibold text-[#ffffff] mb-2">{cap.title}</h3>
-                    <p className="text-sm text-[#a1a1aa] leading-relaxed">{cap.desc}</p>
+                    <h3
+                      style={{
+                        fontSize: "1rem",
+                        fontWeight: 600,
+                        color: "#ffffff",
+                        marginBottom: "0.5rem",
+                      }}
+                    >
+                      {cap.title}
+                    </h3>
+                    <p
+                      style={{
+                        fontSize: "0.875rem",
+                        color: "#a1a1aa",
+                        lineHeight: 1.55,
+                        margin: 0,
+                      }}
+                    >
+                      {cap.desc}
+                    </p>
                   </div>
                 </div>
               );
@@ -233,81 +485,234 @@ function MobilePage() {
         </div>
 
         {/* Download & Platform Availability Section */}
-        <div className="rounded-3xl border border-[#27272a] bg-[#111113] p-6 sm:p-12 mb-20">
-          <div className="max-w-2xl mb-10">
-            <h2 className="text-2xl sm:text-3xl font-bold text-[#ffffff] tracking-tight mb-3">
+        <div
+          style={{
+            borderRadius: "1.5rem",
+            border: "1px solid #27272a",
+            backgroundColor: "#111113",
+            padding: "clamp(1.5rem, 4vw, 3rem)",
+            marginBottom: "5rem",
+          }}
+        >
+          <div style={{ maxWidth: "640px", marginBottom: "2.5rem" }}>
+            <h2
+              style={{
+                fontSize: "1.75rem",
+                fontWeight: 700,
+                color: "#ffffff",
+                letterSpacing: "-0.025em",
+                marginBottom: "0.75rem",
+              }}
+            >
               Get the App
             </h2>
-            <p className="text-sm sm:text-base text-[#a1a1aa]">
+            <p style={{ fontSize: "0.95rem", color: "#a1a1aa", margin: 0 }}>
               Install the Android APK directly today. iOS TestFlight and App Store distribution are currently in progress.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+              gap: "1.5rem",
+            }}
+          >
             {/* Android Card */}
-            <div className="rounded-2xl border border-[#27272a] bg-[#18181b] p-6 sm:p-8 flex flex-col justify-between">
+            <div
+              style={{
+                borderRadius: "1rem",
+                border: "1px solid #27272a",
+                backgroundColor: "#18181b",
+                padding: "2rem",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+              }}
+            >
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-[#ffffff]">Android</h3>
-                  <span className="text-xs text-[#a1a1aa]">Ready to Install</span>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  <h3
+                    style={{
+                      fontSize: "1.125rem",
+                      fontWeight: 700,
+                      color: "#ffffff",
+                      margin: 0,
+                    }}
+                  >
+                    Android
+                  </h3>
+                  <span
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#a1a1aa",
+                    }}
+                  >
+                    Ready to Install
+                  </span>
                 </div>
-                <p className="text-sm text-[#a1a1aa] mb-6">
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    color: "#a1a1aa",
+                    lineHeight: 1.5,
+                    marginBottom: "1.5rem",
+                  }}
+                >
                   Direct standalone APK package for all modern Android phones and tablets.
                 </p>
 
-                <ul className="space-y-2.5 text-xs text-[#d4d4d8] mb-8">
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-[#f54842]" />
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.625rem",
+                    fontSize: "0.8125rem",
+                    color: "#d4d4d8",
+                    marginBottom: "2rem",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <Check style={{ width: "16px", height: "16px", color: "#f54842", flexShrink: 0 }} />
                     <span>Native Robinhood Chain execution (Chain ID 4663)</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-[#f54842]" />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <Check style={{ width: "16px", height: "16px", color: "#f54842", flexShrink: 0 }} />
                     <span>Full 2-of-3 threshold custody with local Shard A</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-[#f54842]" />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <Check style={{ width: "16px", height: "16px", color: "#f54842", flexShrink: 0 }} />
                     <span>In-app spending limits and private address book</span>
-                  </li>
-                </ul>
+                  </div>
+                </div>
               </div>
 
               <a
                 href={downloadUrl}
-                className="inline-flex items-center justify-center gap-2.5 w-full py-3.5 rounded-xl bg-[#f54842] text-[#ffffff] font-semibold text-sm hover:bg-[#d93832] transition-colors"
+                onMouseEnter={() => setCardBtnHover(true)}
+                onMouseLeave={() => setCardBtnHover(false)}
+                style={{
+                  backgroundColor: cardBtnHover ? "#d93832" : "#f54842",
+                  color: "#ffffff",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.625rem",
+                  width: "100%",
+                  padding: "0.875rem",
+                  borderRadius: "0.75rem",
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  textDecoration: "none",
+                  transition: "background-color 0.2s ease",
+                }}
               >
-                <Download className="w-4 h-4" />
+                <Download style={{ width: "16px", height: "16px" }} />
                 <span>Download Android APK</span>
               </a>
             </div>
 
             {/* iOS Card */}
-            <div className="rounded-2xl border border-[#27272a] bg-[#18181b] p-6 sm:p-8 flex flex-col justify-between">
+            <div
+              style={{
+                borderRadius: "1rem",
+                border: "1px solid #27272a",
+                backgroundColor: "#18181b",
+                padding: "2rem",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+              }}
+            >
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-[#ffffff]">iOS</h3>
-                  <span className="text-xs text-[#f54842] font-medium">Coming Soon</span>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  <h3
+                    style={{
+                      fontSize: "1.125rem",
+                      fontWeight: 700,
+                      color: "#ffffff",
+                      margin: 0,
+                    }}
+                  >
+                    iOS
+                  </h3>
+                  <span
+                    style={{
+                      fontSize: "0.75rem",
+                      color: "#f54842",
+                      fontWeight: 500,
+                    }}
+                  >
+                    Coming Soon
+                  </span>
                 </div>
-                <p className="text-sm text-[#a1a1aa] mb-6">
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    color: "#a1a1aa",
+                    lineHeight: 1.5,
+                    marginBottom: "1.5rem",
+                  }}
+                >
                   Apple TestFlight beta and App Store release are currently undergoing packaging and review.
                 </p>
 
-                <ul className="space-y-2.5 text-xs text-[#71717a] mb-8">
-                  <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#71717a]" />
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.625rem",
+                    fontSize: "0.8125rem",
+                    color: "#71717a",
+                    marginBottom: "2rem",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#71717a", flexShrink: 0 }} />
                     <span>Apple Secure Enclave Shard A storage</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#71717a]" />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#71717a", flexShrink: 0 }} />
                     <span>Face ID and Touch ID biometric authentication</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#71717a]" />
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#71717a", flexShrink: 0 }} />
                     <span>Public TestFlight link will be announced on X</span>
-                  </li>
-                </ul>
+                  </div>
+                </div>
               </div>
 
-              <div className="inline-flex items-center justify-center gap-2 w-full py-3.5 rounded-xl border border-[#27272a] bg-[#141416] text-[#71717a] text-sm font-medium cursor-not-allowed">
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.5rem",
+                  width: "100%",
+                  padding: "0.875rem",
+                  borderRadius: "0.75rem",
+                  border: "1px solid #27272a",
+                  backgroundColor: "#141416",
+                  color: "#71717a",
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  cursor: "not-allowed",
+                }}
+              >
                 <span>iOS Build In Progress</span>
               </div>
             </div>
@@ -315,22 +720,76 @@ function MobilePage() {
         </div>
 
         {/* Installation Guide */}
-        <div className="mb-20">
-          <h2 className="text-xl sm:text-2xl font-bold text-[#ffffff] tracking-tight mb-8 text-center">
+        <div style={{ marginBottom: "5rem" }}>
+          <h2
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: 700,
+              color: "#ffffff",
+              letterSpacing: "-0.025em",
+              marginBottom: "2rem",
+              textAlign: "center",
+            }}
+          >
             How to Install the Android APK
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+              gap: "1.5rem",
+            }}
+          >
             {INSTALL_STEPS.map((item) => (
               <div
                 key={item.step}
-                className="rounded-2xl border border-[#27272a] bg-[#111113] p-6 text-left"
+                style={{
+                  borderRadius: "1rem",
+                  border: "1px solid #27272a",
+                  backgroundColor: "#111113",
+                  padding: "1.5rem",
+                  textAlign: "left",
+                }}
               >
-                <div className="w-8 h-8 rounded-lg bg-[#18181b] border border-[#27272a] flex items-center justify-center text-xs font-bold text-[#f54842] mb-4">
+                <div
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "0.5rem",
+                    backgroundColor: "#18181b",
+                    border: "1px solid #27272a",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    color: "#f54842",
+                    marginBottom: "1rem",
+                  }}
+                >
                   {item.step}
                 </div>
-                <h3 className="text-base font-semibold text-[#ffffff] mb-2">{item.title}</h3>
-                <p className="text-sm text-[#a1a1aa] leading-relaxed">{item.desc}</p>
+                <h3
+                  style={{
+                    fontSize: "1rem",
+                    fontWeight: 600,
+                    color: "#ffffff",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  {item.title}
+                </h3>
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    color: "#a1a1aa",
+                    lineHeight: 1.5,
+                    margin: 0,
+                  }}
+                >
+                  {item.desc}
+                </p>
               </div>
             ))}
           </div>
@@ -338,10 +797,28 @@ function MobilePage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#27272a] bg-[#0a0a0b] py-10">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#71717a]">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-[#a1a1aa]">PRIVATUM</span>
+      <footer
+        style={{
+          borderTop: "1px solid #27272a",
+          backgroundColor: "#0a0a0b",
+          padding: "2.5rem 1.5rem",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: "1152px",
+            margin: "0 auto",
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "1rem",
+            fontSize: "0.75rem",
+            color: "#71717a",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ fontWeight: 600, color: "#a1a1aa" }}>PRIVATUM</span>
             <span>Robinhood Chain L2 (Chain ID 4663)</span>
           </div>
           <div>© 2026 Privatum. All rights reserved.</div>
