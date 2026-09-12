@@ -22,6 +22,10 @@
       "bundleIdentifier": "com.privatum.mobile"
     },
     "android": {
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
       "userInterfaceStyle": "dark",
       "splash": {
         "image": "./assets/logo.png",

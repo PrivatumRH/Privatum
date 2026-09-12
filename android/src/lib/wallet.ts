@@ -219,12 +219,17 @@ export async function createRealSmartAccount(): Promise<{
       apiKey: data.apiKey || "",
     };
   } catch (err: any) {
+    const msg = (err?.message || "").toLowerCase();
     if (
-      err?.message?.includes("Network request failed") ||
-      err?.message?.includes("Failed to fetch")
+      msg.includes("unknownhostexception") ||
+      msg.includes("fetch failed") ||
+      msg.includes("failed to fetch") ||
+      msg.includes("network request failed") ||
+      msg.includes("unable to resolve host") ||
+      msg.includes("getaddrinfo")
     ) {
       throw new Error(
-        "Unable to reach the security server. Please check your internet connection."
+        "Unable to connect to PRIVATUM security server. Please check your internet connection and try again."
       );
     }
     throw err;
