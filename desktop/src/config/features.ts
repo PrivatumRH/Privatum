@@ -68,7 +68,8 @@ export function isFeatureActive(
   appVersion: string,
   previewVersionOverride?: string | null
 ): boolean {
-  const activeVersion = previewVersionOverride || (import.meta.env.DEV ? "0.1.11" : appVersion);
+  const latestRelease = RELEASE_VERSIONS[RELEASE_VERSIONS.length - 1];
+  const activeVersion = previewVersionOverride || (import.meta.env.DEV ? latestRelease : appVersion);
   const milestone = FEATURE_MILESTONES[feature];
   return compareSemver(activeVersion, milestone) >= 0;
 }
