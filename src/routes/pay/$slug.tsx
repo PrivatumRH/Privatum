@@ -26,7 +26,11 @@ interface PayLinkData {
 
 const ROBINHOOD_CHAIN_ID_HEX = "0x1237"; // 4663
 const ROBINHOOD_RPC_URL = "https://rpc.mainnet.chain.robinhood.com";
-const API_BASE = import.meta.env.VITE_BACKEND_URL || "https://privatum-backend.onrender.com";
+// Canonical co-signer origin, matching DEFAULT_API_URL in the SDK. The previous
+// fallback pointed at a Render host that no longer serves the API, and
+// VITE_BACKEND_URL is not set in the deployed environment, so the fallback is
+// what production actually uses.
+const API_BASE = import.meta.env.VITE_BACKEND_URL || "https://api.privatumrh.com";
 
 // Minimal ERC20 ABI for transfer(address,uint256)
 const ERC20_TRANSFER_SELECTOR = "0xa9059cbb";

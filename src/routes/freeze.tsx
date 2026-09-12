@@ -19,7 +19,11 @@ export const Route = createFileRoute("/freeze")({
   }),
 });
 
-const API_BASE = import.meta.env.VITE_BACKEND_URL || "https://privatum-backend.onrender.com";
+// Canonical co-signer origin, matching DEFAULT_API_URL in the SDK. The previous
+// fallback pointed at a Render host that no longer serves the API, and
+// VITE_BACKEND_URL is not set in the deployed environment, so the fallback is
+// what production actually uses.
+const API_BASE = import.meta.env.VITE_BACKEND_URL || "https://api.privatumrh.com";
 
 const DURATIONS: { label: string; hours: number | null }[] = [
   { label: "1 hour", hours: 1 },
