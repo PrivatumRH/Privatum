@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "PRIVATUM",
+    "slug": "privatum-mobile",
+    "version": "0.1.13",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "userInterfaceStyle": "dark",
+      "splash": {
+        "image": "./assets/logo.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#000000"
+      },
+      "bundleIdentifier": "com.privatum.mobile"
+    },
+    "android": {
+      "userInterfaceStyle": "dark",
+      "splash": {
+        "image": "./assets/logo.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#000000"
+      },
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#000000"
+      },
+      "package": "com.privatum.mobile"
+    },
+    "web": {
+      "favicon": "./assets/icon.png"
+    }
+  }
+}

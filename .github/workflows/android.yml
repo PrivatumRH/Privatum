@@ -1,0 +1,73 @@
+name: Build Android APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and Package Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.4
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Mobile Dependencies
+        run: |
+          cd android
+          bun install --frozen-lockfile
+
+      - name: Run Expo Prebuild
+        run: |
+          cd android
+          npx expo prebuild --platform android --no-install
+
+      - name: Build Android Release APK
+        run: |
+          cd android/android
+          ./gradlew assembleRelease
+
+      - name: Locate and Rename APK
+        run: |
+          mkdir -p build-artifacts
+          cp android/android/app/build/outputs/apk/release/app-release.apk build-artifacts/privatum-mobile.apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: privatum-mobile-apk
+          path: build-artifacts/privatum-mobile.apk
+          if-no-files-found: error
+
+      - name: Attach APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          files: build-artifacts/privatum-mobile.apk
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
