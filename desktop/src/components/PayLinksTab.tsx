@@ -40,9 +40,9 @@ export function PayLinksTab({ wallet, addToast, onBalanceRefresh }: PayLinksTabP
   const [submitting, setSubmitting] = useState(false);
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
 
-  // QR Modal
-  const [qrModalLink, setQrModalLink] = useState<UserPayLinkItem | null>(null);
-  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  // Inline QR preview (v0.1.17) - rendered in the row, no separate modal
+  const [expandedQrSlug, setExpandedQrSlug] = useState<string | null>(null);
+  const [qrCache, setQrCache] = useState<Record<string, string>>({});
 
   // Form states
   const [tokenSymbol, setTokenSymbol] = useState<"USDG" | "ETH" | "PRIV">("USDG");
@@ -103,6 +103,10 @@ export function PayLinksTab({ wallet, addToast, onBalanceRefresh }: PayLinksTabP
       setMemo("");
       setIsFlexible(false);
       await fetchPaylinks();
+
+      // Surface the new link's QR inline straight away (v0.1.17)
+      setExpandedQrSlug(res.slug);
+      await ensureQr(res.slug);
     } catch (err: any) {
       addToast("error", "Creation Failed", err.message || "Could not generate payment link.");
     } finally {
@@ -118,19 +122,28 @@ export function PayLinksTab({ wallet, addToast, onBalanceRefresh }: PayLinksTabP
     setTimeout(() => setCopiedSlug(null), 2000);
   };
 
-  const handleOpenQr = async (link: UserPayLinkItem) => {
-    setQrModalLink(link);
-    const url = `https://privatumrh.com/pay/${link.slug}`;
+  const ensureQr = useCallback(async (slug: string) => {
+    if (qrCache[slug]) return;
+    const url = `https://privatumrh.com/pay/${slug}`;
     try {
       const dataUrl = await QRCode.toDataURL(url, {
         width: 240,
         margin: 1,
         color: { dark: "#0e121b", light: "#ffffff" },
       });
-      setQrDataUrl(dataUrl);
-    } catch {
-      setQrDataUrl("");
+      setQrCache((prev) => ({ ...prev, [slug]: dataUrl }));
+    } catch (err) {
+      console.error("Failed to render pay link QR:", err);
     }
+  }, [qrCache]);
+
+  const handleToggleQr = async (link: UserPayLinkItem) => {
+    if (expandedQrSlug === link.slug) {
+      setExpandedQrSlug(null);
+      return;
+    }
+    setExpandedQrSlug(link.slug);
+    await ensureQr(link.slug);
   };
 
   const handleCheckSweep = async (slug: string) => {
@@ -215,7 +228,8 @@ export function PayLinksTab({ wallet, addToast, onBalanceRefresh }: PayLinksTabP
         ) : (
           <div className="divide-y divide-[#1e293b]">
             {activeLinks.map((link) => (
-              <div key={link.slug} className="py-4 first:pt-0 last:pb-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div key={link.slug} className="py-4 first:pt-0 last:pb-0">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1 min-w-0">
                   <div className="flex items-center gap-3">
                     <span className="font-semibold text-sm text-white">
@@ -259,9 +273,13 @@ export function PayLinksTab({ wallet, addToast, onBalanceRefresh }: PayLinksTabP
                   </button>
 
                   <button
-                    onClick={() => handleOpenQr(link)}
-                    className="p-1.5 rounded-lg bg-[#1e293b] text-slate-300 hover:text-white hover:bg-[#283548] transition-colors"
-                    title="View QR Code"
+                    onClick={() => handleToggleQr(link)}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      expandedQrSlug === link.slug
+                        ? "bg-white text-[#0e121b]"
+                        : "bg-[#1e293b] text-slate-300 hover:text-white hover:bg-[#283548]"
+                    }`}
+                    title={expandedQrSlug === link.slug ? "Hide QR Code" : "Show QR Code"}
                   >
                     <QrCode className="w-4 h-4" />
                   </button>
@@ -284,6 +302,63 @@ export function PayLinksTab({ wallet, addToast, onBalanceRefresh }: PayLinksTabP
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
+              </div>
+
+              {/* Inline QR preview */}
+              {expandedQrSlug === link.slug && (
+                <div className="mt-4 rounded-xl bg-[#0e121b] border border-[#1e293b] p-4 flex flex-col sm:flex-row items-center gap-4">
+                  <div className="bg-white rounded-xl p-2.5 shrink-0">
+                    {qrCache[link.slug] ? (
+                      <img
+                        src={qrCache[link.slug]}
+                        alt={`QR code for pay link ${link.slug}`}
+                        className="w-36 h-36 block"
+                      />
+                    ) : (
+                      <div className="w-36 h-36 flex items-center justify-center">
+                        <RefreshCw className="w-5 h-5 text-slate-400 animate-spin" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1 text-center sm:text-left space-y-2">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">
+                        Scan to pay
+                      </div>
+                      <div className="text-sm font-semibold text-white">
+                        {link.expected_amount
+                          ? `${Number(link.expected_amount)} ${link.token_symbol}`
+                          : `Flexible (${link.token_symbol})`}
+                      </div>
+                      {link.memo && (
+                        <p className="text-xs text-slate-400 mt-0.5 break-words">{link.memo}</p>
+                      )}
+                    </div>
+
+                    <div className="font-mono text-[11px] text-slate-400 break-all">
+                      https://privatumrh.com/pay/{link.slug}
+                    </div>
+
+                    <button
+                      onClick={() => handleCopyLink(link.slug)}
+                      className="px-3 py-1.5 rounded-lg bg-[#1e293b] text-slate-300 text-xs hover:text-white hover:bg-[#283548] transition-colors inline-flex items-center gap-1.5"
+                    >
+                      {copiedSlug === link.slug ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy Link</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
               </div>
             ))}
           </div>
@@ -494,41 +569,6 @@ export function PayLinksTab({ wallet, addToast, onBalanceRefresh }: PayLinksTabP
                 {submitting ? "Generating Link..." : "Generate Disposable Link"}
               </button>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* QR Code Modal */}
-      {qrModalLink && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#131926] border border-[#1e293b] rounded-2xl w-full max-w-sm p-6 text-center space-y-4 relative">
-            <button
-              onClick={() => setQrModalLink(null)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-sm font-bold text-white tracking-tight">
-              {qrModalLink.memo || "Payment QR Code"}
-            </h3>
-
-            {qrDataUrl && (
-              <div className="p-3 bg-white rounded-xl mx-auto inline-block">
-                <img src={qrDataUrl} alt="QR Code" className="w-48 h-48 block" />
-              </div>
-            )}
-
-            <p className="text-xs text-slate-400 font-mono break-all">
-              https://privatumrh.com/pay/{qrModalLink.slug}
-            </p>
-
-            <button
-              onClick={() => handleCopyLink(qrModalLink.slug)}
-              className="w-full py-2.5 rounded-xl bg-white text-slate-900 text-xs font-semibold hover:bg-slate-200 transition-colors cursor-pointer"
-            >
-              Copy Payment URL
-            </button>
           </div>
         </div>
       )}
