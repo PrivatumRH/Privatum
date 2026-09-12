@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version tag (e.g. v0.1.1, v0.1.6, v0.1.9, v0.1.10, v0.1.11, v0.1.12)'
+        description: 'Release version tag (e.g. v0.1.1, v0.1.6, v0.1.9, v0.1.10, v0.1.11, v0.1.12, v0.1.13)'
         required: true
-        default: 'v0.1.12'
+        default: 'v0.1.13'
       release_title:
         description: 'Release Title'
         required: false
