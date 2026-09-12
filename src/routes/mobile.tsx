@@ -28,7 +28,7 @@ export const Route = createFileRoute("/mobile")({
 });
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL || "https://api.privatumrh.com";
-const FALLBACK_APK_URL = "https://github.com/PrivatumRH/privatum/releases/latest/download/privatum-mobile.apk";
+const FALLBACK_APK_URL = `${API_BASE}/v1/downloads/android`;
 
 interface MobileReleaseInfo {
   version: string;
@@ -64,9 +64,9 @@ const CORE_CAPABILITIES = [
     desc: "Encrypted local address book with look-alike character spoofing detection to protect against copycat addresses.",
   },
   {
-    icon: Link2,
+    icon: RefreshCw,
     title: "Disposable Pay Links",
-    desc: "Generate single-use payment URLs for invoices or peer requests that auto-sweep funds directly into your smart account.",
+    desc: "Generate single-use payment links. Payers send to ephemeral burner addresses that auto-sweep into your smart account.",
   },
   {
     icon: Lock,
@@ -75,16 +75,16 @@ const CORE_CAPABILITIES = [
   },
 ];
 
-const INSTALL_STEPS = [
+const ONBOARDING_STEPS = [
   {
     step: "1",
     title: "Download APK",
-    desc: "Download privatum-mobile.apk directly to your Android phone.",
+    desc: "Download the verified Android package directly from the official PRIVATUM repository.",
   },
   {
     step: "2",
-    title: "Enable Installation",
-    desc: "Allow install from your browser or file manager when prompted.",
+    title: "Install on Device",
+    desc: "Allow installation from browser or files. No Google Play or external app store required.",
   },
   {
     step: "3",
@@ -107,9 +107,8 @@ function MobilePage() {
         if (res.ok && !cancelled) {
           const data: MobileReleaseInfo = await res.json();
           setReleaseInfo(data);
-          if (data.android?.directUrl) {
-            setDownloadUrl(data.android.directUrl);
-          }
+          // Always maintain the clean official endpoint for user-facing links
+          setDownloadUrl(`${API_BASE}/v1/downloads/android`);
         }
       } catch {
         if (!cancelled) {
