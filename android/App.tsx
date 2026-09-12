@@ -25,6 +25,7 @@ import { BlurView } from "expo-blur";
 import {
   Home,
   Shield,
+  ShieldAlert,
   ArrowUpRight,
   ArrowDownLeft,
   Link2,
@@ -65,6 +66,12 @@ import {
   fetchMobilePayLinks,
   checkAndSweepMobilePayLink,
 } from "./src/lib/paylinks";
+import { executeMobileSend } from "./src/lib/execute";
+import {
+  getMobileFreezeState,
+  freezeMobileWallet,
+  unfreezeMobileWallet,
+} from "./src/lib/freeze";
 import { THEME } from "./src/config/theme";
 import {
   saveActiveAccount,
@@ -174,6 +181,13 @@ export default function App() {
   const [poisonWarningAcknowledged, setPoisonWarningAcknowledged] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
+  // Freeze & Panic States
+  const [isWalletFrozen, setIsWalletFrozen] = useState(false);
+  const [isFreezing, setIsFreezing] = useState(false);
+  const [showUnfreezeModal, setShowUnfreezeModal] = useState(false);
+  const [unfreezeCode, setUnfreezeCode] = useState("");
+  const [isUnfreezing, setIsUnfreezing] = useState(false);
+
   // Modals
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [showAddContactModal, setShowAddContactModal] = useState(false);
@@ -197,13 +211,17 @@ export default function App() {
   // Copied indicator
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Refresh live balances from Robinhood Chain RPC
+  // Refresh live balances from Robinhood Chain RPC & freeze state from Co-Signer
   const syncBalances = useCallback(async (addr: string) => {
     if (!addr) return;
     setIsRefreshing(true);
     try {
-      const live = await fetchAllLiveBalances(addr);
+      const [live, freezeInfo] = await Promise.all([
+        fetchAllLiveBalances(addr),
+        getMobileFreezeState(addr),
+      ]);
       setBalances(live);
+      setIsWalletFrozen(freezeInfo.frozen);
     } catch (err) {
       console.warn("Balance sync error:", err);
     } finally {
@@ -222,7 +240,7 @@ export default function App() {
           const shardA = await loadDeviceShard(savedAccount);
           setHasShardA(!!shardA);
 
-          // Load real live balances from Robinhood Chain RPC
+          // Load real live balances from Robinhood Chain RPC and freeze status
           await syncBalances(savedAccount);
 
           // Load real stored transactions
@@ -487,6 +505,17 @@ export default function App() {
   };
 
   const handleConfirmSend = () => {
+    if (!walletAddress) {
+      Alert.alert("No Account", "Please connect or create a smart account first.");
+      return;
+    }
+    if (isWalletFrozen) {
+      Alert.alert(
+        "Wallet Frozen",
+        "Your wallet is currently frozen on the Co-Signer. Outgoing transfers are locked. Please unfreeze before sending."
+      );
+      return;
+    }
     if (!sendRecipient.trim() || !sendAmount || parseFloat(sendAmount) <= 0) {
       Alert.alert("Invalid Input", "Please provide a valid recipient and amount.");
       return;
@@ -509,30 +538,40 @@ export default function App() {
     setShowTotpPrompt(true);
   };
 
-  const handleExecuteSendWithTotp = async () => {
-    if (totpCode.length !== 6) {
-      Alert.alert("Invalid Code", "Please enter your 6-digit authenticator code.");
+  const handleExecuteSend = async () => {
+    if (!walletAddress) {
+      Alert.alert("No Account", "Please connect or create a smart account first.");
+      return;
+    }
+    if (isWalletFrozen) {
+      Alert.alert("Wallet Frozen", "Your wallet is currently frozen. Outgoing transfers are blocked.");
       return;
     }
 
     setIsSending(true);
     setShowTotpPrompt(false);
 
-    setTimeout(async () => {
-      setIsSending(false);
+    try {
+      const result = await executeMobileSend({
+        walletAddress,
+        recipient: sendRecipient,
+        amount: sendAmount,
+        token: sendToken,
+      });
+
       const newTx: LiveTransaction = {
         id: `tx-${Date.now()}`,
         type: "send",
         token: sendToken,
-        amount: parseFloat(sendAmount).toFixed(2),
+        amount: parseFloat(sendAmount).toFixed(4),
         usdValue: estimateUsdValue(sendAmount, sendToken).toFixed(2),
         counterparty: sendRecipient,
         timestamp: Date.now(),
-        hash: `0x${Math.random().toString(16).substring(2, 10)}...${Math.random().toString(16).substring(2, 6)}`,
+        hash: result.txHash,
       };
 
       const newRecord: SpendingRecord = {
-        txHash: newTx.hash,
+        txHash: result.txHash,
         timestamp: Date.now(),
         amount: parseFloat(sendAmount),
         symbol: sendToken,
@@ -549,27 +588,69 @@ export default function App() {
       setSendRecipient("");
       setTotpCode("");
       setPoisonWarningAcknowledged(false);
+      setShowSendModal(false);
+      setActiveTab("home");
 
       // Re-fetch live on-chain balances
       if (walletAddress) {
-        syncBalances(walletAddress);
+        await syncBalances(walletAddress);
       }
 
       Alert.alert(
         "Transfer Broadcasted",
-        `Sent ${newTx.amount} ${newTx.token} on Robinhood Chain.`
+        `Successfully broadcasted transaction on Robinhood Chain!\n\nTx: ${shortenAddress(result.txHash)}`,
+        [
+          { text: "Copy Tx Hash", onPress: () => copyToClipboard("tx-hash", result.txHash) },
+          { text: "Done" },
+        ]
       );
-      setShowSendModal(false);
-      setActiveTab("home");
-    }, 1200);
+    } catch (err: any) {
+      console.error("[send] Failed to broadcast transaction:", err);
+      Alert.alert(
+        "Transfer Failed",
+        err?.message || "Failed to broadcast transaction on Robinhood Chain."
+      );
+    } finally {
+      setIsSending(false);
+    }
   };
 
-  const handlePanicFreeze = () => {
-    setShowPanicModal(false);
-    Alert.alert(
-      "Wallet Frozen",
-      "Local session locked and emergency freeze notification sent to Co-Signer. Shard B is now locked against outgoing transfers."
-    );
+  const handlePanicFreeze = async () => {
+    if (!walletAddress) return;
+    setIsFreezing(true);
+    try {
+      await freezeMobileWallet(walletAddress, 24);
+      setIsWalletFrozen(true);
+      setShowPanicModal(false);
+      Alert.alert(
+        "Wallet Frozen",
+        "Emergency freeze activated on Co-Signer. Shard B is locked against outgoing transfers."
+      );
+    } catch (err: any) {
+      Alert.alert("Freeze Error", err?.message || "Failed to activate emergency freeze on Co-Signer.");
+    } finally {
+      setIsFreezing(false);
+    }
+  };
+
+  const handleUnfreeze = async () => {
+    if (!walletAddress) return;
+    if (!unfreezeCode || unfreezeCode.trim().length !== 6) {
+      Alert.alert("Invalid Code", "Please enter your 6-digit authenticator code.");
+      return;
+    }
+    setIsUnfreezing(true);
+    try {
+      await unfreezeMobileWallet(walletAddress, unfreezeCode.trim());
+      setIsWalletFrozen(false);
+      setShowUnfreezeModal(false);
+      setUnfreezeCode("");
+      Alert.alert("Wallet Unfrozen", "Emergency freeze lifted. Transfers are now permitted.");
+    } catch (err: any) {
+      Alert.alert("Unfreeze Error", err?.message || "Failed to unfreeze wallet.");
+    } finally {
+      setIsUnfreezing(false);
+    }
   };
 
   if (isAccountLoading) {
@@ -710,7 +791,37 @@ export default function App() {
             <ScrollView
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={async () => {
+                    if (walletAddress) {
+                      await syncBalances(walletAddress);
+                    }
+                  }}
+                  tintColor={THEME.colors.accent}
+                />
+              }
             >
+              {/* Emergency Frozen Banner */}
+              {isWalletFrozen && (
+                <View style={styles.frozenBanner}>
+                  <View style={styles.frozenBannerHeader}>
+                    <ShieldAlert size={16} color={THEME.colors.danger} />
+                    <Text style={styles.frozenBannerTitle}>Account Frozen</Text>
+                  </View>
+                  <Text style={styles.frozenBannerText}>
+                    Co-Signer Shard B is locked against outgoing transfers. Tap below to lift freeze.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.frozenBannerBtn}
+                    onPress={() => setShowUnfreezeModal(true)}
+                  >
+                    <Text style={styles.frozenBannerBtnText}>Unfreeze Wallet</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
               {/* Net Worth Card */}
               <View style={styles.balanceCard}>
                 <View style={styles.balanceHeaderRow}>
@@ -1466,21 +1577,35 @@ export default function App() {
                     <>
                       <Text style={styles.screenHeading}>Security & Panic Controls</Text>
                       <Text style={styles.screenSubheading}>
-                        Account freeze, biometric authorization, and panic protection
+                        Account freeze, panic locks, and Co-Signer protection
                       </Text>
 
                       <View style={styles.card}>
-                        <Text style={styles.cardHeaderTitle}>Emergency Lock</Text>
-                        <Text style={styles.cardDescription}>
-                          Immediately lock transfers and secure your wallet against unauthorized access.
+                        <Text style={styles.cardHeaderTitle}>
+                          {isWalletFrozen ? "Account Currently Frozen" : "Emergency Panic Freeze"}
                         </Text>
-                        <TouchableOpacity
-                          style={styles.dangerButton}
-                          onPress={() => setShowPanicModal(true)}
-                        >
-                          <Lock size={14} color="#ffffff" />
-                          <Text style={styles.dangerButtonText}>Lock Wallet Now</Text>
-                        </TouchableOpacity>
+                        <Text style={styles.cardDescription}>
+                          {isWalletFrozen
+                            ? "Shard B on the Co-Signer backend is currently locked against outgoing transfers."
+                            : "Immediately locks Shard B on the Co-Signer against all outgoing transfers on Robinhood Chain."}
+                        </Text>
+                        {isWalletFrozen ? (
+                          <TouchableOpacity
+                            style={styles.primaryButton}
+                            onPress={() => setShowUnfreezeModal(true)}
+                          >
+                            <Shield size={14} color="#ffffff" />
+                            <Text style={styles.primaryButtonText}>Unfreeze Wallet</Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity
+                            style={styles.dangerButton}
+                            onPress={() => setShowPanicModal(true)}
+                          >
+                            <Lock size={14} color="#ffffff" />
+                            <Text style={styles.dangerButtonText}>Freeze Wallet Now</Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     </>
                   )}
@@ -1974,15 +2099,17 @@ export default function App() {
                 <TouchableOpacity
                   style={[
                     styles.primaryButton,
-                    (!sendRecipient || !sendAmount || isSending) && styles.buttonDisabled,
+                    (!sendRecipient || !sendAmount || isSending || isWalletFrozen) && styles.buttonDisabled,
                   ]}
-                  disabled={!sendRecipient || !sendAmount || isSending}
+                  disabled={!sendRecipient || !sendAmount || isSending || isWalletFrozen}
                   onPress={handleConfirmSend}
                 >
                   {isSending ? (
-                    <ActivityIndicator size="small" color="#000000" />
+                    <ActivityIndicator size="small" color="#ffffff" />
                   ) : (
-                    <Text style={styles.primaryButtonText}>Authorize Transfer</Text>
+                    <Text style={styles.primaryButtonText}>
+                      {isWalletFrozen ? "Wallet is Frozen" : "Authorize Transfer"}
+                    </Text>
                   )}
                 </TouchableOpacity>
               </ScrollView>
@@ -2242,7 +2369,7 @@ export default function App() {
           </View>
         </Modal>
 
-        {/* MODAL: TOTP 2FA Authentication */}
+        {/* MODAL: Confirm & Broadcast Transfer */}
         <Modal
           visible={showTotpPrompt}
           transparent
@@ -2252,31 +2379,55 @@ export default function App() {
           <View style={styles.modalBackdrop}>
             <View style={styles.modalCard}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Authenticator Code</Text>
+                <Text style={styles.modalTitle}>Confirm Transfer</Text>
                 <TouchableOpacity onPress={() => setShowTotpPrompt(false)}>
                   <X size={18} color="#ffffff" />
                 </TouchableOpacity>
               </View>
 
               <Text style={styles.modalSubtitle}>
-                Enter the 6-digit code from your authenticator app to authorize Shard B co-signing.
+                Review details before signing with your device shard and broadcasting to Robinhood Chain.
               </Text>
 
-              <TextInput
-                style={[styles.textInput, { textAlign: "center", fontSize: 24, letterSpacing: 8 }]}
-                placeholder="000000"
-                placeholderTextColor={THEME.colors.textDim}
-                keyboardType="number-pad"
-                maxLength={6}
-                value={totpCode}
-                onChangeText={setTotpCode}
-              />
+              <View style={styles.confirmTransferCard}>
+                <View style={styles.confirmTransferRow}>
+                  <Text style={styles.confirmTransferLabel}>Amount</Text>
+                  <Text style={styles.confirmTransferValue}>
+                    {sendAmount} {sendToken} (~${estimateUsdValue(sendAmount, sendToken).toFixed(2)} USD)
+                  </Text>
+                </View>
+                <View style={styles.confirmTransferRow}>
+                  <Text style={styles.confirmTransferLabel}>Recipient</Text>
+                  <Text style={styles.confirmTransferValueMono}>
+                    {shortenAddress(sendRecipient)}
+                  </Text>
+                </View>
+                {matchedContact ? (
+                  <View style={styles.confirmTransferRow}>
+                    <Text style={styles.confirmTransferLabel}>Contact</Text>
+                    <Text style={styles.confirmTransferValue}>{matchedContact.name}</Text>
+                  </View>
+                ) : null}
+                <View style={styles.confirmTransferRow}>
+                  <Text style={styles.confirmTransferLabel}>Network</Text>
+                  <Text style={styles.confirmTransferValue}>Robinhood Chain</Text>
+                </View>
+                <View style={styles.confirmTransferRow}>
+                  <Text style={styles.confirmTransferLabel}>Key Shard</Text>
+                  <Text style={styles.confirmTransferValue}>Device Key (Shard A)</Text>
+                </View>
+              </View>
 
               <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={handleExecuteSendWithTotp}
+                style={[styles.primaryButton, isSending && styles.buttonDisabled]}
+                onPress={handleExecuteSend}
+                disabled={isSending}
               >
-                <Text style={styles.primaryButtonText}>Verify & Send</Text>
+                {isSending ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Sign & Broadcast</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -2299,14 +2450,64 @@ export default function App() {
               </View>
 
               <Text style={styles.modalSubtitle}>
-                Are you sure you want to freeze this wallet? All outgoing transfers will be blocked until unfrozen via your recovery key.
+                Are you sure you want to freeze this wallet? Shard B on the Co-Signer will immediately lock against all outgoing transfers.
               </Text>
 
               <TouchableOpacity
-                style={styles.dangerButton}
+                style={[styles.dangerButton, isFreezing && styles.buttonDisabled]}
                 onPress={handlePanicFreeze}
+                disabled={isFreezing}
               >
-                <Text style={styles.dangerButtonText}>Yes, Freeze Outgoing Transfers</Text>
+                {isFreezing ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.dangerButtonText}>Yes, Freeze Outgoing Transfers</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* MODAL: Unfreeze Account */}
+        <Modal
+          visible={showUnfreezeModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowUnfreezeModal(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Unfreeze Account</Text>
+                <TouchableOpacity onPress={() => setShowUnfreezeModal(false)}>
+                  <X size={18} color="#ffffff" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalSubtitle}>
+                Enter the 6-digit code from your authenticator app to lift the emergency freeze on the Co-Signer.
+              </Text>
+
+              <TextInput
+                style={[styles.textInput, { textAlign: "center", fontSize: 24, letterSpacing: 8 }]}
+                placeholder="000000"
+                placeholderTextColor={THEME.colors.textDim}
+                keyboardType="number-pad"
+                maxLength={6}
+                value={unfreezeCode}
+                onChangeText={setUnfreezeCode}
+              />
+
+              <TouchableOpacity
+                style={[styles.primaryButton, isUnfreezing && styles.buttonDisabled]}
+                onPress={handleUnfreeze}
+                disabled={isUnfreezing}
+              >
+                {isUnfreezing ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Unlock Wallet</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -3710,5 +3911,70 @@ const styles = StyleSheet.create({
   dangerCardBorder: {
     borderColor: "rgba(244, 63, 94, 0.3)",
     marginTop: 12,
+  },
+  frozenBanner: {
+    backgroundColor: "rgba(245, 72, 66, 0.08)",
+    borderColor: "rgba(245, 72, 66, 0.35)",
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+  },
+  frozenBannerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 6,
+  },
+  frozenBannerTitle: {
+    color: "#f54842",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  frozenBannerText: {
+    color: THEME.colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 10,
+  },
+  frozenBannerBtn: {
+    backgroundColor: "#f54842",
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    alignSelf: "flex-start",
+  },
+  frozenBannerBtnText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  confirmTransferCard: {
+    backgroundColor: THEME.colors.surface,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+  },
+  confirmTransferRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 6,
+  },
+  confirmTransferLabel: {
+    color: THEME.colors.textSecondary,
+    fontSize: 12,
+  },
+  confirmTransferValue: {
+    color: THEME.colors.textPrimary,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  confirmTransferValueMono: {
+    color: THEME.colors.textPrimary,
+    fontSize: 12,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
 });
