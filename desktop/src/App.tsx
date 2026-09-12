@@ -115,6 +115,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.14": "Portfolio Sparkline & 24h PnL",
   "0.1.15": "Signed Transaction Receipts",
   "0.1.16": "Recent Contacts Quick Send",
+  "0.1.17": "AI Inference Receipts",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
