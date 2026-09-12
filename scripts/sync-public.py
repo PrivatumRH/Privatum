@@ -6,6 +6,9 @@ Syncs the local `master` branch to the public Open Source repository (PrivatumRH
 while rewriting all commit authors & committers to:
   PrivatumRH <dbantifun@gmail.com>
 
+Commit messages are also scrubbed of AI-assistant attribution trailers so the
+public mirror carries only the project's own authorship.
+
 Keeps the primary `origin` (notadeveloper7/privatum) untouched for Lovable compatibility.
 """
 
@@ -19,6 +22,35 @@ REMOTE_PUBLIC = "origin-public"
 TARGET_BRANCH = "master"
 LOCAL_EXPORT_REF = "public-master"
 
+# Attribution trailers stripped from every commit message in the public mirror.
+DROP_LINE_PREFIXES = (
+    b"co-authored-by: claude",
+    b"claude-session:",
+)
+DROP_LINE_SUBSTRINGS = (
+    b"generated with [claude code]",
+    b"claude.ai/code/session",
+)
+
+
+def is_attribution_line(line):
+    """True when a commit-message line is AI-assistant attribution."""
+    probe = line.strip().lower()
+    if not probe:
+        return False
+    if probe.startswith(DROP_LINE_PREFIXES):
+        return True
+    return any(frag in probe for frag in DROP_LINE_SUBSTRINGS)
+
+
+def scrub_message(msg):
+    """Removes attribution trailers and any blank lines they leave behind."""
+    kept = [line for line in msg.split(b"\n") if not is_attribution_line(line)]
+    while kept and not kept[-1].strip():
+        kept.pop()
+    return b"\n".join(kept) + b"\n"
+
+
 def main():
     print(f"[1/3] Exporting and rewriting commit history for {PUBLIC_AUTHOR_NAME} <{PUBLIC_AUTHOR_EMAIL}>...")
 
@@ -30,6 +62,10 @@ def main():
     out = p2.stdin
 
     target_header = f"{PUBLIC_AUTHOR_NAME} <{PUBLIC_AUTHOR_EMAIL}>".encode("utf-8")
+
+    # Set once a commit/tag header is seen, so the *next* data block is known to
+    # be a message rather than a file blob.
+    next_data_is_message = False
 
     while True:
         line = inp.readline()
@@ -46,11 +82,13 @@ def main():
             tz = parts[-1]
             t = parts[-2]
             out.write(b"committer " + target_header + b" " + t + b" " + tz + b"\n")
+            next_data_is_message = True
         elif line.startswith(b"tagger "):
             parts = line.rstrip(b"\r\n").split(b" ")
             tz = parts[-1]
             t = parts[-2]
             out.write(b"tagger " + target_header + b" " + t + b" " + tz + b"\n")
+            next_data_is_message = True
         elif line.startswith(f"reset refs/heads/{TARGET_BRANCH}".encode("utf-8")):
             out.write(f"reset refs/heads/{LOCAL_EXPORT_REF}\n".encode("utf-8"))
         elif line.startswith(f"commit refs/heads/{TARGET_BRANCH}".encode("utf-8")):
@@ -67,8 +105,15 @@ def main():
             out.write(line)
         elif line.startswith(b"data "):
             count = int(line.split(b" ")[1])
-            out.write(line)
             blob = inp.read(count)
+            if next_data_is_message:
+                # Commit/tag message: scrub attribution and restate the length.
+                blob = scrub_message(blob)
+                out.write(b"data " + str(len(blob)).encode("ascii") + b"\n")
+                next_data_is_message = False
+            else:
+                # File blob: pass through byte-exact.
+                out.write(line)
             out.write(blob)
         else:
             out.write(line)
@@ -93,6 +138,7 @@ def main():
     else:
         print(f"\nError: Push to {REMOTE_PUBLIC} failed with exit code {res.returncode}", file=sys.stderr)
         sys.exit(res.returncode)
+
 
 if __name__ == "__main__":
     main()
