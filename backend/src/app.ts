@@ -9,6 +9,7 @@ import { downloadsRouter } from "./routes/downloads";
 import { updatesRouter } from "./routes/updates";
 import { stakingRouter } from "./routes/staking";
 import { bridgeRouter } from "./routes/bridge";
+import { freezeRouter } from "./routes/freeze";
 import { paylinksRouter } from "./routes/paylinks";
 
 export function createApp(): Express {
@@ -35,6 +36,7 @@ export function createApp(): Express {
   app.use(updatesRouter);
   app.use(stakingRouter);
   app.use(bridgeRouter);
+  app.use(freezeRouter);
   app.use("/v1/paylinks", paylinksRouter);
 
   return app;

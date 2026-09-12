@@ -80,6 +80,17 @@ function getCodeForCounter(secret: Buffer, counter: number): string {
 }
 
 /**
+ * The code an authenticator app would be showing right now.
+ *
+ * Exported so callers that must produce a code rather than check one - the
+ * freeze test suite, chiefly - do not reimplement HOTP beside the real thing
+ * and drift away from it.
+ */
+export function generateTotpCode(secret: Buffer): string {
+  return getCodeForCounter(secret, Math.floor(Date.now() / 1000 / 30));
+}
+
+/**
  * Verify a 6-digit TOTP code against a secret with +/- 1 window drift tolerance.
  */
 export function verifyTotp(secret: Buffer, code: string): boolean {
