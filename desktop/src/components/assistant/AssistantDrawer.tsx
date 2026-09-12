@@ -25,6 +25,13 @@ interface AssistantDrawerProps {
   onApplyIntent: (intent: ParsedIntent) => void;
 }
 
+const DEFAULT_SUGGESTION_PROMPTS = [
+  "Send 10 USDG to Alice",
+  "Freeze wallet for 24h",
+  "What are my spending limits?",
+  "Create paylink for 20 USDG",
+];
+
 export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
   isOpen,
   onClose,
@@ -49,6 +56,8 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
   const [engineMode, setEngineMode] = useState<EngineMode>("deterministic");
   const [wasmProgress, setWasmProgress] = useState<ModelLoadingProgress>(smolLm2Engine.getStatus());
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>(DEFAULT_SUGGESTION_PROMPTS);
+  const [dismissedIntentIds, setDismissedIntentIds] = useState<Set<string>>(new Set());
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -74,6 +83,22 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleDismissPrompt = (chip: string) => {
+    setSuggestedPrompts((prev) => prev.filter((p) => p !== chip));
+  };
+
+  const handleDismissIntent = (msgId: string) => {
+    setDismissedIntentIds((prev) => {
+      const next = new Set(prev);
+      next.add(msgId);
+      return next;
+    });
+  };
+
+  const handleDismissMessage = (id: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== id));
   };
 
   const handleSend = async (textToSend?: string) => {
@@ -198,36 +223,57 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
                 <div className="relative group max-w-[90%] rounded-xl p-3 text-xs leading-relaxed bg-[#161616] text-white/90 border border-white/10">
                   <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-white/5">
                     <span className="text-[10px] text-white/40 font-mono">Privatum</span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(msg.id, msg.content)}
-                      className="flex items-center gap-1 text-[10px] text-white/40 hover:text-white transition-colors px-1.5 py-0.5 rounded hover:bg-white/5"
-                      title="Copy answer"
-                    >
-                      {copiedId === msg.id ? (
-                        <>
-                          <Check className="w-3 h-3 text-emerald-400" />
-                          <span className="text-emerald-400">Copied</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3 h-3" />
-                          <span>Copy</span>
-                        </>
-                      )}
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(msg.id, msg.content)}
+                        className="flex items-center gap-1 text-[10px] text-white/40 hover:text-white transition-colors px-1.5 py-0.5 rounded hover:bg-white/5"
+                        title="Copy answer"
+                      >
+                        {copiedId === msg.id ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-400" />
+                            <span className="text-emerald-400">Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDismissMessage(msg.id)}
+                        className="flex items-center gap-1 text-[10px] text-white/40 hover:text-white transition-colors px-1.5 py-0.5 rounded hover:bg-white/5"
+                        title="Dismiss answer"
+                        aria-label="Dismiss answer"
+                      >
+                        <X className="w-3 h-3" />
+                        <span>Dismiss</span>
+                      </button>
+                    </div>
                   </div>
                   <div className="text-xs leading-relaxed break-words space-y-2 [&_p]:leading-relaxed [&_ul]:list-disc [&_ul]:ml-4 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:ml-4 [&_ol]:space-y-1 [&_li]:leading-normal [&_strong]:text-white [&_strong]:font-semibold [&_code]:bg-white/10 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:font-mono [&_code]:text-[11px] [&_pre]:bg-black/60 [&_pre]:p-2.5 [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-white/10 [&_pre]:overflow-x-auto">
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
                 </div>
               ) : (
-                <div className="max-w-[85%] rounded-xl p-3 text-xs leading-relaxed bg-white text-black font-medium">
-                  {msg.content}
+                <div className="group relative max-w-[85%] rounded-xl p-3 text-xs leading-relaxed bg-white text-black font-medium flex items-start gap-2">
+                  <span className="flex-1">{msg.content}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleDismissMessage(msg.id)}
+                    className="opacity-0 group-hover:opacity-100 p-0.5 text-black/40 hover:text-black transition-opacity rounded"
+                    title="Dismiss message"
+                    aria-label="Dismiss message"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
                 </div>
               )}
 
-              {msg.intent && msg.intent.type !== "general_query" && (
+              {msg.intent && msg.intent.type !== "general_query" && !dismissedIntentIds.has(msg.id) && (
                 <div className="w-full max-w-[90%]">
                   <IntentProposalCard
                     intent={msg.intent}
@@ -236,6 +282,7 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
                       onApplyIntent(it);
                       onClose();
                     }}
+                    onDismiss={() => handleDismissIntent(msg.id)}
                   />
                 </div>
               )}
@@ -252,23 +299,55 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
         </div>
 
         {/* Quick Suggestion Chips */}
-        <div className="px-4 py-2 border-t border-white/5 flex gap-1.5 overflow-x-auto no-scrollbar">
-          {[
-            "Send 10 USDG to Alice",
-            "Freeze wallet for 24h",
-            "What are my spending limits?",
-            "Create paylink for 20 USDG",
-          ].map((chip) => (
+        {suggestedPrompts.length > 0 && (
+          <div className="px-4 py-2 border-t border-white/5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {suggestedPrompts.map((chip) => (
+              <div
+                key={chip}
+                className="group inline-flex items-center bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white rounded-full border border-white/10 transition-colors shrink-0 overflow-hidden"
+              >
+                <button
+                  type="button"
+                  onClick={() => handleSend(chip)}
+                  className="text-[11px] whitespace-nowrap pl-2.5 pr-1.5 py-1 text-left"
+                >
+                  {chip}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDismissPrompt(chip);
+                  }}
+                  className="p-1 pr-2 text-white/30 hover:text-white hover:bg-white/10 transition-colors"
+                  title={`Dismiss "${chip}"`}
+                  aria-label={`Dismiss prompt: ${chip}`}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
             <button
-              key={chip}
               type="button"
-              onClick={() => handleSend(chip)}
-              className="text-[11px] whitespace-nowrap bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white px-2.5 py-1 rounded-full border border-white/10 transition-colors"
+              onClick={() => setSuggestedPrompts([])}
+              className="text-[10px] text-white/30 hover:text-white/70 px-1.5 py-1 whitespace-nowrap transition-colors"
+              title="Dismiss all prompt suggestions"
             >
-              {chip}
+              Dismiss all
             </button>
-          ))}
-        </div>
+          </div>
+        )}
+        {suggestedPrompts.length === 0 && (
+          <div className="px-4 py-1.5 border-t border-white/5 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setSuggestedPrompts(DEFAULT_SUGGESTION_PROMPTS)}
+              className="text-[10px] text-white/30 hover:text-white/60 transition-colors"
+            >
+              Restore prompt suggestions
+            </button>
+          </div>
+        )}
 
         {/* Input Bar */}
         <div className="p-3 border-t border-white/10 bg-[#121212]">
