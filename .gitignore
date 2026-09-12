@@ -49,3 +49,7 @@ DUAL_REPO_SYNC.md
 # Android (Expo / React Native)
 android/android/
 android/.expo/
+
+# Scratch images / screenshots
+image.png
+*.png.bak
