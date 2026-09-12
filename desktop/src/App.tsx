@@ -63,6 +63,7 @@ import { PayLinksTab } from "./components/PayLinksTab";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { StealthScannerModal } from "./components/StealthScannerModal";
 import { ContactsModal } from "./components/ContactsModal";
+import { AssistantWidget } from "./components/assistant/AssistantWidget";
 import {
   loadContacts,
   findContactByAddress,
@@ -3895,6 +3896,37 @@ export function App() {
           openSendModal();
         }}
         addToast={addToast}
+      />
+
+      {/* Privatum Assistant Widget (V2 On-Device AI) */}
+      <AssistantWidget
+        walletAddress={wallet?.address || walletAddress || accounts[0]?.address}
+        contacts={contacts}
+        guardrailConfig={guardrailConfig}
+        spendingHistory={guardrailHistory}
+        transactionHistory={transactions.map((t) => ({
+          type: t.type,
+          counterparty: t.counterparty,
+          amount: t.amount,
+          asset: t.asset,
+        }))}
+        onApplyIntent={(intent) => {
+          if (intent.type === "send_transfer") {
+            setSendRecipient(intent.recipient);
+            setSendAmount(intent.amount);
+            setSendAssetType(intent.asset);
+            setIsStealthSend(intent.isStealth);
+            openSendModal(intent.asset);
+          } else if (intent.type === "create_paylink") {
+            setActiveTab("pay_links");
+          } else if (intent.type === "panic_freeze" || intent.type === "unfreeze_wallet") {
+            setActiveTab("recovery");
+          } else if (intent.type === "view_contacts") {
+            setShowContactsModal(true);
+          } else if (intent.type === "view_guardrails") {
+            setActiveTab("wallet");
+          }
+        }}
       />
     </div>
   );
