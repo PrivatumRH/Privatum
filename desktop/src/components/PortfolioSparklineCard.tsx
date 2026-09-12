@@ -1,423 +1,375 @@
-import React, { useState, useMemo } from "react";
-import {
-  TrendingUp,
-  ShieldCheck,
-  Zap,
-  ArrowUpRight,
-  ArrowDownLeft,
-  ArrowLeftRight,
-  Sparkles,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { ArrowUpRight, ArrowDownLeft, ArrowLeftRight } from "lucide-react";
 
 interface PortfolioSparklineCardProps {
   totalUsdValue: number;
   usdgBalance: string;
   ethBalance: string;
   ethPrice: number;
-  walletAddress?: string;
-  isGaslessActive?: boolean;
+  eth24hChange?: number;
   onOpenSend?: () => void;
   onOpenReceive?: () => void;
   onOpenSwap?: () => void;
 }
 
-type Timeframe = "24H" | "7D" | "30D" | "1Y";
-
-// Synthetic historical curve generator for smooth visual spline rendering
-const TIMEFRAME_DATA: Record<
-  Timeframe,
-  {
-    points: number[];
-    pnlDelta: number;
-    pnlPercent: number;
-    labels: string[];
-    summary: string;
-  }
-> = {
-  "24H": {
-    points: [2980, 2965, 2990, 2975, 3010, 3045, 3020, 3060, 3095, 3080, 3115, 3142.5],
-    pnlDelta: 142.5,
-    pnlPercent: 4.82,
-    labels: ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "Now"],
-    summary: "+$142.50 (+4.82%) today",
-  },
-  "7D": {
-    points: [2840, 2890, 2860, 2940, 2990, 3050, 3142.5],
-    pnlDelta: 302.5,
-    pnlPercent: 10.65,
-    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Today"],
-    summary: "+$302.50 (+10.65%) 7d",
-  },
-  "30D": {
-    points: [2650, 2710, 2690, 2780, 2850, 2920, 3010, 3142.5],
-    pnlDelta: 492.5,
-    pnlPercent: 18.58,
-    labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
-    summary: "+$492.50 (+18.58%) 30d",
-  },
-  "1Y": {
-    points: [1800, 2100, 2050, 2400, 2600, 2850, 3142.5],
-    pnlDelta: 1342.5,
-    pnlPercent: 74.58,
-    labels: ["Q1", "Q2", "Q3", "Q4"],
-    summary: "+$1,342.50 (+74.58%) 1y",
-  },
-};
+interface PricePoint {
+  time: number;
+  value: number;
+}
 
 export function PortfolioSparklineCard({
   totalUsdValue,
   usdgBalance,
   ethBalance,
   ethPrice,
-  walletAddress,
-  isGaslessActive,
+  eth24hChange = 0,
   onOpenSend,
   onOpenReceive,
   onOpenSwap,
 }: PortfolioSparklineCardProps) {
-  const [timeframe, setTimeframe] = useState<Timeframe>("24H");
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const [usePreviewPortfolio, setUsePreviewPortfolio] = useState<boolean>(() => totalUsdValue <= 0.05);
+  const [historyPoints, setHistoryPoints] = useState<PricePoint[]>([]);
 
-  const activeData = TIMEFRAME_DATA[timeframe];
+  // Fetch real 24h market chart for Ethereum to compute real portfolio historical curve
+  useEffect(() => {
+    let cancelled = false;
 
-  // If user has a real positive balance, scale the curve to their actual portfolio
-  const scaledPoints = useMemo(() => {
-    const raw = activeData.points;
-    if (!usePreviewPortfolio && totalUsdValue > 0) {
-      const lastRaw = raw[raw.length - 1];
-      const scale = totalUsdValue / (lastRaw || 1);
-      return raw.map((v) => Math.round(v * scale * 100) / 100);
+    async function loadChartData() {
+      try {
+        const cachedRaw = localStorage.getItem("privatum_eth_24h_chart");
+        const cachedTime = localStorage.getItem("privatum_eth_24h_chart_time");
+        const now = Date.now();
+
+        // 10-minute cache to respect rate limits
+        if (cachedRaw && cachedTime && now - parseInt(cachedTime, 10) < 600000) {
+          const parsed = JSON.parse(cachedRaw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            if (!cancelled) setHistoryPoints(parsed);
+            return;
+          }
+        }
+
+        const res = await fetch(
+          "https://api.coingecko.com/api/v3/coins/ethereum/market_chart?vs_currency=usd&days=1"
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const json = await res.json();
+        if (Array.isArray(json?.prices) && json.prices.length > 0) {
+          const formatted: PricePoint[] = json.prices.map(([t, p]: [number, number]) => ({
+            time: t,
+            value: p,
+          }));
+          if (!cancelled) {
+            setHistoryPoints(formatted);
+            try {
+              localStorage.setItem("privatum_eth_24h_chart", JSON.stringify(formatted));
+              localStorage.setItem("privatum_eth_24h_chart_time", String(now));
+            } catch {}
+          }
+        }
+      } catch {
+        // If external chart fetch fails, fall back to calculating from real eth24hChange
+        if (!cancelled && ethPrice > 0) {
+          const now = Date.now();
+          const p24Ago = eth24hChange !== 0 ? ethPrice / (1 + eth24hChange / 100) : ethPrice;
+          const syntheticFromRealChange: PricePoint[] = [
+            { time: now - 86400000, value: p24Ago },
+            { time: now - 43200000, value: (p24Ago + ethPrice) / 2 },
+            { time: now, value: ethPrice },
+          ];
+          setHistoryPoints(syntheticFromRealChange);
+        }
+      }
     }
-    return raw;
-  }, [activeData.points, totalUsdValue, usePreviewPortfolio]);
 
-  const displayCurrentVal = useMemo(() => {
-    if (hoverIndex !== null && hoverIndex >= 0 && hoverIndex < scaledPoints.length) {
-      return scaledPoints[hoverIndex];
+    loadChartData();
+    return () => {
+      cancelled = true;
+    };
+  }, [ethPrice, eth24hChange]);
+
+  const usdgNum = parseFloat(usdgBalance) || 0;
+  const ethNum = parseFloat(ethBalance) || 0;
+  const usdgUsd = usdgNum * 1.0;
+  const ethUsd = ethNum * ethPrice;
+
+  // Real portfolio curve: usdgAmount * $1 + ethAmount * ethPriceAtTime
+  const portfolioPoints = useMemo(() => {
+    if (totalUsdValue <= 0 || historyPoints.length === 0) {
+      return [totalUsdValue, totalUsdValue];
     }
-    return usePreviewPortfolio ? 3142.5 : totalUsdValue;
-  }, [hoverIndex, scaledPoints, totalUsdValue, usePreviewPortfolio]);
+    return historyPoints.map((pt) => {
+      const val = usdgUsd + ethNum * pt.value;
+      return Math.round(val * 100) / 100;
+    });
+  }, [historyPoints, totalUsdValue, usdgUsd, ethNum]);
 
-  const displayPnlDelta = useMemo(() => {
-    if (!usePreviewPortfolio && totalUsdValue > 0) {
-      return Math.round((totalUsdValue * (activeData.pnlPercent / 100)) * 100) / 100;
+  // Real 24h PnL change calculation
+  const { deltaUsd, percentChange, isPositive } = useMemo(() => {
+    if (totalUsdValue <= 0) {
+      return { deltaUsd: 0, percentChange: 0, isPositive: true };
     }
-    return activeData.pnlDelta;
-  }, [activeData.pnlDelta, activeData.pnlPercent, totalUsdValue, usePreviewPortfolio]);
+    if (ethNum <= 0) {
+      // User only holds USDG (stablecoin, zero price volatility)
+      return { deltaUsd: 0, percentChange: 0, isPositive: true };
+    }
 
-  // Asset allocation calculations
-  const allocations = useMemo(() => {
-    if (usePreviewPortfolio || totalUsdValue <= 0) {
+    if (portfolioPoints.length >= 2) {
+      const start = portfolioPoints[0];
+      const end = portfolioPoints[portfolioPoints.length - 1];
+      const diff = end - start;
+      const pct = start > 0 ? (diff / start) * 100 : 0;
+      return {
+        deltaUsd: Math.round(diff * 100) / 100,
+        percentChange: Math.round(pct * 100) / 100,
+        isPositive: diff >= 0,
+      };
+    }
+
+    // Fall back to direct ETH delta if chart points are single
+    const diff = ethUsd * (eth24hChange / 100);
+    const pct = totalUsdValue > 0 ? (diff / totalUsdValue) * 100 : 0;
+    return {
+      deltaUsd: Math.round(diff * 100) / 100,
+      percentChange: Math.round(pct * 100) / 100,
+      isPositive: diff >= 0,
+    };
+  }, [totalUsdValue, ethNum, portfolioPoints, ethUsd, eth24hChange]);
+
+  // Assets held by the user account for the gauge
+  const heldAssets = useMemo(() => {
+    const list: Array<{
+      symbol: string;
+      name: string;
+      amountFormatted: string;
+      valueUsd: number;
+      percent: number;
+      color: string;
+    }> = [];
+
+    const total = usdgUsd + ethUsd;
+    if (total <= 0) return list;
+
+    if (usdgNum > 0) {
+      list.push({
+        symbol: "USDG",
+        name: "USDG",
+        amountFormatted: `${usdgNum.toFixed(2)} USDG`,
+        valueUsd: usdgUsd,
+        percent: (usdgUsd / total) * 100,
+        color: "#c0d967",
+      });
+    }
+
+    if (ethNum > 0) {
+      list.push({
+        symbol: "ETH",
+        name: "ETH",
+        amountFormatted: `${ethNum.toFixed(4)} ETH`,
+        valueUsd: ethUsd,
+        percent: (ethUsd / total) * 100,
+        color: "#5d79e2",
+      });
+    }
+
+    return list;
+  }, [usdgNum, ethNum, usdgUsd, ethUsd]);
+
+  // Render SVG spline for the real portfolio points
+  const svgWidth = 500;
+  const svgHeight = 90;
+  const paddingX = 4;
+  const paddingY = 8;
+
+  const minVal = Math.min(...portfolioPoints);
+  const maxVal = Math.max(...portfolioPoints);
+  const range = maxVal - minVal;
+
+  const coordinates = useMemo(() => {
+    const n = portfolioPoints.length;
+    if (n < 2) {
       return [
-        { symbol: "USDG", name: "Global Dollar", percent: 58.4, valueUsd: 1835.22, color: "#38b6ff" },
-        { symbol: "ETH", name: "Native Gas", percent: 34.2, valueUsd: 1074.74, color: "#818cf8" },
-        { symbol: "PRIV", name: "Staked Utility", percent: 7.4, valueUsd: 232.54, color: "#f64943" },
+        { x: paddingX, y: svgHeight / 2 },
+        { x: svgWidth - paddingX, y: svgHeight / 2 },
       ];
     }
-
-    const usdgVal = parseFloat(usdgBalance || "0");
-    const ethVal = (parseFloat(ethBalance || "0") * (ethPrice || 2500));
-    const total = Math.max(0.01, usdgVal + ethVal);
-
-    const usdgPct = Math.round((usdgVal / total) * 1000) / 10;
-    const ethPct = Math.round((ethVal / total) * 1000) / 10;
-    const privPct = Math.max(0, Math.round((100 - usdgPct - ethPct) * 10) / 10);
-
-    return [
-      { symbol: "USDG", name: "Global Dollar", percent: usdgPct, valueUsd: usdgVal, color: "#38b6ff" },
-      { symbol: "ETH", name: "Native Gas", percent: ethPct, valueUsd: ethVal, color: "#818cf8" },
-      { symbol: "PRIV", name: "Staked Utility", percent: privPct, valueUsd: 0, color: "#f64943" },
-    ];
-  }, [usePreviewPortfolio, totalUsdValue, usdgBalance, ethBalance, ethPrice]);
-
-  // Generate SVG path coordinates
-  const svgWidth = 500;
-  const svgHeight = 110;
-  const paddingX = 15;
-  const paddingY = 15;
-
-  const minVal = Math.min(...scaledPoints);
-  const maxVal = Math.max(...scaledPoints);
-  const range = maxVal - minVal || 1;
-
-  const points = useMemo(() => {
-    const n = scaledPoints.length;
-    return scaledPoints.map((val, i) => {
+    return portfolioPoints.map((val, i) => {
       const x = paddingX + (i / (n - 1)) * (svgWidth - paddingX * 2);
-      const normalizedY = (val - minVal) / range;
+      const normalizedY = range > 0 ? (val - minVal) / range : 0.5;
       const y = svgHeight - paddingY - normalizedY * (svgHeight - paddingY * 2);
-      return { x, y, val };
+      return { x, y };
     });
-  }, [scaledPoints, minVal, range]);
+  }, [portfolioPoints, minVal, range]);
 
-  // Construct smooth cubic bezier path
   const splinePath = useMemo(() => {
-    if (points.length < 2) return "";
-    let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
-    for (let i = 0; i < points.length - 1; i++) {
-      const p0 = points[i];
-      const p1 = points[i + 1];
+    if (coordinates.length < 2) return "";
+    let d = `M ${coordinates[0].x.toFixed(1)} ${coordinates[0].y.toFixed(1)}`;
+    for (let i = 0; i < coordinates.length - 1; i++) {
+      const p0 = coordinates[i];
+      const p1 = coordinates[i + 1];
       const cx = (p0.x + p1.x) / 2;
       d += ` C ${cx.toFixed(1)} ${p0.y.toFixed(1)}, ${cx.toFixed(1)} ${p1.y.toFixed(1)}, ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`;
     }
     return d;
-  }, [points]);
+  }, [coordinates]);
 
-  const fillAreaPath = useMemo(() => {
-    if (points.length < 2) return "";
-    const last = points[points.length - 1];
-    const first = points[0];
+  const fillPath = useMemo(() => {
+    if (coordinates.length < 2 || !splinePath) return "";
+    const last = coordinates[coordinates.length - 1];
+    const first = coordinates[0];
     return `${splinePath} L ${last.x.toFixed(1)} ${svgHeight} L ${first.x.toFixed(1)} ${svgHeight} Z`;
-  }, [splinePath, points]);
+  }, [splinePath, coordinates]);
 
-  const lastPoint = points[points.length - 1];
+  const chartColor = isPositive ? "#22c55e" : "#f64943";
 
   return (
-    <div className="rounded-2xl bg-[#0e1015] border border-white/[0.08] overflow-hidden p-6 space-y-6 select-none relative shadow-2xl">
-      {/* Top Banner Row */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+    <div className="rounded-2xl bg-[#0e1015] border border-white/[0.08] overflow-hidden p-6 space-y-5 select-none relative shadow-xl">
+      {/* Top Row: Balance and Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-sans">
-              Frontier Portfolio Valuation
+          {/* Main Portfolio Value */}
+          <div className="text-4xl sm:text-5xl font-semibold tracking-tight text-white font-mono flex items-baseline gap-2">
+            <span>
+              ${totalUsdValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-medium font-sans">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Robinhood Chain L2
-            </span>
-            {isGaslessActive && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-[10px] font-medium">
-                <Zap className="w-3 h-3 text-purple-400" />
-                Gasless Active
-              </span>
-            )}
+            <span className="text-xl sm:text-2xl font-normal text-slate-400 font-sans">USD</span>
           </div>
 
-          <div className="flex items-baseline gap-3 flex-wrap">
-            <div className="text-4xl sm:text-5xl font-semibold tracking-tight text-white font-mono">
-              ${displayCurrentVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              <span className="text-xl sm:text-2xl font-normal text-slate-400 font-sans ml-2">USD</span>
-            </div>
-
-            {/* 24h PnL Badge */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold font-mono shadow-sm">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>
-                +${displayPnlDelta.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-              <span className="text-emerald-300 font-sans font-medium text-[11px]">
-                (+{activeData.pnlPercent.toFixed(2)}%) {timeframe}
-              </span>
-            </div>
+          {/* Plain Text 24h Change (Green if plus, Red if loss) */}
+          <div
+            className={`text-sm font-medium font-mono mt-1 ${
+              isPositive ? "text-[#22c55e]" : "text-[#f64943]"
+            }`}
+          >
+            {isPositive ? "+" : "-"}
+            ${Math.abs(deltaUsd).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (
+            {isPositive ? "+" : "-"}
+            {Math.abs(percentChange).toFixed(2)}%) 24h
           </div>
         </div>
 
-        {/* Right Action & Security Badge Row */}
-        <div className="flex items-center gap-3 self-start lg:self-center flex-wrap">
-          {/* 2-of-3 MPC Quorum Armed pill */}
-          <div className="px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs font-medium text-slate-300 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span className="font-sans">2-of-3 Threshold Armed</span>
-          </div>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2.5 self-start sm:self-center">
+          {onOpenSend && (
+            <button
+              onClick={onOpenSend}
+              className="px-4 py-2 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <ArrowUpRight className="w-3.5 h-3.5" />
+              <span>Send</span>
+            </button>
+          )}
+          {onOpenReceive && (
+            <button
+              onClick={onOpenReceive}
+              className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-medium border border-white/15 flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <ArrowDownLeft className="w-3.5 h-3.5" />
+              <span>Receive</span>
+            </button>
+          )}
+          {onOpenSwap && (
+            <button
+              onClick={onOpenSwap}
+              className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-medium border border-white/10 flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5" />
+              <span>Swap</span>
+            </button>
+          )}
+        </div>
+      </div>
 
-          {/* Timeframe Switcher */}
-          <div className="flex items-center bg-white/[0.04] p-0.5 rounded-xl border border-white/10 text-xs">
-            {(["24H", "7D", "30D", "1Y"] as Timeframe[]).map((tf) => (
-              <button
-                key={tf}
-                onClick={() => {
-                  setTimeframe(tf);
-                  setHoverIndex(null);
+      {/* Real 24-Hour Sparkline Chart */}
+      <div className="relative w-full h-24 pt-1">
+        <svg
+          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+          className="w-full h-full overflow-visible"
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <linearGradient id="realChartGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={chartColor} stopOpacity="0.25" />
+              <stop offset="100%" stopColor={chartColor} stopOpacity="0.00" />
+            </linearGradient>
+          </defs>
+
+          {/* Area fill */}
+          {fillPath && <path d={fillPath} fill="url(#realChartGrad)" />}
+
+          {/* Spline line */}
+          {splinePath && (
+            <path
+              d={splinePath}
+              fill="none"
+              stroke={chartColor}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+
+          {/* Real final point marker */}
+          {coordinates.length > 0 && totalUsdValue > 0 && (
+            <circle
+              cx={coordinates[coordinates.length - 1].x}
+              cy={coordinates[coordinates.length - 1].y}
+              r="3.5"
+              fill={chartColor}
+              stroke="#0e1015"
+              strokeWidth="1.5"
+            />
+          )}
+        </svg>
+      </div>
+
+      {/* Assets Gauge: Only displays ETH (#5d79e2) and USDG (#c0d967) the account actually holds */}
+      <div className="space-y-2 pt-1 border-t border-white/[0.06]">
+        {/* Gauge Track */}
+        <div className="h-2 w-full bg-white/[0.06] rounded-full overflow-hidden flex gap-0.5">
+          {heldAssets.length > 0 ? (
+            heldAssets.map((asset) => (
+              <div
+                key={asset.symbol}
+                style={{
+                  width: `${asset.percent}%`,
+                  backgroundColor: asset.color,
                 }}
-                className={`px-3 py-1 rounded-lg font-medium transition cursor-pointer ${
-                  timeframe === tf
-                    ? "bg-[#22c55e]/20 text-emerald-300 border border-emerald-500/30 shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                {tf}
-              </button>
-            ))}
-          </div>
-
-          {/* Quick Demo Preview toggle button for clean screenshotting */}
-          <button
-            onClick={() => setUsePreviewPortfolio((prev) => !prev)}
-            title={usePreviewPortfolio ? "Switch to live on-chain balances" : "Switch to sample portfolio preview for clean screenshot"}
-            className="p-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-white border border-white/10 transition cursor-pointer"
-          >
-            {usePreviewPortfolio ? <Eye className="w-4 h-4 text-[#38b6ff]" /> : <EyeOff className="w-4 h-4" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Mini Spline Sparkline Chart */}
-      <div className="relative pt-2 pb-1">
-        <div className="w-full h-28 relative">
-          <svg
-            viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-            className="w-full h-full overflow-visible"
-            preserveAspectRatio="none"
-            onMouseLeave={() => setHoverIndex(null)}
-          >
-            <defs>
-              <linearGradient id="splineGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#22c55e" stopOpacity="0.28" />
-                <stop offset="60%" stopColor="#22c55e" stopOpacity="0.08" />
-                <stop offset="100%" stopColor="#22c55e" stopOpacity="0.00" />
-              </linearGradient>
-              <linearGradient id="splineStroke" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#38b6ff" />
-                <stop offset="40%" stopColor="#22c55e" />
-                <stop offset="100%" stopColor="#4ade80" />
-              </linearGradient>
-            </defs>
-
-            {/* Subtle baseline */}
-            <line
-              x1={paddingX}
-              y1={points[0]?.y || svgHeight / 2}
-              x2={svgWidth - paddingX}
-              y2={points[0]?.y || svgHeight / 2}
-              stroke="rgba(255, 255, 255, 0.08)"
-              strokeDasharray="3 3"
-              strokeWidth="1"
-            />
-
-            {/* Gradient area underneath */}
-            {fillAreaPath && <path d={fillAreaPath} fill="url(#splineGradient)" />}
-
-            {/* Glowing spline curve */}
-            {splinePath && (
-              <path
-                d={splinePath}
-                fill="none"
-                stroke="url(#splineStroke)"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                className="h-full rounded-full transition-all duration-300"
+                title={`${asset.symbol}: ${asset.percent.toFixed(1)}%`}
               />
-            )}
-
-            {/* Interactive hover points & markers */}
-            {points.map((p, idx) => (
-              <g key={idx} className="cursor-pointer" onMouseEnter={() => setHoverIndex(idx)}>
-                <circle
-                  cx={p.x}
-                  cy={p.y}
-                  r={hoverIndex === idx ? "5" : "3"}
-                  className={`transition-all ${
-                    hoverIndex === idx
-                      ? "fill-white stroke-[#22c55e] stroke-2"
-                      : "fill-transparent hover:fill-emerald-400"
-                  }`}
-                />
-              </g>
-            ))}
-
-            {/* Pulsing latest point dot */}
-            {lastPoint && (
-              <g>
-                <circle
-                  cx={lastPoint.x}
-                  cy={lastPoint.y}
-                  r="7"
-                  className="fill-emerald-400/40 animate-ping"
-                />
-                <circle
-                  cx={lastPoint.x}
-                  cy={lastPoint.y}
-                  r="4"
-                  className="fill-emerald-400 stroke-[#0e1015] stroke-2"
-                />
-              </g>
-            )}
-          </svg>
+            ))
+          ) : (
+            <div className="h-full w-full bg-white/[0.04] rounded-full" />
+          )}
         </div>
 
-        {/* Time axis labels */}
-        <div className="flex items-center justify-between text-[11px] text-slate-500 font-mono pt-2 px-1">
-          {activeData.labels.map((lbl, idx) => (
-            <span key={idx}>{lbl}</span>
-          ))}
-        </div>
-      </div>
-
-      {/* Asset Allocation Breakdown Bar & Legend */}
-      <div className="pt-2 border-t border-white/[0.06] space-y-3">
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-medium text-slate-400 font-sans flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-slate-400" />
-            Frontier Asset Allocation
-          </span>
-          <span className="text-[11px] font-mono text-slate-500">
-            Robinhood Chain Native DEX &amp; Vaults
-          </span>
-        </div>
-
-        {/* Multi-segment progress bar */}
-        <div className="h-2.5 w-full bg-white/[0.05] rounded-full overflow-hidden flex gap-0.5 p-0.5">
-          {allocations.map((a) => (
-            <div
-              key={a.symbol}
-              style={{ width: `${Math.max(3, a.percent)}%`, backgroundColor: a.color }}
-              className="h-full rounded-full transition-all duration-500 shadow-sm"
-              title={`${a.symbol}: ${a.percent}%`}
-            />
-          ))}
-        </div>
-
-        {/* Legend row and Action buttons */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
-          <div className="flex items-center gap-4 flex-wrap text-xs">
-            {allocations.map((a) => (
-              <div key={a.symbol} className="flex items-center gap-1.5 font-sans">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: a.color }} />
-                <span className="font-medium text-white">{a.symbol}</span>
-                <span className="text-slate-400 font-mono text-[11px]">
-                  {a.percent.toFixed(1)}%
-                </span>
-                {a.valueUsd > 0 && (
-                  <span className="text-slate-500 font-mono text-[11px]">
-                    (${a.valueUsd.toLocaleString("en-US", { maximumFractionDigits: 0 })})
+        {/* Legend: Only items actually held */}
+        <div className="flex items-center justify-between text-xs pt-1">
+          <div className="flex items-center gap-4 flex-wrap">
+            {heldAssets.length > 0 ? (
+              heldAssets.map((asset) => (
+                <div key={asset.symbol} className="flex items-center gap-1.5">
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: asset.color }}
+                  />
+                  <span className="font-medium text-white text-xs">{asset.symbol}</span>
+                  <span className="text-slate-400 font-mono text-[11px]">
+                    {asset.percent.toFixed(1)}%
                   </span>
-                )}
-              </div>
-            ))}
+                  <span className="text-slate-500 font-mono text-[11px]">
+                    ({asset.amountFormatted})
+                  </span>
+                </div>
+              ))
+            ) : (
+              <span className="text-slate-500 text-xs font-mono">No tokens held</span>
+            )}
           </div>
 
-          {/* Quick Action Buttons */}
-          <div className="flex items-center gap-2">
-            {onOpenSend && (
-              <button
-                onClick={onOpenSend}
-                className="px-3.5 py-1.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-sm"
-              >
-                <ArrowUpRight className="w-3.5 h-3.5" />
-                <span>Send</span>
-              </button>
-            )}
-            {onOpenReceive && (
-              <button
-                onClick={onOpenReceive}
-                className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-medium border border-white/15 flex items-center gap-1.5 transition cursor-pointer"
-              >
-                <ArrowDownLeft className="w-3.5 h-3.5" />
-                <span>Receive</span>
-              </button>
-            )}
-            {onOpenSwap && (
-              <button
-                onClick={onOpenSwap}
-                className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-medium border border-white/10 flex items-center gap-1.5 transition cursor-pointer"
-              >
-                <ArrowLeftRight className="w-3.5 h-3.5" />
-                <span>Swap</span>
-              </button>
-            )}
+          <div className="text-[11px] text-slate-500 font-mono">
+            {heldAssets.length > 0 ? `${heldAssets.length} asset${heldAssets.length > 1 ? "s" : ""}` : "0 assets"}
           </div>
         </div>
       </div>

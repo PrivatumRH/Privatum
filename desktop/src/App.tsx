@@ -107,7 +107,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.11": "Panic Freeze",
   "0.1.12": "In-App Spending Guardrails",
   "0.1.13": "Private Address Book",
-  "0.1.14": "Frontier Portfolio Sparkline & 24h PnL",
+  "0.1.14": "Portfolio Sparkline & 24h PnL",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -406,6 +406,14 @@ export function App() {
       return 2450;
     }
   });
+  const [eth24hChange, setEth24hChange] = useState<number>(() => {
+    try {
+      const cached = localStorage.getItem("privatum_eth_24h_change");
+      return cached ? parseFloat(cached) : 0;
+    } catch {
+      return 0;
+    }
+  });
   const [lastPriceFetchTime, setLastPriceFetchTime] = useState<number>(() => {
     try {
       const cached = localStorage.getItem("privatum_eth_price_time");
@@ -522,10 +530,11 @@ export function App() {
       return ethPrice;
     }
     try {
-      const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd");
+      const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true");
       if (res.ok) {
         const data = await res.json();
         const p = data?.ethereum?.usd;
+        const change = data?.ethereum?.usd_24h_change;
         if (typeof p === "number" && p > 0) {
           setEthPrice(p);
           setLastPriceFetchTime(now);
@@ -533,8 +542,14 @@ export function App() {
             localStorage.setItem("privatum_eth_price", String(p));
             localStorage.setItem("privatum_eth_price_time", String(now));
           } catch {}
-          return p;
         }
+        if (typeof change === "number") {
+          setEth24hChange(change);
+          try {
+            localStorage.setItem("privatum_eth_24h_change", String(change));
+          } catch {}
+        }
+        return p;
       }
     } catch (err) {
       console.warn("CoinGecko price fetch error:", err);
@@ -2388,8 +2403,7 @@ export function App() {
                 usdgBalance={usdgBalance}
                 ethBalance={ethBalance}
                 ethPrice={ethPrice}
-                walletAddress={wallet?.address || walletAddress || accounts[0]?.address}
-                isGaslessActive={isGaslessActive}
+                eth24hChange={eth24hChange}
                 onOpenSend={() => openSendModal()}
                 onOpenReceive={() => setShowReceiveModal(true)}
                 onOpenSwap={() => setActiveTab("swaps")}
