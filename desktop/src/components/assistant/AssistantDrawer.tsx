@@ -2,15 +2,11 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   X,
   Send,
-  Sparkles,
-  Bot,
-  RotateCw,
-  Lock,
-  ArrowUpRight,
-  Shield,
   Loader2,
-  Cpu,
+  Copy,
+  Check,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import type { AssistantMessage, EngineMode, ModelLoadingProgress, ParsedIntent } from "../../lib/assistant/types";
 import { processAssistantQuery } from "../../lib/assistant/assistantEngine";
 import { smolLm2Engine } from "../../lib/assistant/wasmEngine";
@@ -52,6 +48,7 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [engineMode, setEngineMode] = useState<EngineMode>("deterministic");
   const [wasmProgress, setWasmProgress] = useState<ModelLoadingProgress>(smolLm2Engine.getStatus());
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -72,6 +69,12 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
   }, [messages, isProcessing]);
 
   if (!isOpen) return null;
+
+  const handleCopy = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   const handleSend = async (textToSend?: string) => {
     const query = (textToSend || inputText).trim();
@@ -129,22 +132,9 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="w-full max-w-md bg-[#0c0c0c] border-l border-white/10 flex flex-col h-full shadow-2xl">
-        {/* Header */}
+        {/* Header: Pure typography, no badges or sparkles */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#f54842]/10 border border-[#f54842]/20 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-[#f54842]" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-white text-sm">Privatum Assistant</h3>
-                <span className="text-[10px] text-white/40 border border-white/10 px-1.5 py-0.2 rounded font-mono">
-                  v2.0
-                </span>
-              </div>
-              <p className="text-[11px] text-white/40">On-device transaction safety copilot</p>
-            </div>
-          </div>
+          <h3 className="font-semibold text-white text-sm">Privatum Assistant</h3>
           <button
             type="button"
             onClick={onClose}
@@ -154,21 +144,30 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
           </button>
         </div>
 
-        {/* Engine Status & Toggle Bar */}
-        <div className="px-4 py-2 bg-white/[0.02] border-b border-white/5 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-1.5 text-white/60">
-            <Cpu className="w-3.5 h-3.5 text-white/40" />
-            <span>Engine:</span>
-            <span className="font-medium text-white">
-              {engineMode === "deterministic" ? "Deterministic NLP (Fast)" : "SmolLM2-135M (Local Wasm)"}
-            </span>
-          </div>
+        {/* Engine Toggle Bar */}
+        <div className="px-4 py-2.5 bg-white/[0.02] border-b border-white/5 flex items-center justify-between text-xs">
+          <span className="text-white/60 font-medium">
+            {engineMode === "smollm2_wasm" ? "Local AI" : "Fast Parser"}
+          </span>
           <button
             type="button"
+            role="switch"
+            aria-checked={engineMode === "smollm2_wasm"}
             onClick={handleToggleWasmEngine}
-            className="text-[11px] text-[#f54842] hover:text-[#e03e38] transition-colors"
+            className="flex items-center gap-2 text-[11px] text-white/70 hover:text-white transition-colors"
           >
-            {engineMode === "deterministic" ? "Enable SmolLM2" : "Use Fast Parser"}
+            <span>Enable AI</span>
+            <div
+              className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
+                engineMode === "smollm2_wasm" ? "bg-[#f54842]" : "bg-white/20"
+              }`}
+            >
+              <span
+                className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white transition-transform ${
+                  engineMode === "smollm2_wasm" ? "translate-x-3.5" : "translate-x-0.5"
+                }`}
+              />
+            </div>
           </button>
         </div>
 
@@ -195,17 +194,40 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
               key={msg.id}
               className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
             >
-              <div
-                className={`max-w-[85%] rounded-xl p-3 text-xs leading-relaxed whitespace-pre-wrap ${
-                  msg.role === "user"
-                    ? "bg-white text-black font-medium"
-                    : "bg-[#161616] text-white/90 border border-white/10"
-                }`}
-              >
-                {msg.content}
-              </div>
+              {msg.role === "assistant" ? (
+                <div className="relative group max-w-[90%] rounded-xl p-3 text-xs leading-relaxed bg-[#161616] text-white/90 border border-white/10">
+                  <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-white/5">
+                    <span className="text-[10px] text-white/40 font-mono">Privatum</span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(msg.id, msg.content)}
+                      className="flex items-center gap-1 text-[10px] text-white/40 hover:text-white transition-colors px-1.5 py-0.5 rounded hover:bg-white/5"
+                      title="Copy answer"
+                    >
+                      {copiedId === msg.id ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-400" />
+                          <span className="text-emerald-400">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="text-xs leading-relaxed break-words space-y-2 [&_p]:leading-relaxed [&_ul]:list-disc [&_ul]:ml-4 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:ml-4 [&_ol]:space-y-1 [&_li]:leading-normal [&_strong]:text-white [&_strong]:font-semibold [&_code]:bg-white/10 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:font-mono [&_code]:text-[11px] [&_pre]:bg-black/60 [&_pre]:p-2.5 [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-white/10 [&_pre]:overflow-x-auto">
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  </div>
+                </div>
+              ) : (
+                <div className="max-w-[85%] rounded-xl p-3 text-xs leading-relaxed bg-white text-black font-medium">
+                  {msg.content}
+                </div>
+              )}
 
-              {msg.intent && (
+              {msg.intent && msg.intent.type !== "general_query" && (
                 <div className="w-full max-w-[90%]">
                   <IntentProposalCard
                     intent={msg.intent}
