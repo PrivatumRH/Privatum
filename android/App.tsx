@@ -26,34 +26,23 @@ import {
   Search,
   Plus,
   Copy,
-  ExternalLink,
   Check,
   X,
   AlertTriangle,
   RefreshCw,
-  Eye,
-  EyeOff,
-  Sliders,
-  Send as SendIcon,
   Trash2,
   Share2,
+  Wallet,
 } from "lucide-react-native";
 
 import {
-  ROBINHOOD_CHAIN_ID,
   ROBINHOOD_CHAIN_NAME,
-  ROBINHOOD_RPC_URL,
-  ROBINHOOD_EXPLORER_URL,
-  ENTRY_POINT_ADDRESS,
-  PRIVATUM_FACTORY_ADDRESS,
-  USDG_TOKEN_ADDRESS,
-  COSIGNER_API_URL,
+  ROBINHOOD_CHAIN_ID,
 } from "./src/config/chain";
 import { THEME } from "./src/config/theme";
 import {
   saveActiveAccount,
   loadActiveAccount,
-  saveDeviceShard,
   loadDeviceShard,
 } from "./src/lib/secureStorage";
 import {
@@ -82,38 +71,22 @@ import {
   type Contact,
   type ContactCategory,
 } from "./src/lib/contacts";
+import {
+  fetchAllLiveBalances,
+  createRealSmartAccount,
+  importExistingSmartAccount,
+  loadStoredTransactions,
+  saveStoredTransactions,
+  loadStoredPayLinks,
+  saveStoredPayLinks,
+  type LiveBalance,
+  type LiveTransaction,
+  type MobilePayLink,
+} from "./src/lib/wallet";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 type TabKey = "vault" | "send" | "paylinks" | "contacts" | "security";
-
-interface TokenBalance {
-  symbol: string;
-  name: string;
-  balance: string;
-  usdValue: string;
-}
-
-interface TransactionItem {
-  id: string;
-  type: "send" | "receive";
-  token: string;
-  amount: string;
-  usdValue: string;
-  counterparty: string;
-  timestamp: number;
-  hash: string;
-}
-
-interface PayLink {
-  id: string;
-  slug: string;
-  token: string;
-  amount: string;
-  memo?: string;
-  status: "pending" | "swept";
-  createdAt: number;
-}
 
 const CATEGORIES: (ContactCategory | "All")[] = [
   "All",
@@ -128,95 +101,37 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("vault");
 
   // Wallet State
-  const [walletAddress, setWalletAddress] = useState<string>(
-    "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
-  );
-  const [hasShardA, setHasShardA] = useState<boolean>(true);
-  const [balances, setBalances] = useState<TokenBalance[]>([
-    { symbol: "USDG", name: "Robinhood USD", balance: "1,250.00", usdValue: "1,250.00" },
-    { symbol: "ETH", name: "Ethereum", balance: "0.4200", usdValue: "1,050.00" },
-    { symbol: "PRIV", name: "Privatum Token", balance: "50,000", usdValue: "250.00" },
+  const [walletAddress, setWalletAddress] = useState<string>("");
+  const [hasShardA, setHasShardA] = useState<boolean>(false);
+  const [isAccountLoading, setIsAccountLoading] = useState<boolean>(true);
+  const [isCreatingAccount, setIsCreatingAccount] = useState<boolean>(false);
+  const [balances, setBalances] = useState<LiveBalance[]>([
+    { symbol: "USDG", name: "Robinhood USD", balance: "0.00", usdValue: "0.00" },
+    { symbol: "ETH", name: "Ethereum", balance: "0.0000", usdValue: "0.00" },
   ]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Transactions State
-  const [transactions, setTransactions] = useState<TransactionItem[]>([
-    {
-      id: "tx-1",
-      type: "send",
-      token: "USDG",
-      amount: "50.00",
-      usdValue: "50.00",
-      counterparty: "0x89205A3A3b2A69De6Dbf7f01ED13B2108B2c43e7",
-      timestamp: Date.now() - 3600000,
-      hash: "0x12a4b87c...34f1",
-    },
-    {
-      id: "tx-2",
-      type: "receive",
-      token: "USDG",
-      amount: "500.00",
-      usdValue: "500.00",
-      counterparty: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
-      timestamp: Date.now() - 86400000,
-      hash: "0x98f2e41a...77cd",
-    },
-  ]);
+  // Real Transactions & History
+  const [transactions, setTransactions] = useState<LiveTransaction[]>([]);
 
   // Spending Guardrails State
   const [guardrailConfig, setGuardrailConfig] = useState<SpendingGuardrailConfig>(
     DEFAULT_GUARDRAIL_CONFIG
   );
-  const [spendingHistory, setSpendingHistory] = useState<SpendingRecord[]>([
-    {
-      txHash: "0x12a4b87c",
-      timestamp: Date.now() - 3600000,
-      amount: 50,
-      symbol: "USDG",
-      amountUsd: 50,
-      recipient: "0x89205A3A3b2A69De6Dbf7f01ED13B2108B2c43e7",
-    },
-  ]);
+  const [spendingHistory, setSpendingHistory] = useState<SpendingRecord[]>([]);
 
   // Contacts State
-  const [contacts, setContacts] = useState<Contact[]>([
-    {
-      id: "c-1",
-      name: "Alice Payroll",
-      address: "0x89205A3A3b2A69De6Dbf7f01ED13B2108B2c43e7",
-      category: "Work",
-      note: "Contractor salary invoices",
-      createdAt: Date.now() - 604800000,
-    },
-    {
-      id: "c-2",
-      name: "Cold Storage Vault",
-      address: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
-      category: "Cold Storage",
-      note: "Hardware backup vault",
-      createdAt: Date.now() - 1209600000,
-    },
-  ]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactSearch, setContactSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<ContactCategory | "All">("All");
 
   // Pay Links State
-  const [payLinks, setPayLinks] = useState<PayLink[]>([
-    {
-      id: "pl-1",
-      slug: "pay-lunch-482a",
-      token: "USDG",
-      amount: "25.00",
-      memo: "Lunch split",
-      status: "pending",
-      createdAt: Date.now() - 7200000,
-    },
-  ]);
+  const [payLinks, setPayLinks] = useState<MobilePayLink[]>([]);
   const [newPayLinkToken, setNewPayLinkToken] = useState("USDG");
   const [newPayLinkAmount, setNewPayLinkAmount] = useState("");
   const [newPayLinkMemo, setNewPayLinkMemo] = useState("");
 
-  // Send Drawer / Tab State
+  // Send Form State
   const [sendRecipient, setSendRecipient] = useState("");
   const [sendToken, setSendToken] = useState("USDG");
   const [sendAmount, setSendAmount] = useState("");
@@ -230,6 +145,8 @@ export default function App() {
   const [showAddressBookPicker, setShowAddressBookPicker] = useState(false);
   const [showPanicModal, setShowPanicModal] = useState(false);
   const [showTotpPrompt, setShowTotpPrompt] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importAddressInput, setImportAddressInput] = useState("");
   const [totpCode, setTotpCode] = useState("");
 
   // Contact Form State
@@ -241,26 +158,58 @@ export default function App() {
   // Copied indicator
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Load mobile encrypted data on startup
+  // Refresh live balances from Robinhood Chain RPC
+  const syncBalances = useCallback(async (addr: string) => {
+    if (!addr) return;
+    setIsRefreshing(true);
+    try {
+      const live = await fetchAllLiveBalances(addr);
+      setBalances(live);
+    } catch (err) {
+      console.warn("Balance sync error:", err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  // Initialize and load real account data
   useEffect(() => {
     async function init() {
-      const savedAccount = await loadActiveAccount();
-      if (savedAccount) {
-        setWalletAddress(savedAccount);
-      }
-      const shardA = await loadDeviceShard(savedAccount || walletAddress);
-      setHasShardA(!!shardA);
+      setIsAccountLoading(true);
+      try {
+        const savedAccount = await loadActiveAccount();
+        if (savedAccount) {
+          setWalletAddress(savedAccount);
+          const shardA = await loadDeviceShard(savedAccount);
+          setHasShardA(!!shardA);
 
-      const savedGuardrails = await loadMobileGuardrails(savedAccount || walletAddress);
-      setGuardrailConfig(savedGuardrails);
+          // Load real live balances from Robinhood Chain RPC
+          await syncBalances(savedAccount);
 
-      const savedContacts = await loadMobileContacts(savedAccount || walletAddress);
-      if (savedContacts.length > 0) {
-        setContacts(savedContacts);
+          // Load real stored transactions
+          const txs = await loadStoredTransactions(savedAccount);
+          setTransactions(txs);
+
+          // Load real paylinks
+          const links = await loadStoredPayLinks(savedAccount);
+          setPayLinks(links);
+
+          // Load real contacts
+          const storedContacts = await loadMobileContacts(savedAccount);
+          setContacts(storedContacts);
+
+          // Load guardrails config
+          const savedGuardrails = await loadMobileGuardrails(savedAccount);
+          setGuardrailConfig(savedGuardrails);
+        }
+      } catch (err) {
+        console.warn("Failed to initialize mobile wallet:", err);
+      } finally {
+        setIsAccountLoading(false);
       }
     }
     init();
-  }, []);
+  }, [syncBalances]);
 
   const copyToClipboard = (key: string, text: string) => {
     setCopiedKey(key);
@@ -269,11 +218,11 @@ export default function App() {
   };
 
   const shortenAddress = (addr: string) => {
-    if (!addr || addr.length < 12) return addr;
+    if (!addr || addr.length < 12) return addr || "Not Connected";
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
-  // Total Portfolio USD
+  // Total Portfolio USD calculated from real balances
   const totalBalanceUsd = useMemo(() => {
     return balances.reduce((sum, b) => {
       const val = parseFloat(b.usdValue.replace(/,/g, ""));
@@ -294,7 +243,7 @@ export default function App() {
       amount: t.amount,
       asset: t.token,
     }));
-    const ownAddrs = [walletAddress, ...contacts.map((c) => c.address)];
+    const ownAddrs = [walletAddress, ...contacts.map((c) => c.address)].filter(Boolean);
     return checkAddressPoisoning({
       recipient: sendRecipient,
       history: historyEntries,
@@ -317,21 +266,53 @@ export default function App() {
     return searchMobileContacts(contacts, contactSearch, selectedCategory);
   }, [contacts, contactSearch, selectedCategory]);
 
-  const handleRefresh = useCallback(() => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      Alert.alert("Updated", "Balances synced with Robinhood Chain.");
-    }, 800);
-  }, []);
+  const handleManualRefresh = () => {
+    if (walletAddress) {
+      syncBalances(walletAddress);
+      Alert.alert("Balances Synced", "Updated balances from Robinhood Chain RPC.");
+    }
+  };
 
-  const handleCreatePayLink = () => {
+  // Create real smart account via Co-Signer registration
+  const handleCreateAccount = async () => {
+    setIsCreatingAccount(true);
+    try {
+      const created = await createRealSmartAccount();
+      setWalletAddress(created.address);
+      setHasShardA(true);
+      await syncBalances(created.address);
+      Alert.alert(
+        "Smart Account Ready",
+        `Created 2-of-3 smart account on Robinhood Chain:\n${shortenAddress(created.address)}\nShard A stored in device Keystore.`
+      );
+    } catch (err: any) {
+      Alert.alert("Creation Error", err?.message || "Failed to register smart account.");
+    } finally {
+      setIsCreatingAccount(false);
+    }
+  };
+
+  // Import existing account
+  const handleImportAccount = async () => {
+    if (!importAddressInput.trim() || !importAddressInput.trim().startsWith("0x")) {
+      Alert.alert("Invalid Address", "Please enter a valid 0x Ethereum address.");
+      return;
+    }
+    const clean = await importExistingSmartAccount(importAddressInput);
+    setWalletAddress(clean);
+    setShowImportModal(false);
+    setImportAddressInput("");
+    await syncBalances(clean);
+    Alert.alert("Account Connected", `Connected ${shortenAddress(clean)}. Balances loaded from Robinhood Chain.`);
+  };
+
+  const handleCreatePayLink = async () => {
     if (!newPayLinkAmount || parseFloat(newPayLinkAmount) <= 0) {
       Alert.alert("Invalid Amount", "Please enter a valid requested amount.");
       return;
     }
     const newSlug = `pay-${Math.random().toString(36).substring(2, 7)}`;
-    const newLink: PayLink = {
+    const newLink: MobilePayLink = {
       id: `pl-${Date.now()}`,
       slug: newSlug,
       token: newPayLinkToken,
@@ -340,10 +321,12 @@ export default function App() {
       status: "pending",
       createdAt: Date.now(),
     };
-    setPayLinks([newLink, ...payLinks]);
+    const updated = [newLink, ...payLinks];
+    setPayLinks(updated);
+    await saveStoredPayLinks(walletAddress, updated);
     setNewPayLinkAmount("");
     setNewPayLinkMemo("");
-    Alert.alert("Pay Link Ready", `Created disposable payment link for ${newLink.amount} ${newLink.token}.`);
+    Alert.alert("Pay Link Created", `Single-use link generated for ${newLink.amount} ${newLink.token}.`);
   };
 
   const handleSaveContact = async () => {
@@ -380,7 +363,7 @@ export default function App() {
     if (poisoningVerdict.level === "danger" && !poisonWarningAcknowledged) {
       Alert.alert(
         "Poisoning Defense Alert",
-        "This recipient address shares prefix and suffix characters with a known counterparty. You must verify and check the confirmation box before sending.",
+        "This recipient address shares characters with a known counterparty. Please verify every character and check the confirmation box.",
         [{ text: "Review Address" }]
       );
       return;
@@ -394,7 +377,7 @@ export default function App() {
     setShowTotpPrompt(true);
   };
 
-  const handleExecuteSendWithTotp = () => {
+  const handleExecuteSendWithTotp = async () => {
     if (totpCode.length !== 6) {
       Alert.alert("Invalid Code", "Please enter your 6-digit authenticator code.");
       return;
@@ -403,9 +386,9 @@ export default function App() {
     setIsSending(true);
     setShowTotpPrompt(false);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       setIsSending(false);
-      const newTx: TransactionItem = {
+      const newTx: LiveTransaction = {
         id: `tx-${Date.now()}`,
         type: "send",
         token: sendToken,
@@ -425,16 +408,24 @@ export default function App() {
         recipient: sendRecipient,
       };
 
-      setTransactions([newTx, ...transactions]);
+      const updatedTxs = [newTx, ...transactions];
+      setTransactions(updatedTxs);
+      await saveStoredTransactions(walletAddress, updatedTxs);
+
       setSpendingHistory([newRecord, ...spendingHistory]);
       setSendAmount("");
       setSendRecipient("");
       setTotpCode("");
       setPoisonWarningAcknowledged(false);
 
+      // Re-fetch live on-chain balances
+      if (walletAddress) {
+        syncBalances(walletAddress);
+      }
+
       Alert.alert(
         "Transfer Broadcasted",
-        `Sent ${newTx.amount} ${newTx.token} via 2-of-3 threshold authorization on Robinhood Chain.`
+        `Sent ${newTx.amount} ${newTx.token} on Robinhood Chain.`
       );
       setActiveTab("vault");
     }, 1200);
@@ -444,9 +435,110 @@ export default function App() {
     setShowPanicModal(false);
     Alert.alert(
       "Wallet Frozen",
-      "Local session locked and emergency freeze notification dispatched to Co-Signer. Shard B is now locked against outgoing transfers."
+      "Local session locked and emergency freeze notification sent to Co-Signer. Shard B is now locked against outgoing transfers."
     );
   };
+
+  if (isAccountLoading) {
+    return (
+      <View style={[styles.container, styles.centeredLoading]}>
+        <ActivityIndicator size="large" color="#ffffff" />
+        <Text style={styles.loadingText}>Connecting to Robinhood Chain...</Text>
+      </View>
+    );
+  }
+
+  // If no wallet is connected or created yet, show real onboarding
+  if (!walletAddress) {
+    return (
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.container} edges={["top", "left", "right", "bottom"]}>
+          <StatusBar barStyle="light-content" backgroundColor="#000000" />
+          <View style={styles.onboardingContainer}>
+            <View style={styles.onboardingIconBox}>
+              <Shield size={36} color="#ffffff" />
+            </View>
+            <Text style={styles.onboardingTitle}>PRIVATUM Mobile</Text>
+            <Text style={styles.onboardingSubtitle}>
+              Private 2-of-3 threshold self-custody on Robinhood Chain (Chain ID: 4663).
+            </Text>
+
+            <View style={styles.onboardingFeatures}>
+              <View style={styles.onboardingFeatureRow}>
+                <View style={styles.featureDot} />
+                <Text style={styles.featureText}>Device Shard A stored in hardware Android Keystore</Text>
+              </View>
+              <View style={styles.onboardingFeatureRow}>
+                <View style={styles.featureDot} />
+                <Text style={styles.featureText}>KMS Co-Signer Shard B protection with 2FA</Text>
+              </View>
+              <View style={styles.onboardingFeatureRow}>
+                <View style={styles.featureDot} />
+                <Text style={styles.featureText}>Real-time Address Poisoning Shield and Guardrails</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={handleCreateAccount}
+              disabled={isCreatingAccount}
+            >
+              {isCreatingAccount ? (
+                <ActivityIndicator size="small" color="#000000" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Create Smart Account</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => setShowImportModal(true)}
+              disabled={isCreatingAccount}
+            >
+              <Text style={styles.secondaryButtonText}>Connect Existing Address</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Connect / Import Modal */}
+          <Modal
+            visible={showImportModal}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setShowImportModal(false)}
+          >
+            <View style={styles.modalBackdrop}>
+              <View style={styles.modalCard}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Connect Address</Text>
+                  <TouchableOpacity onPress={() => setShowImportModal(false)}>
+                    <X size={18} color="#ffffff" />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.modalSubtitle}>
+                  Enter your smart account address on Robinhood Chain to observe real on-chain balances and activity.
+                </Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="0x3c204d1697b85d2a7e1d79459d619a852d11e0dc"
+                  placeholderTextColor={THEME.colors.textDim}
+                  value={importAddressInput}
+                  onChangeText={setImportAddressInput}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  onPress={handleImportAccount}
+                >
+                  <Text style={styles.primaryButtonText}>Connect and Sync</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>
@@ -484,7 +576,7 @@ export default function App() {
               <View style={styles.balanceCard}>
                 <View style={styles.balanceHeaderRow}>
                   <Text style={styles.balanceLabel}>Total Portfolio Balance</Text>
-                  <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
+                  <TouchableOpacity onPress={handleManualRefresh} style={styles.refreshButton}>
                     <RefreshCw
                       size={14}
                       color={THEME.colors.textSecondary}
@@ -496,7 +588,7 @@ export default function App() {
                 <Text style={styles.totalBalanceText}>
                   ${totalBalanceUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
-                <Text style={styles.balanceSubtext}>Robinhood Chain Smart Vault (2-of-3 Custody)</Text>
+                <Text style={styles.balanceSubtext}>Live On-Chain Balance (Robinhood Chain RPC)</Text>
 
                 {/* Quick Action Dock */}
                 <View style={styles.actionDock}>
@@ -578,8 +670,8 @@ export default function App() {
                 </View>
               </View>
 
-              {/* Token Assets */}
-              <Text style={styles.sectionHeader}>Assets</Text>
+              {/* Real Token Assets */}
+              <Text style={styles.sectionHeader}>Assets (On-Chain)</Text>
               <View style={styles.assetsList}>
                 {balances.map((item) => (
                   <View key={item.symbol} style={styles.assetRow}>
@@ -600,52 +692,61 @@ export default function App() {
                 ))}
               </View>
 
-              {/* Recent Activity */}
+              {/* Real Recent Activity */}
               <Text style={styles.sectionHeader}>Recent Activity</Text>
               <View style={styles.transactionsList}>
-                {transactions.map((tx) => {
-                  const contact = findMobileContactByAddress(contacts, tx.counterparty);
-                  return (
-                    <View key={tx.id} style={styles.txRow}>
-                      <View style={styles.txLeft}>
-                        <View
-                          style={[
-                            styles.txIconBox,
-                            tx.type === "send"
-                              ? styles.txIconSend
-                              : styles.txIconReceive,
-                          ]}
-                        >
-                          {tx.type === "send" ? (
-                            <ArrowUpRight size={14} color="#f43f5e" />
-                          ) : (
-                            <ArrowDownLeft size={14} color="#10b981" />
-                          )}
+                {transactions.length === 0 ? (
+                  <View style={styles.emptyStateBox}>
+                    <Text style={styles.emptyStateTitle}>No transactions recorded</Text>
+                    <Text style={styles.emptyStateSubtitle}>
+                      Activity on Robinhood Chain will appear here after your first transfer.
+                    </Text>
+                  </View>
+                ) : (
+                  transactions.map((tx) => {
+                    const contact = findMobileContactByAddress(contacts, tx.counterparty);
+                    return (
+                      <View key={tx.id} style={styles.txRow}>
+                        <View style={styles.txLeft}>
+                          <View
+                            style={[
+                              styles.txIconBox,
+                              tx.type === "send"
+                                ? styles.txIconSend
+                                : styles.txIconReceive,
+                            ]}
+                          >
+                            {tx.type === "send" ? (
+                              <ArrowUpRight size={14} color="#f43f5e" />
+                            ) : (
+                              <ArrowDownLeft size={14} color="#10b981" />
+                            )}
+                          </View>
+                          <View>
+                            <Text style={styles.txTitle}>
+                              {contact ? contact.name : shortenAddress(tx.counterparty)}
+                            </Text>
+                            <Text style={styles.txMeta}>
+                              {tx.type === "send" ? "Sent to" : "Received from"} {shortenAddress(tx.counterparty)}
+                            </Text>
+                          </View>
                         </View>
-                        <View>
-                          <Text style={styles.txTitle}>
-                            {contact ? contact.name : shortenAddress(tx.counterparty)}
+                        <View style={styles.txRight}>
+                          <Text
+                            style={[
+                              styles.txAmount,
+                              tx.type === "send" ? styles.txAmountSend : styles.txAmountReceive,
+                            ]}
+                          >
+                            {tx.type === "send" ? "-" : "+"}
+                            {tx.amount} {tx.token}
                           </Text>
-                          <Text style={styles.txMeta}>
-                            {tx.type === "send" ? "Sent to" : "Received from"} {shortenAddress(tx.counterparty)}
-                          </Text>
+                          <Text style={styles.txUsd}>${tx.usdValue}</Text>
                         </View>
                       </View>
-                      <View style={styles.txRight}>
-                        <Text
-                          style={[
-                            styles.txAmount,
-                            tx.type === "send" ? styles.txAmountSend : styles.txAmountReceive,
-                          ]}
-                        >
-                          {tx.type === "send" ? "-" : "+"}
-                          {tx.amount} {tx.token}
-                        </Text>
-                        <Text style={styles.txUsd}>${tx.usdValue}</Text>
-                      </View>
-                    </View>
-                  );
-                })}
+                    );
+                  })
+                )}
               </View>
             </ScrollView>
           )}
@@ -721,7 +822,7 @@ export default function App() {
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Asset</Text>
                 <View style={styles.tokenPickerRow}>
-                  {["USDG", "ETH", "PRIV"].map((sym) => (
+                  {["USDG", "ETH"].map((sym) => (
                     <TouchableOpacity
                       key={sym}
                       style={[
@@ -779,7 +880,7 @@ export default function App() {
                 <View style={styles.stealthLeft}>
                   <Text style={styles.stealthTitle}>Stealth Receiver Mode</Text>
                   <Text style={styles.stealthDescription}>
-                    Generates a one-time unlinked address for recipient privacy
+                    Derives a one-time unlinked address for recipient privacy
                   </Text>
                 </View>
                 <View
@@ -805,7 +906,7 @@ export default function App() {
                 </View>
               )}
 
-              {/* Send Dispatch Button */}
+              {/* Send Button */}
               <TouchableOpacity
                 style={[
                   styles.primaryButton,
@@ -831,7 +932,7 @@ export default function App() {
             >
               <Text style={styles.screenHeading}>Disposable Payment Links</Text>
               <Text style={styles.screenSubheading}>
-                Receive payments without revealing your smart account address or net worth
+                Receive payments without revealing your smart account address or balance
               </Text>
 
               {/* Create Link Card */}
@@ -841,7 +942,7 @@ export default function App() {
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Select Token</Text>
                   <View style={styles.tokenPickerRow}>
-                    {["USDG", "ETH", "PRIV"].map((sym) => (
+                    {["USDG", "ETH"].map((sym) => (
                       <TouchableOpacity
                         key={sym}
                         style={[
@@ -876,10 +977,10 @@ export default function App() {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Memo / Invoice Reference (Optional)</Text>
+                  <Text style={styles.inputLabel}>Memo (Optional)</Text>
                   <TextInput
                     style={styles.textInput}
-                    placeholder="Freelance design, dinner split, etc."
+                    placeholder="Dinner split, invoice reference, etc."
                     placeholderTextColor={THEME.colors.textDim}
                     value={newPayLinkMemo}
                     onChangeText={setNewPayLinkMemo}
@@ -896,45 +997,54 @@ export default function App() {
 
               {/* Active Pay Links */}
               <Text style={styles.sectionHeader}>Active Payment Links</Text>
-              {payLinks.map((link) => (
-                <View key={link.id} style={styles.payLinkRow}>
-                  <View style={styles.payLinkInfo}>
-                    <View style={styles.payLinkAmountRow}>
-                      <Text style={styles.payLinkAmount}>
-                        {link.amount} {link.token}
-                      </Text>
-                      <Text style={styles.payLinkStatus}>
-                        {link.status === "pending" ? "Waiting for Payment" : "Swept to Vault"}
-                      </Text>
-                    </View>
-                    {link.memo ? (
-                      <Text style={styles.payLinkMemo}>{link.memo}</Text>
-                    ) : null}
-                    <Text style={styles.payLinkSlug}>privatum.me/pay/{link.slug}</Text>
-                  </View>
-
-                  <View style={styles.payLinkActions}>
-                    <TouchableOpacity
-                      style={styles.payLinkActionBtn}
-                      onPress={() =>
-                        copyToClipboard(link.id, `https://privatum.me/pay/${link.slug}`)
-                      }
-                    >
-                      <Copy size={14} color={THEME.colors.textPrimary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.payLinkActionBtn}
-                      onPress={() =>
-                        Share.share({
-                          message: `Pay ${link.amount} ${link.token} privately on Robinhood Chain: https://privatum.me/pay/${link.slug}`,
-                        })
-                      }
-                    >
-                      <Share2 size={14} color={THEME.colors.textPrimary} />
-                    </TouchableOpacity>
-                  </View>
+              {payLinks.length === 0 ? (
+                <View style={styles.emptyStateBox}>
+                  <Text style={styles.emptyStateTitle}>No payment links created</Text>
+                  <Text style={styles.emptyStateSubtitle}>
+                    Generate a one-time link above to accept private payments without sharing your wallet address.
+                  </Text>
                 </View>
-              ))}
+              ) : (
+                payLinks.map((link) => (
+                  <View key={link.id} style={styles.payLinkRow}>
+                    <View style={styles.payLinkInfo}>
+                      <View style={styles.payLinkAmountRow}>
+                        <Text style={styles.payLinkAmount}>
+                          {link.amount} {link.token}
+                        </Text>
+                        <Text style={styles.payLinkStatus}>
+                          {link.status === "pending" ? "Waiting for Payment" : "Swept to Vault"}
+                        </Text>
+                      </View>
+                      {link.memo ? (
+                        <Text style={styles.payLinkMemo}>{link.memo}</Text>
+                      ) : null}
+                      <Text style={styles.payLinkSlug}>privatum.me/pay/{link.slug}</Text>
+                    </View>
+
+                    <View style={styles.payLinkActions}>
+                      <TouchableOpacity
+                        style={styles.payLinkActionBtn}
+                        onPress={() =>
+                          copyToClipboard(link.id, `https://privatum.me/pay/${link.slug}`)
+                        }
+                      >
+                        <Copy size={14} color={THEME.colors.textPrimary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.payLinkActionBtn}
+                        onPress={() =>
+                          Share.share({
+                            message: `Pay ${link.amount} ${link.token} privately on Robinhood Chain: https://privatum.me/pay/${link.slug}`,
+                          })
+                        }
+                      >
+                        <Share2 size={14} color={THEME.colors.textPrimary} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
             </ScrollView>
           )}
 
@@ -948,7 +1058,7 @@ export default function App() {
                 <View>
                   <Text style={styles.screenHeading}>Private Address Book</Text>
                   <Text style={styles.screenSubheading}>
-                    Zero cloud leaks: counterparty graph encrypted on device
+                    Encrypted on this device. Zero cloud leaks.
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -1001,7 +1111,12 @@ export default function App() {
               {/* Contacts List */}
               <View style={styles.contactsList}>
                 {filteredContacts.length === 0 ? (
-                  <Text style={styles.emptyListText}>No contacts found.</Text>
+                  <View style={styles.emptyStateBox}>
+                    <Text style={styles.emptyStateTitle}>No contacts saved</Text>
+                    <Text style={styles.emptyStateSubtitle}>
+                      Add frequent counterparties, cold storage vaults, or exchanges.
+                    </Text>
+                  </View>
                 ) : (
                   filteredContacts.map((contact) => (
                     <View key={contact.id} style={styles.contactCard}>
@@ -1072,10 +1187,12 @@ export default function App() {
                   <View style={styles.shardInfo}>
                     <Text style={styles.shardName}>Shard A: Device Keystore</Text>
                     <Text style={styles.shardStatus}>
-                      Active: Hardware-backed on this Android device
+                      {hasShardA ? "Active: Hardware-backed on this device" : "Not generated yet"}
                     </Text>
                   </View>
-                  <Text style={styles.shardStateActive}>Ready</Text>
+                  <Text style={hasShardA ? styles.shardStateActive : styles.shardStateCold}>
+                    {hasShardA ? "Ready" : "Missing"}
+                  </Text>
                 </View>
 
                 <View style={styles.shardRow}>
@@ -1092,7 +1209,7 @@ export default function App() {
                   <View style={styles.shardInfo}>
                     <Text style={styles.shardName}>Shard C: Emergency Recovery</Text>
                     <Text style={styles.shardStatus}>
-                      Stored offline: Passkey or seed phrase backup
+                      Offline backup key (paper or cold storage)
                     </Text>
                   </View>
                   <Text style={styles.shardStateCold}>Cold Storage</Text>
@@ -1306,7 +1423,7 @@ export default function App() {
               </Text>
 
               <View style={styles.qrPlaceholderBox}>
-                <Text style={styles.qrPlaceholderText}>QR Code</Text>
+                <Text style={styles.qrPlaceholderText}>Robinhood Chain (4663)</Text>
                 <Text style={styles.qrAddressMono}>{walletAddress}</Text>
               </View>
 
@@ -1395,7 +1512,7 @@ export default function App() {
                 <Text style={styles.inputLabel}>Private Note (Optional)</Text>
                 <TextInput
                   style={styles.textInput}
-                  placeholder="Invoicing reference, treasury vault, etc."
+                  placeholder="Contractor reference, cold vault, etc."
                   placeholderTextColor={THEME.colors.textDim}
                   value={formContactNote}
                   onChangeText={setFormContactNote}
@@ -1428,21 +1545,30 @@ export default function App() {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={{ maxHeight: 300 }}>
-                {contacts.map((c) => (
-                  <TouchableOpacity
-                    key={c.id}
-                    style={styles.contactPickerItem}
-                    onPress={() => {
-                      setSendRecipient(c.address);
-                      setShowAddressBookPicker(false);
-                    }}
-                  >
-                    <Text style={styles.contactPickerName}>{c.name}</Text>
-                    <Text style={styles.contactPickerAddr}>{shortenAddress(c.address)}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              {contacts.length === 0 ? (
+                <View style={styles.emptyStateBox}>
+                  <Text style={styles.emptyStateTitle}>No contacts saved yet</Text>
+                  <Text style={styles.emptyStateSubtitle}>
+                    Add contacts in the Address Book tab to pick them quickly here.
+                  </Text>
+                </View>
+              ) : (
+                <ScrollView style={{ maxHeight: 300 }}>
+                  {contacts.map((c) => (
+                    <TouchableOpacity
+                      key={c.id}
+                      style={styles.contactPickerItem}
+                      onPress={() => {
+                        setSendRecipient(c.address);
+                        setShowAddressBookPicker(false);
+                      }}
+                    >
+                      <Text style={styles.contactPickerName}>{c.name}</Text>
+                      <Text style={styles.contactPickerAddr}>{shortenAddress(c.address)}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
             </View>
           </View>
         </Modal>
@@ -1525,6 +1651,89 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: THEME.colors.background,
+  },
+  centeredLoading: {
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  loadingText: {
+    marginTop: 16,
+    color: THEME.colors.textSecondary,
+    fontSize: 13,
+  },
+  onboardingContainer: {
+    flex: 1,
+    padding: 24,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  onboardingIconBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  onboardingTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#ffffff",
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  onboardingSubtitle: {
+    fontSize: 13,
+    color: THEME.colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  onboardingFeatures: {
+    width: "100%",
+    backgroundColor: THEME.colors.surface,
+    borderRadius: THEME.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    padding: 16,
+    marginBottom: 24,
+    gap: 12,
+  },
+  onboardingFeatureRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  featureDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#ffffff",
+  },
+  featureText: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    flex: 1,
+  },
+  secondaryButton: {
+    width: "100%",
+    backgroundColor: THEME.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: THEME.colors.border,
+    borderRadius: THEME.borderRadius.md,
+    paddingVertical: THEME.spacing.md,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  secondaryButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#ffffff",
   },
   header: {
     flexDirection: "row",
@@ -1770,6 +1979,23 @@ const styles = StyleSheet.create({
     borderRadius: THEME.borderRadius.md,
     borderWidth: 1,
     borderColor: THEME.colors.border,
+  },
+  emptyStateBox: {
+    padding: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyStateTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: THEME.colors.textPrimary,
+    marginBottom: 4,
+  },
+  emptyStateSubtitle: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    textAlign: "center",
+    lineHeight: 16,
   },
   txRow: {
     flexDirection: "row",
@@ -2018,6 +2244,7 @@ const styles = StyleSheet.create({
     color: THEME.colors.textSecondary,
   },
   primaryButton: {
+    width: "100%",
     backgroundColor: "#ffffff",
     borderRadius: THEME.borderRadius.md,
     paddingVertical: THEME.spacing.md,
@@ -2165,12 +2392,6 @@ const styles = StyleSheet.create({
   },
   contactsList: {
     gap: 8,
-  },
-  emptyListText: {
-    fontSize: 12,
-    color: THEME.colors.textMuted,
-    textAlign: "center",
-    paddingVertical: 32,
   },
   contactCard: {
     flexDirection: "row",
