@@ -5,6 +5,14 @@ on:
     branches: [master, main]
     paths:
       - 'android/**'
+  # Desktop releases are cut by pushing a v* tag, which runs desktop-release.yml
+  # and publishes the GitHub Release. A tag push alone never started this
+  # workflow (the push trigger above is filtered to branches AND android paths),
+  # so the APK step below was unreachable and no release ever carried one.
+  # Hooking the published release fires this once the release actually exists,
+  # which is the only moment an asset can be attached to it.
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -64,11 +72,9 @@ jobs:
 
       - name: Attach APK to GitHub Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')
         with:
           files: build-artifacts/privatum-mobile.apk
-          name: Release ${{ github.ref_name }}
-          draft: false
-          prerelease: false
+          tag_name: ${{ github.event.release.tag_name || github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

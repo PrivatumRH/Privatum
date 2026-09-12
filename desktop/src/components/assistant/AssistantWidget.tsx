@@ -11,6 +11,12 @@ interface AssistantWidgetProps {
   spendingHistory: SpendingRecord[];
   transactionHistory: { type: "send" | "receive"; counterparty: string; amount: string; asset: string }[];
   onApplyIntent: (intent: ParsedIntent) => void;
+  /** Feature gate: inference_receipt_export (0.1.20). */
+  receiptExportEnabled?: boolean;
+  appVersion?: string;
+  signDigest?: (digest: string) => Promise<string>;
+  recoverSigner?: (digest: string, signature: string) => Promise<string>;
+  onNotify?: (kind: "success" | "error" | "info", title: string, message: string) => void;
 }
 
 export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
@@ -20,6 +26,11 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
   spendingHistory,
   transactionHistory,
   onApplyIntent,
+  receiptExportEnabled = false,
+  appVersion,
+  signDigest,
+  recoverSigner,
+  onNotify,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -65,6 +76,11 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
         spendingHistory={spendingHistory}
         transactionHistory={transactionHistory}
         onApplyIntent={onApplyIntent}
+        receiptExportEnabled={receiptExportEnabled}
+        appVersion={appVersion}
+        signDigest={signDigest}
+        recoverSigner={recoverSigner}
+        onNotify={onNotify}
       />
     </>
   );

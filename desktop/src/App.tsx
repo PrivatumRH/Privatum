@@ -50,6 +50,8 @@ import {
   isAddress,
   parseEther,
   parseUnits,
+  hexToBytes,
+  recoverMessageAddress,
   type Address,
   type Hex,
 } from "viem";
@@ -120,6 +122,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.17": "AI Inference Receipts",
   "0.1.18": "Inline Pay Link QR Preview",
   "0.1.19": "Transaction Risk Scoring",
+  "0.1.20": "Verifiable Receipt Export",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -329,7 +332,7 @@ export function App() {
   >("wallet");
 
   // Versioning and feature release stage preview
-  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.19");
+  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.20");
   const [previewVersion, setPreviewVersion] = useState<ReleaseVersion | null>(null);
 
   // Gasless Staking state
@@ -544,6 +547,34 @@ export function App() {
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  /**
+   * Signs an inference-receipt bundle digest with the device shard (Shard A).
+   *
+   * The digest is always sha256(domain tag || canonical payload), so the caller
+   * cannot steer this signer onto an arbitrary 32-byte value - landing on a
+   * UserOperation hash would require a SHA-256 preimage attack. The key stays
+   * in App state; the assistant tree only ever receives this callback.
+   */
+  const signReceiptDigest = useCallback(
+    async (digest: string): Promise<string> => {
+      if (!shardAPrivKey) throw new Error("Device shard is not loaded on this device.");
+      const account = privateKeyToAccount(shardAPrivKey as Hex);
+      return await account.signMessage({ message: { raw: hexToBytes(digest as Hex) } });
+    },
+    [shardAPrivKey]
+  );
+
+  /** Recovers the signer of a receipt bundle so the in-app verifier can check it. */
+  const recoverReceiptSigner = useCallback(
+    async (digest: string, signature: string): Promise<string> => {
+      return await recoverMessageAddress({
+        message: { raw: hexToBytes(digest as Hex) },
+        signature: signature as Hex,
+      });
+    },
+    []
+  );
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -4056,6 +4087,11 @@ export function App() {
       {/* Privatum Assistant Widget (V2 On-Device AI) */}
       <AssistantWidget
         walletAddress={wallet?.address || walletAddress || accounts[0]?.address}
+        receiptExportEnabled={isFeatureActive("inference_receipt_export", appVersion, previewVersion)}
+        appVersion={previewVersion || appVersion}
+        signDigest={shardAPrivKey ? signReceiptDigest : undefined}
+        recoverSigner={recoverReceiptSigner}
+        onNotify={addToast}
         contacts={contacts}
         guardrailConfig={guardrailConfig}
         spendingHistory={guardrailHistory}
