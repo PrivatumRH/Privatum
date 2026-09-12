@@ -14,8 +14,12 @@ export const THEME = {
     textMuted: "#64748b",
     textDim: "#475569",
 
-    accent: "#ffffff",
-    accentMuted: "rgba(255, 255, 255, 0.1)",
+    accent: "#f54842",
+    accentMuted: "rgba(245, 72, 66, 0.15)",
+    accentGlow: "rgba(245, 72, 66, 0.35)",
+
+    secondary: "#ffffff",
+    secondaryMuted: "rgba(255, 255, 255, 0.1)",
 
     danger: "#f43f5e",
     dangerMuted: "rgba(244, 63, 94, 0.12)",

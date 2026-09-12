@@ -1,4 +1,6 @@
-import { generatePrivateKey, privateKeyToAddress } from "viem/accounts";
+import "./polyfills";
+import * as Crypto from "expo-crypto";
+import { privateKeyToAddress } from "viem/accounts";
 import {
   ROBINHOOD_RPC_URL,
   USDG_TOKEN_ADDRESS,
@@ -138,6 +140,19 @@ export async function fetchAllLiveBalances(address: string): Promise<LiveBalance
 }
 
 /**
+ * Generates 32 cryptographically secure random bytes as an Ethereum private key
+ * directly using native Android OS / iOS SecureRandom via expo-crypto.
+ */
+export function generateDevicePrivateKey(): `0x${string}` {
+  const bytes = Crypto.getRandomBytes(32);
+  let hex = "0x";
+  for (let i = 0; i < 32; i++) {
+    hex += bytes[i].toString(16).padStart(2, "0");
+  }
+  return hex as `0x${string}`;
+}
+
+/**
  * Creates a real 2-of-3 threshold smart account:
  * 1. Generates Shard A key on device
  * 2. Generates Shard C recovery key
@@ -150,43 +165,60 @@ export async function createRealSmartAccount(): Promise<{
   shardBAddress: string;
   apiKey: string;
 }> {
-  const shardAKey = generatePrivateKey();
+  const shardAKey = generateDevicePrivateKey();
   const shardAAddress = privateKeyToAddress(shardAKey);
 
-  const shardCKey = generatePrivateKey();
+  const shardCKey = generateDevicePrivateKey();
   const shardCAddress = privateKeyToAddress(shardCKey);
 
   const predictedAddress = shardAAddress;
 
-  const res = await fetch(`${COSIGNER_API_URL}/v1/wallets`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      address: predictedAddress,
-      shardAAddress: shardAAddress,
-      shardCAddress: shardCAddress,
-    }),
-  });
+  try {
+    const res = await fetch(`${COSIGNER_API_URL}/v1/wallets`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        address: predictedAddress,
+        shardAAddress: shardAAddress,
+        shardCAddress: shardCAddress,
+      }),
+    });
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Co-Signer registration failed (${res.status}): ${errorText}`);
+    if (!res.ok) {
+      const errorText = await res.text();
+      let msg = "Could not register account with the security server.";
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed?.error) msg = parsed.error;
+      } catch {}
+      throw new Error(msg);
+    }
+
+    const data = await res.json();
+    const realAddress = (data.address || predictedAddress).toLowerCase();
+
+    await saveDeviceShard(realAddress, shardAKey);
+    await saveActiveAccount(realAddress);
+    await saveEncryptedItem(`privatum_apikey_${realAddress}`, data.apiKey || "");
+    await saveEncryptedItem(`privatum_shard_b_${realAddress}`, data.shardBAddress || "");
+
+    return {
+      address: realAddress,
+      shardAKey,
+      shardBAddress: data.shardBAddress || "",
+      apiKey: data.apiKey || "",
+    };
+  } catch (err: any) {
+    if (
+      err?.message?.includes("Network request failed") ||
+      err?.message?.includes("Failed to fetch")
+    ) {
+      throw new Error(
+        "Unable to reach the security server. Please check your internet connection."
+      );
+    }
+    throw err;
   }
-
-  const data = await res.json();
-  const realAddress = (data.address || predictedAddress).toLowerCase();
-
-  await saveDeviceShard(realAddress, shardAKey);
-  await saveActiveAccount(realAddress);
-  await saveEncryptedItem(`privatum_apikey_${realAddress}`, data.apiKey || "");
-  await saveEncryptedItem(`privatum_shard_b_${realAddress}`, data.shardBAddress || "");
-
-  return {
-    address: realAddress,
-    shardAKey,
-    shardBAddress: data.shardBAddress || "",
-    apiKey: data.apiKey || "",
-  };
 }
 
 /**
