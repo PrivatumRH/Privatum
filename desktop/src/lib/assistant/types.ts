@@ -60,12 +60,15 @@ export interface ModelLoadingProgress {
   text?: string;
 }
 
+import type { InferenceReceipt } from "./inferenceReceipt";
+
 export interface AssistantMessage {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
   timestamp: number;
   intent?: ParsedIntent;
+  inferenceReceipt?: InferenceReceipt;
   safetyEvidence?: {
     poisonVerdict?: "safe" | "warning" | "danger";
     poisonMessage?: string;

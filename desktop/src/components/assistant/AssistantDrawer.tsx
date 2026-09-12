@@ -11,6 +11,8 @@ import type { AssistantMessage, EngineMode, ModelLoadingProgress, ParsedIntent }
 import { processAssistantQuery } from "../../lib/assistant/assistantEngine";
 import { smolLm2Engine } from "../../lib/assistant/wasmEngine";
 import { IntentProposalCard } from "./IntentProposalCard";
+import { InferenceReceiptChip } from "./InferenceReceiptChip";
+import { generateInferenceReceipt } from "../../lib/assistant/inferenceReceipt";
 import type { Contact } from "../../lib/contacts";
 import type { SpendingGuardrailConfig, SpendingRecord } from "../../lib/spendGuardrails";
 
@@ -129,13 +131,16 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
 
       setMessages((prev) => [...prev, response]);
     } catch (err: any) {
+      const errContent = `Assistant error: ${err?.message || "Failed to process query."}`;
+      const errReceipt = await generateInferenceReceipt(query, errContent, "deterministic");
       setMessages((prev) => [
         ...prev,
         {
           id: `err-${Date.now()}`,
           role: "assistant",
-          content: `Assistant error: ${err?.message || "Failed to process query."}`,
+          content: errContent,
           timestamp: Date.now(),
+          inferenceReceipt: errReceipt,
         },
       ]);
     } finally {
@@ -257,6 +262,9 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
                   <div className="text-xs leading-relaxed break-words space-y-2 [&_p]:leading-relaxed [&_ul]:list-disc [&_ul]:ml-4 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:ml-4 [&_ol]:space-y-1 [&_li]:leading-normal [&_strong]:text-white [&_strong]:font-semibold [&_code]:bg-white/10 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:font-mono [&_code]:text-[11px] [&_pre]:bg-black/60 [&_pre]:p-2.5 [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-white/10 [&_pre]:overflow-x-auto">
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
+                  {msg.inferenceReceipt && (
+                    <InferenceReceiptChip receipt={msg.inferenceReceipt} />
+                  )}
                 </div>
               ) : (
                 <div className="group relative max-w-[85%] rounded-xl p-3 text-xs leading-relaxed bg-white text-black font-medium flex items-start gap-2">
@@ -278,6 +286,7 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
                   <IntentProposalCard
                     intent={msg.intent}
                     safetyEvidence={msg.safetyEvidence}
+                    receipt={msg.inferenceReceipt}
                     onApplyIntent={(it) => {
                       onApplyIntent(it);
                       onClose();
