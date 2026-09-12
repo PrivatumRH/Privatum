@@ -37,6 +37,7 @@ import {
   Zap,
   Link2,
   ShieldAlert,
+  Shield,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -66,6 +67,18 @@ import {
   requiresAcknowledgement,
   type AddressGuardVerdict,
 } from "./lib/addressGuard";
+import { GuardrailCard } from "./components/GuardrailCard";
+import {
+  evaluateSpend,
+  estimateUsdValue,
+  loadGuardrailConfig,
+  loadSpendingHistory,
+  recordSpend,
+  DEFAULT_GUARDRAIL_CONFIG,
+  type SpendingGuardrailConfig,
+  type SpendingRecord,
+  type GuardrailVerdict,
+} from "./lib/spendGuardrails";
 import { executeAccountBatch } from "./lib/execute";
 import { isFeatureActive, RELEASE_VERSIONS, type ReleaseVersion } from "./config/features";
 
@@ -82,6 +95,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.9": "Disposable Pay Links",
   "0.1.10": "Address Poisoning Guard",
   "0.1.11": "Panic Freeze",
+  "0.1.12": "In-App Spending Guardrails",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -291,7 +305,7 @@ export function App() {
   >("wallet");
 
   // Versioning and feature release stage preview
-  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.11");
+  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.12");
   const [previewVersion, setPreviewVersion] = useState<ReleaseVersion | null>(null);
 
   // Gasless Staking state
@@ -459,6 +473,12 @@ export function App() {
   const [addressVerdict, setAddressVerdict] = useState<AddressGuardVerdict | null>(null);
   const [guardAcknowledged, setGuardAcknowledged] = useState<boolean>(false);
 
+  // In-app spending guardrails (v0.1.12)
+  const [guardrailConfig, setGuardrailConfig] = useState<SpendingGuardrailConfig>(DEFAULT_GUARDRAIL_CONFIG);
+  const [guardrailHistory, setGuardrailHistory] = useState<SpendingRecord[]>([]);
+  const [guardrailVerdict, setGuardrailVerdict] = useState<GuardrailVerdict | null>(null);
+  const [guardrailAcknowledged, setGuardrailAcknowledged] = useState<boolean>(false);
+
   // Animated popup toast alerts
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
@@ -588,6 +608,8 @@ export function App() {
       } else {
         setTransactions([]);
       }
+      setGuardrailConfig(loadGuardrailConfig(walletAddress));
+      setGuardrailHistory(loadSpendingHistory(walletAddress));
     } catch {
       setTransactions([]);
     }
@@ -1506,6 +1528,17 @@ export function App() {
     );
     setGuardAcknowledged(false);
 
+    // Evaluate in-app spending guardrails (v0.1.12)
+    if (isFeatureActive("spending_guardrails", appVersion, previewVersion) && wallet) {
+      const amountUsd = estimateUsdValue(sendAmount, sendAssetType);
+      const verdict = evaluateSpend(guardrailConfig, amountUsd, guardrailHistory);
+      setGuardrailVerdict(verdict);
+      setGuardrailAcknowledged(false);
+    } else {
+      setGuardrailVerdict(null);
+      setGuardrailAcknowledged(true);
+    }
+
     setSendStep("preview");
 
     if (isStealthSend && isMeta) {
@@ -1537,6 +1570,21 @@ export function App() {
         "Confirm you checked the full recipient address before this transfer can be signed."
       );
       return;
+    }
+
+    if (guardrailVerdict && guardrailVerdict.warning) {
+      if (!guardrailVerdict.allowed) {
+        addToast("error", "Guardrail Limit Active", guardrailVerdict.message);
+        return;
+      }
+      if (!guardrailAcknowledged) {
+        addToast(
+          "error",
+          "Spending Limit Unacknowledged",
+          "Please check the authorization box to acknowledge exceeding your spending guardrail."
+        );
+        return;
+      }
     }
 
     const trimmedRecipient = sendRecipient.trim();
@@ -1634,6 +1682,17 @@ export function App() {
           try {
             localStorage.setItem(`privatum_transactions_${wallet.address.toLowerCase()}`, JSON.stringify(updatedList));
           } catch {}
+          if (isFeatureActive("spending_guardrails", appVersion, previewVersion)) {
+            const amountUsd = estimateUsdValue(sendAmount, sendAssetType);
+            recordSpend(wallet.address, {
+              txHash: broadcastHash,
+              amount: parseFloat(sendAmount) || 0,
+              symbol: sendAssetType,
+              amountUsd,
+              recipient: batch.stealthAddress,
+            });
+            setGuardrailHistory(loadSpendingHistory(wallet.address));
+          }
         }
 
         addToast("success", "Stealth Transfer Complete", `Sent to one-time stealth address ${shortenAddress(batch.stealthAddress)}`);
@@ -1723,6 +1782,17 @@ export function App() {
         try {
           localStorage.setItem(`privatum_transactions_${wallet.address.toLowerCase()}`, JSON.stringify(updatedList));
         } catch {}
+        if (isFeatureActive("spending_guardrails", appVersion, previewVersion)) {
+          const amountUsd = estimateUsdValue(sendAmount, sendAssetType);
+          recordSpend(wallet.address, {
+            txHash: broadcastHash,
+            amount: parseFloat(sendAmount) || 0,
+            symbol: sendAssetType,
+            amountUsd,
+            recipient: trimmedRecipient,
+          });
+          setGuardrailHistory(loadSpendingHistory(wallet.address));
+        }
       }
 
       addToast("success", "Transfer Complete", `Sent ${sendAmount} ${sendAssetType} to ${shortenAddress(trimmedRecipient)}`);
@@ -2311,6 +2381,17 @@ export function App() {
                 </button>
               </div>
             </div>
+
+            {/* Spending Guardrails Card (v0.1.12) */}
+            {isFeatureActive("spending_guardrails", appVersion, previewVersion) && wallet && (
+              <GuardrailCard
+                walletAddress={wallet.address}
+                config={guardrailConfig}
+                history={guardrailHistory}
+                onConfigChange={(newCfg) => setGuardrailConfig(newCfg)}
+                onHistoryReset={() => setGuardrailHistory([])}
+              />
+            )}
 
             {/* Tokens link row */}
             <button
@@ -3212,6 +3293,46 @@ export function App() {
                   )
                 )}
 
+                {/* Spending Guardrail Warning Interstitial (v0.1.12) */}
+                {guardrailVerdict && guardrailVerdict.warning && (
+                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-2.5">
+                    <div className="flex items-start gap-2.5">
+                      <Shield className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <div className="text-xs space-y-1">
+                        <div className="font-semibold text-amber-300">{guardrailVerdict.title}</div>
+                        <div className="text-amber-200/80 text-[11px] leading-relaxed">
+                          {guardrailVerdict.message}
+                        </div>
+                        <div className="flex items-center gap-2 pt-1 text-[10px] font-mono text-amber-300/80">
+                          <span>24h Spend: ${guardrailVerdict.current24hTotalUsd.toFixed(2)}</span>
+                          <span>|</span>
+                          <span>Projected: ${guardrailVerdict.projected24hTotalUsd.toFixed(2)}</span>
+                          <span>|</span>
+                          <span>Cap: ${guardrailVerdict.dailyLimitUsd.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {!guardrailVerdict.allowed ? (
+                      <div className="p-2 rounded-lg bg-red-500/15 border border-red-500/25 text-red-200 text-[11px] font-medium">
+                        Strict mode active: Transfers exceeding guardrails cannot be authorized. Adjust limits in settings or wait for rolling window to clear.
+                      </div>
+                    ) : (
+                      <label className="flex items-start gap-2 cursor-pointer select-none pt-1">
+                        <input
+                          type="checkbox"
+                          checked={guardrailAcknowledged}
+                          onChange={(e) => setGuardrailAcknowledged(e.target.checked)}
+                          className="mt-0.5 w-3.5 h-3.5 shrink-0 accent-amber-500 cursor-pointer"
+                        />
+                        <span className="text-[11px] text-amber-200">
+                          I acknowledge exceeding the spending guardrail and authorize this transfer.
+                        </span>
+                      </label>
+                    )}
+                  </div>
+                )}
+
                 {/* Simulation status */}
                 {isSimulating ? (
                   <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center gap-3">
@@ -3306,7 +3427,8 @@ export function App() {
                     disabled={
                       isSending ||
                       isSimulating ||
-                      Boolean(addressVerdict && requiresAcknowledgement(addressVerdict) && !guardAcknowledged)
+                      Boolean(addressVerdict && requiresAcknowledgement(addressVerdict) && !guardAcknowledged) ||
+                      Boolean(guardrailVerdict && guardrailVerdict.warning && (!guardrailVerdict.allowed || !guardrailAcknowledged))
                     }
                     onClick={() => handleSendTransaction()}
                     className="flex-1 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2"
