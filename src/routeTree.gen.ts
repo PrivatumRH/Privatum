@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FreezeRouteImport } from './routes/freeze'
 import { Route as PaySlugRouteImport } from './routes/pay/$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FreezeRoute = FreezeRouteImport.update({
+  id: '/freeze',
+  path: '/freeze',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PaySlugRoute = PaySlugRouteImport.update({
@@ -25,27 +31,31 @@ const PaySlugRoute = PaySlugRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/freeze': typeof FreezeRoute
   '/pay/$slug': typeof PaySlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/freeze': typeof FreezeRoute
   '/pay/$slug': typeof PaySlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/freeze': typeof FreezeRoute
   '/pay/$slug': typeof PaySlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/pay/$slug'
+  fullPaths: '/' | '/freeze' | '/pay/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/pay/$slug'
-  id: '__root__' | '/' | '/pay/$slug'
+  to: '/' | '/freeze' | '/pay/$slug'
+  id: '__root__' | '/' | '/freeze' | '/pay/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  FreezeRoute: typeof FreezeRoute
   PaySlugRoute: typeof PaySlugRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/freeze': {
+      id: '/freeze'
+      path: '/freeze'
+      fullPath: '/freeze'
+      preLoaderRoute: typeof FreezeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pay/$slug': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  FreezeRoute: FreezeRoute,
   PaySlugRoute: PaySlugRoute,
 }
 export const routeTree = rootRouteImport

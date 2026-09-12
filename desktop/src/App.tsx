@@ -36,6 +36,7 @@ import {
   AlertTriangle,
   Zap,
   Link2,
+  ShieldAlert,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -80,6 +81,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.8": "Bridge Spread Rebates",
   "0.1.9": "Disposable Pay Links",
   "0.1.10": "Address Poisoning Guard",
+  "0.1.11": "Panic Freeze",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -96,6 +98,17 @@ import {
   type StakingStatusResponse,
 } from "@privatumrh/robinhood-chain-sdk";
 import { invoke, isTauri } from "@tauri-apps/api/core";
+
+/**
+ * Origin serving the public panic-freeze page.
+ *
+ * The freeze surface has to be reachable from a phone while this machine is
+ * gone, so it lives on the web app rather than in this client. Overridable for
+ * preview deployments, matching VITE_SITE_URL in the web app.
+ */
+const FREEZE_BASE_URL =
+  (import.meta.env.VITE_SITE_URL as string | undefined)?.trim().replace(/\/+$/, "") ||
+  "https://privatumrh.com";
 
 const publicClient = createPublicClient({
   chain: robinhoodChain,
@@ -413,6 +426,7 @@ export function App() {
   const [totpSecret, setTotpSecret] = useState<string | null>(null);
   const [totpUri, setTotpUri] = useState<string | null>(null);
   const [totpQrCode, setTotpQrCode] = useState<string | null>(null);
+  const [freezeQrCode, setFreezeQrCode] = useState<string | null>(null);
   const [totpCode, setTotpCode] = useState<string>("");
   const [totpVerified, setTotpVerified] = useState<boolean>(() => {
     try {
@@ -578,6 +592,37 @@ export function App() {
       setTransactions([]);
     }
   }, [walletAddress]);
+
+  /**
+   * The freeze link for this wallet, pre-filled so a panicking owner never has
+   * to type 42 characters from memory.
+   */
+  const freezeUrl = useMemo(
+    () =>
+      walletAddress
+        ? `${FREEZE_BASE_URL}/freeze?w=${walletAddress}`
+        : `${FREEZE_BASE_URL}/freeze`,
+    [walletAddress]
+  );
+
+  // Render the freeze link as a QR once 2FA is live, since the code is what
+  // the page will ask for.
+  useEffect(() => {
+    if (!totpVerified || !walletAddress) {
+      setFreezeQrCode(null);
+      return;
+    }
+    QRCode.toDataURL(freezeUrl, {
+      margin: 2,
+      width: 180,
+      color: {
+        dark: "#0b0e14",
+        light: "#ffffff",
+      },
+    })
+      .then((url) => setFreezeQrCode(url))
+      .catch(() => setFreezeQrCode(null));
+  }, [totpVerified, walletAddress, freezeUrl]);
 
   // Generate QR for receive modal
   useEffect(() => {
@@ -2564,6 +2609,40 @@ export function App() {
                       <div className="text-[11px] text-emerald-200/80 mt-0.5">
                         Your wallet is paired with your authenticator app for emergency recovery.
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-black/40 border border-white/10 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <ShieldAlert className="w-4 h-4 text-[#f64943] shrink-0 mt-0.5" />
+                      <div>
+                        <div className="text-xs font-semibold text-white">Panic freeze link</div>
+                        <div className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                          Scan this with your phone and add it to your home screen. If this
+                          computer is ever stolen, open it and enter your 6-digit code to stop the
+                          co-signer from signing anything.
+                        </div>
+                      </div>
+                    </div>
+
+                    {freezeQrCode && (
+                      <div className="flex flex-col items-center justify-center p-3 bg-white rounded-2xl w-fit mx-auto space-y-1.5">
+                        <img src={freezeQrCode} alt="Panic freeze link QR code" className="w-36 h-36 rounded-lg" />
+                        <span className="text-[10px] font-medium text-slate-900">
+                          Save this to your phone now
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="text-[11px] font-mono text-slate-300 break-all bg-white/[0.03] rounded-lg px-2.5 py-2 flex items-start justify-between gap-2">
+                      <span>{freezeUrl}</span>
+                      <button
+                        onClick={() => copyToClipboard(freezeUrl, "Freeze link")}
+                        className="p-0.5 hover:text-white text-slate-400 transition shrink-0"
+                        title="Copy freeze link"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
 
