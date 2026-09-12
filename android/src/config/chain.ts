@@ -8,3 +8,5 @@ export const PRIVATUM_FACTORY_ADDRESS = "0x5308e6f5faafa7ef6fff948994bd396a982be
 export const USDG_TOKEN_ADDRESS = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
 
 export const COSIGNER_API_URL = "https://api.privatumrh.com";
+export const PUBLIC_APP_URL = "https://privatumrh.com";
+export const NATIVE_ETH_ADDRESS = "0x0000000000000000000000000000000000000000";

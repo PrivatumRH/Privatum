@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import * as Clipboard from "expo-clipboard";
@@ -57,7 +58,13 @@ import {
   PRIVATUM_FACTORY_ADDRESS,
   USDG_TOKEN_ADDRESS,
   ROBINHOOD_EXPLORER_URL,
+  PUBLIC_APP_URL,
 } from "./src/config/chain";
+import {
+  createRealMobilePayLink,
+  fetchMobilePayLinks,
+  checkAndSweepMobilePayLink,
+} from "./src/lib/paylinks";
 import { THEME } from "./src/config/theme";
 import {
   saveActiveAccount,
@@ -156,6 +163,8 @@ export default function App() {
   const [newPayLinkToken, setNewPayLinkToken] = useState("USDG");
   const [newPayLinkAmount, setNewPayLinkAmount] = useState("");
   const [newPayLinkMemo, setNewPayLinkMemo] = useState("");
+  const [isCreatingPayLink, setIsCreatingPayLink] = useState(false);
+  const [checkingPayLinkSlug, setCheckingPayLinkSlug] = useState<string | null>(null);
 
   // Send Form State
   const [sendRecipient, setSendRecipient] = useState("");
@@ -220,8 +229,8 @@ export default function App() {
           const txs = await loadStoredTransactions(savedAccount);
           setTransactions(txs);
 
-          // Load real paylinks
-          const links = await loadStoredPayLinks(savedAccount);
+          // Load real paylinks from Co-Signer backend
+          const links = await fetchMobilePayLinks(savedAccount);
           setPayLinks(links);
 
           // Load real contacts
@@ -392,26 +401,64 @@ export default function App() {
   };
 
   const handleCreatePayLink = async () => {
+    if (!walletAddress) {
+      Alert.alert("No Account", "Please create or connect a smart account first.");
+      return;
+    }
     if (!newPayLinkAmount || parseFloat(newPayLinkAmount) <= 0) {
       Alert.alert("Invalid Amount", "Please enter a valid requested amount.");
       return;
     }
-    const newSlug = `pay-${Math.random().toString(36).substring(2, 7)}`;
-    const newLink: MobilePayLink = {
-      id: `pl-${Date.now()}`,
-      slug: newSlug,
-      token: newPayLinkToken,
-      amount: parseFloat(newPayLinkAmount).toFixed(2),
-      memo: newPayLinkMemo.trim() || undefined,
-      status: "pending",
-      createdAt: Date.now(),
-    };
-    const updated = [newLink, ...payLinks];
-    setPayLinks(updated);
-    await saveStoredPayLinks(walletAddress, updated);
-    setNewPayLinkAmount("");
-    setNewPayLinkMemo("");
-    Alert.alert("Pay Link Created", `Single-use link generated for ${newLink.amount} ${newLink.token}.`);
+
+    setIsCreatingPayLink(true);
+    try {
+      const newLink = await createRealMobilePayLink(walletAddress, {
+        token: newPayLinkToken,
+        amount: newPayLinkAmount,
+        memo: newPayLinkMemo,
+      });
+
+      setPayLinks((prev) => [newLink, ...prev.filter((l) => l.slug !== newLink.slug)]);
+      setNewPayLinkAmount("");
+      setNewPayLinkMemo("");
+      Alert.alert(
+        "Payment Link Created",
+        `Generated live disposable payment link on Robinhood Chain:\n\nhttps://privatumrh.com/pay/${newLink.slug}`
+      );
+    } catch (err: any) {
+      Alert.alert("Pay Link Error", err?.message || "Failed to create pay link on backend.");
+    } finally {
+      setIsCreatingPayLink(false);
+    }
+  };
+
+  const handleCheckAndSweep = async (slug: string) => {
+    setCheckingPayLinkSlug(slug);
+    try {
+      const result = await checkAndSweepMobilePayLink(slug);
+      if (result.swept) {
+        Alert.alert(
+          "Payment Swept",
+          `Payment confirmed! Funds have been swept into your smart account on Robinhood Chain.${
+            result.txHash ? `\nTx: ${shortenAddress(result.txHash)}` : ""
+          }`
+        );
+        if (walletAddress) {
+          await syncBalances(walletAddress);
+          const links = await fetchMobilePayLinks(walletAddress);
+          setPayLinks(links);
+        }
+      } else {
+        Alert.alert(
+          "Link Status: " + (result.status === "active" ? "Waiting for Deposit" : result.status),
+          "The ephemeral burner address has not received a deposit on Robinhood Chain yet."
+        );
+      }
+    } catch (err: any) {
+      Alert.alert("Sweep Check Error", err?.message || "Failed to check payment status.");
+    } finally {
+      setCheckingPayLinkSlug(null);
+    }
   };
 
   const handleSaveContact = async () => {
@@ -884,6 +931,20 @@ export default function App() {
             <ScrollView
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={async () => {
+                    setIsRefreshing(true);
+                    if (walletAddress) {
+                      const links = await fetchMobilePayLinks(walletAddress);
+                      setPayLinks(links);
+                    }
+                    setIsRefreshing(false);
+                  }}
+                  tintColor={THEME.colors.accent}
+                />
+              }
             >
               <Text style={styles.screenHeading}>Disposable Payment Links</Text>
               <Text style={styles.screenSubheading}>
@@ -952,10 +1013,15 @@ export default function App() {
                 </View>
 
                 <TouchableOpacity
-                  style={styles.primaryButton}
+                  style={[styles.primaryButton, isCreatingPayLink && { opacity: 0.7 }]}
                   onPress={handleCreatePayLink}
+                  disabled={isCreatingPayLink}
                 >
-                  <Text style={styles.primaryButtonText}>Generate Payment Link</Text>
+                  {isCreatingPayLink ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Generate Payment Link</Text>
+                  )}
                 </TouchableOpacity>
               </View>
 
@@ -983,14 +1049,25 @@ export default function App() {
                       {link.memo ? (
                         <Text style={styles.payLinkMemo}>{link.memo}</Text>
                       ) : null}
-                      <Text style={styles.payLinkSlug}>privatum.me/pay/{link.slug}</Text>
+                      <Text style={styles.payLinkSlug}>privatumrh.com/pay/{link.slug}</Text>
                     </View>
 
                     <View style={styles.payLinkActions}>
                       <TouchableOpacity
                         style={styles.payLinkActionBtn}
+                        onPress={() => handleCheckAndSweep(link.slug)}
+                        disabled={checkingPayLinkSlug === link.slug}
+                      >
+                        {checkingPayLinkSlug === link.slug ? (
+                          <ActivityIndicator size="small" color={THEME.colors.accent} />
+                        ) : (
+                          <RefreshCw size={14} color={THEME.colors.textPrimary} />
+                        )}
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.payLinkActionBtn}
                         onPress={() =>
-                          copyToClipboard(link.id, `https://privatum.me/pay/${link.slug}`)
+                          copyToClipboard(link.id, `https://privatumrh.com/pay/${link.slug}`)
                         }
                       >
                         <Copy size={14} color={THEME.colors.textPrimary} />
@@ -999,7 +1076,7 @@ export default function App() {
                         style={styles.payLinkActionBtn}
                         onPress={() =>
                           Share.share({
-                            message: `Pay ${link.amount} ${link.token} privately on Robinhood Chain: https://privatum.me/pay/${link.slug}`,
+                            message: `Pay ${link.amount} ${link.token} privately on Robinhood Chain: https://privatumrh.com/pay/${link.slug}`,
                           })
                         }
                       >

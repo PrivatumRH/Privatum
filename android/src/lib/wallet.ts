@@ -42,6 +42,8 @@ export interface MobilePayLink {
   amount: string;
   memo?: string;
   status: "pending" | "swept";
+  depositAddress?: string;
+  paymentUrl?: string;
   createdAt: number;
 }
 
