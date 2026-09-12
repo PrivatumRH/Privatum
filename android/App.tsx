@@ -22,6 +22,7 @@ import * as Clipboard from "expo-clipboard";
 import QRCode from "react-native-qrcode-svg";
 import { BlurView } from "expo-blur";
 import {
+  Home,
   Shield,
   ArrowUpRight,
   ArrowDownLeft,
@@ -106,7 +107,7 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-type TabKey = "vault" | "paylinks" | "contacts" | "settings";
+type TabKey = "home" | "paylinks" | "contacts" | "settings";
 type SettingsSubPage = null | "keys" | "guardrails" | "security" | "network" | "data";
 
 const CATEGORIES: (ContactCategory | "All")[] = [
@@ -119,7 +120,7 @@ const CATEGORIES: (ContactCategory | "All")[] = [
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabKey>("vault");
+  const [activeTab, setActiveTab] = useState<TabKey>("home");
   const [settingsSubPage, setSettingsSubPage] = useState<SettingsSubPage>(null);
   const [showSendModal, setShowSendModal] = useState<boolean>(false);
   const [selectedAsset, setSelectedAsset] = useState<LiveBalance | null>(null);
@@ -362,7 +363,7 @@ export default function App() {
               setTransactions([]);
               setContacts([]);
               setPayLinks([]);
-              setActiveTab("vault");
+              setActiveTab("home");
               setSettingsSubPage(null);
               setShowAssetDrawer(false);
               setShowSendModal(false);
@@ -512,7 +513,7 @@ export default function App() {
         `Sent ${newTx.amount} ${newTx.token} on Robinhood Chain.`
       );
       setShowSendModal(false);
-      setActiveTab("vault");
+      setActiveTab("home");
     }, 1200);
   };
 
@@ -657,8 +658,8 @@ export default function App() {
 
         {/* Main Content Area */}
         <View style={styles.content}>
-          {/* TAB 1: VAULT */}
-          {activeTab === "vault" && (
+          {/* TAB 1: HOME */}
+          {activeTab === "home" && (
             <ScrollView
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
@@ -1511,20 +1512,20 @@ export default function App() {
             style={styles.floatingNavPill}
           >
             <TouchableOpacity
-              style={[styles.navTab, activeTab === "vault" && styles.navTabActive]}
-              onPress={() => setActiveTab("vault")}
+              style={[styles.navTab, activeTab === "home" && styles.navTabActive]}
+              onPress={() => setActiveTab("home")}
             >
-              <Shield
+              <Home
                 size={18}
-                color={activeTab === "vault" ? THEME.colors.accent : THEME.colors.textMuted}
+                color={activeTab === "home" ? THEME.colors.accent : THEME.colors.textMuted}
               />
               <Text
                 style={[
                   styles.navTabText,
-                  activeTab === "vault" && styles.navTabTextActive,
+                  activeTab === "home" && styles.navTabTextActive,
                 ]}
               >
-                Vault
+                Home
               </Text>
             </TouchableOpacity>
 
