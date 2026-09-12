@@ -29,8 +29,13 @@
 | **2-of-3 Threshold Quorum** | Contracts / SDK | Off-chain ECDSA shard aggregation requiring 2 signatures to authorize ERC-4337 UserOps | Active |
 | **Frontier Asset Settlement** | Multi-surface | Native settlement and routing for **USDG** stablecoin and **ETH** on Robinhood Chain | Active |
 | **Co-Signer Service** | Backend | High-availability policy evaluation engine enforcing daily spend limits and velocity rules | Active |
-| **Tauri v2 Desktop Client** | Desktop | Native OS client (macOS, Windows, Linux) storing Shard A encrypted in OS keystores | Scaffolded |
+| **Tauri v2 Desktop Client** | Desktop | Native OS client (macOS, Windows, Linux) storing Shard A encrypted in OS keystores | Active (v0.1.13) |
+| **Android Companion App** | Mobile | React Native companion app for QR payments and threshold key generation | Active |
 | **Viem Open SDK** | SDK (`@privatumrh/robinhood-chain-sdk`) | Developer library to programmatically assemble threshold wallets and dispatch transactions | Active |
+| **DEX Swaps & Bridge** | Multi-surface | Low-slippage DEX swaps and Relay cross-chain bridging with $PRIV relayer rebates | Active |
+| **Disposable PayLinks** | Multi-surface | Escrowed burner payment links with zero main address exposure | Active |
+| **Client Spending Guardrails** | Desktop / SDK | Address poisoning sentinel and 24-hour spend velocity limits | Active |
+| **Gasless Staking Pass** | Contracts / SDK | Tiered monthly sponsored transaction quota powered by $PRIV staking | Active |
 | **ERC-5564 Stealth Addresses** | Privacy Plane | One-time destination addresses derived from public `.privatum` meta-addresses | In Progress |
 | **Screened Privacy Pools** | Privacy Plane | Association-set cryptographic proofs verifying clean asset provenance | Roadmap |
 
