@@ -38,6 +38,7 @@ import {
   Link2,
   ShieldAlert,
   Shield,
+  BookUser,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -61,6 +62,13 @@ import { StakingTab } from "./components/StakingTab";
 import { PayLinksTab } from "./components/PayLinksTab";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { StealthScannerModal } from "./components/StealthScannerModal";
+import { ContactsModal } from "./components/ContactsModal";
+import {
+  loadContacts,
+  findContactByAddress,
+  recordContactUsage,
+  type Contact,
+} from "./lib/contacts";
 import { buildStealthSendBatch, parseMetaAddress } from "./lib/stealth";
 import {
   checkAddressPoisoning,
@@ -96,6 +104,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.10": "Address Poisoning Guard",
   "0.1.11": "Panic Freeze",
   "0.1.12": "In-App Spending Guardrails",
+  "0.1.13": "Private Address Book",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -305,7 +314,7 @@ export function App() {
   >("wallet");
 
   // Versioning and feature release stage preview
-  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.12");
+  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.13");
   const [previewVersion, setPreviewVersion] = useState<ReleaseVersion | null>(null);
 
   // Gasless Staking state
@@ -479,6 +488,10 @@ export function App() {
   const [guardrailVerdict, setGuardrailVerdict] = useState<GuardrailVerdict | null>(null);
   const [guardrailAcknowledged, setGuardrailAcknowledged] = useState<boolean>(false);
 
+  // Private Address Book & Local Contacts (v0.1.13)
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [showContactsModal, setShowContactsModal] = useState<boolean>(false);
+
   // Animated popup toast alerts
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
@@ -610,6 +623,7 @@ export function App() {
       }
       setGuardrailConfig(loadGuardrailConfig(walletAddress));
       setGuardrailHistory(loadSpendingHistory(walletAddress));
+      setContacts(loadContacts(walletAddress));
     } catch {
       setTransactions([]);
     }
@@ -1523,7 +1537,7 @@ export function App() {
         : checkAddressPoisoning({
             recipient: trimmedRecipient,
             history: transactions,
-            ownAddresses: accounts.map((a) => a.address),
+            ownAddresses: [...accounts.map((a) => a.address), ...contacts.map((c) => c.address)],
           })
     );
     setGuardAcknowledged(false);
@@ -2174,6 +2188,17 @@ export function App() {
               </button>
             )}
 
+            {/* Private Address Book (v0.1.13) */}
+            {isFeatureActive("address_book", appVersion, previewVersion) && (
+              <button
+                onClick={() => setShowContactsModal(true)}
+                title="Private Address Book"
+                className="w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer text-slate-400 hover:text-white hover:bg-white/5 relative"
+              >
+                <BookUser className="w-5 h-5" />
+              </button>
+            )}
+
             <button
               onClick={() => setActiveTab("shards")}
               title="Shard Health"
@@ -2442,7 +2467,18 @@ export function App() {
                         >
                           {/* Counterparty Address */}
                           <div className="w-40 font-mono text-slate-300 font-medium">
-                            {shortenAddress(tx.counterparty)}
+                            {findContactByAddress(contacts, tx.counterparty) ? (
+                              <div className="truncate">
+                                <div className="text-white text-xs font-sans font-semibold truncate">
+                                  {findContactByAddress(contacts, tx.counterparty)?.name}
+                                </div>
+                                <div className="text-[11px] text-slate-400">
+                                  {shortenAddress(tx.counterparty)}
+                                </div>
+                              </div>
+                            ) : (
+                              shortenAddress(tx.counterparty)
+                            )}
                           </div>
 
                           {/* Amount */}
@@ -3074,18 +3110,45 @@ export function App() {
                   )}
 
                   <div>
-                    <label className="text-xs text-slate-400 block mb-1">
-                      {isStealthSend
-                        ? "Recipient Stealth Meta-Address (st:eth:0x... or 132-char hex)"
-                        : "Recipient Address"}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={isStealthSend ? "st:eth:0x... or 0x..." : "0x..."}
-                      value={sendRecipient}
-                      onChange={(e) => setSendRecipient(e.target.value.trim())}
-                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
-                    />
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs text-slate-400 block">
+                        {isStealthSend
+                          ? "Recipient Stealth Meta-Address (st:eth:0x... or 132-char hex)"
+                          : "Recipient Address"}
+                      </label>
+                      {isFeatureActive("address_book", appVersion, previewVersion) && (
+                        <button
+                          type="button"
+                          onClick={() => setShowContactsModal(true)}
+                          className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 transition cursor-pointer"
+                        >
+                          <BookUser className="w-3 h-3" />
+                          <span>Address Book</span>
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder={isStealthSend ? "st:eth:0x... or 0x..." : "0x..."}
+                        value={sendRecipient}
+                        onChange={(e) => setSendRecipient(e.target.value.trim())}
+                        className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
+                      />
+                    </div>
+                    {findContactByAddress(contacts, sendRecipient) && (
+                      <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 font-sans">
+                        <span>Contact:</span>
+                        <span className="text-white font-medium">
+                          {findContactByAddress(contacts, sendRecipient)?.name}
+                        </span>
+                        {findContactByAddress(contacts, sendRecipient)?.category && (
+                          <span className="text-slate-500 font-mono">
+                            ({findContactByAddress(contacts, sendRecipient)?.category})
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -3818,6 +3881,20 @@ export function App() {
         walletAddress={walletAddress as Address}
         addToast={addToast}
         onSweepSuccess={() => fetchBalances(walletAddress as Address)}
+      />
+
+      {/* Modal: Private Address Book (v0.1.13) */}
+      <ContactsModal
+        walletAddress={wallet?.address || walletAddress || accounts[0]?.address || "0x0000000000000000000000000000000000000000"}
+        contacts={contacts}
+        isOpen={showContactsModal}
+        onClose={() => setShowContactsModal(false)}
+        onContactsChange={(updated) => setContacts(updated)}
+        onSelectSend={(addr) => {
+          setSendRecipient(addr);
+          openSendModal();
+        }}
+        addToast={addToast}
       />
     </div>
   );
