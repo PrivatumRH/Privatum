@@ -45,3 +45,7 @@ technical-docs/
 
 # Internal ops docs (not for public mirror)
 DUAL_REPO_SYNC.md
+
+# Android (Expo / React Native)
+android/android/
+android/.expo/
