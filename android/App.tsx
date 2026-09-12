@@ -68,6 +68,10 @@ import {
 } from "./src/lib/paylinks";
 import { executeMobileSend } from "./src/lib/execute";
 import {
+  TransactionReceiptModal,
+  type MobileTransactionReceipt,
+} from "./src/components/TransactionReceiptModal";
+import {
   getMobileFreezeState,
   freezeMobileWallet,
   unfreezeMobileWallet,
@@ -137,6 +141,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("home");
   const [settingsSubPage, setSettingsSubPage] = useState<SettingsSubPage>(null);
   const [showSendModal, setShowSendModal] = useState<boolean>(false);
+  const [sendReceipt, setSendReceipt] = useState<MobileTransactionReceipt | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<LiveBalance | null>(null);
   const [showAssetDrawer, setShowAssetDrawer] = useState<boolean>(false);
 
@@ -584,6 +589,20 @@ export default function App() {
       await saveStoredTransactions(walletAddress, updatedTxs);
 
       setSpendingHistory([newRecord, ...spendingHistory]);
+
+      // Signed TX receipt (v0.1.15) - snapshot before the form is cleared
+      setSendReceipt({
+        hash: result.txHash,
+        amount: newTx.amount,
+        token: sendToken,
+        usdValue: newTx.usdValue,
+        recipient: sendRecipient,
+        recipientLabel: matchedContact
+          ? `${matchedContact.name} (${shortenAddress(sendRecipient)})`
+          : undefined,
+        timestamp: newTx.timestamp,
+        explorerUrl: result.explorerUrl,
+      });
       setSendAmount("");
       setSendRecipient("");
       setTotpCode("");
@@ -595,15 +614,6 @@ export default function App() {
       if (walletAddress) {
         await syncBalances(walletAddress);
       }
-
-      Alert.alert(
-        "Transfer Broadcasted",
-        `Successfully broadcasted transaction on Robinhood Chain!\n\nTx: ${shortenAddress(result.txHash)}`,
-        [
-          { text: "Copy Tx Hash", onPress: () => copyToClipboard("tx-hash", result.txHash) },
-          { text: "Done" },
-        ]
-      );
     } catch (err: any) {
       console.error("[send] Failed to broadcast transaction:", err);
       Alert.alert(
@@ -2116,6 +2126,18 @@ export default function App() {
             </View>
           </View>
         </Modal>
+
+        {/* MODAL: Signed Transaction Receipt */}
+        <TransactionReceiptModal
+          visible={sendReceipt !== null}
+          receipt={sendReceipt}
+          onClose={() => setSendReceipt(null)}
+          onSendAnother={() => {
+            setSendReceipt(null);
+            setShowSendModal(true);
+          }}
+        />
+
 
         {/* MODAL: Receive Funds */}
         <Modal
