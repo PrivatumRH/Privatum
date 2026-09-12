@@ -61,6 +61,7 @@ export interface ModelLoadingProgress {
 }
 
 import type { InferenceReceipt } from "./inferenceReceipt";
+import type { ReceiptTranscript } from "./receiptExport";
 
 export interface AssistantMessage {
   id: string;
@@ -69,6 +70,12 @@ export interface AssistantMessage {
   timestamp: number;
   intent?: ParsedIntent;
   inferenceReceipt?: InferenceReceipt;
+  /**
+   * Plaintext the receipt's hashes commit to, retained so the receipt can be
+   * exported and re-verified offline. Always the POST-redaction prompt -
+   * raw input is never stored here.
+   */
+  transcript?: ReceiptTranscript;
   safetyEvidence?: {
     poisonVerdict?: "safe" | "warning" | "danger";
     poisonMessage?: string;

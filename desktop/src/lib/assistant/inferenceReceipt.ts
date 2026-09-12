@@ -9,6 +9,9 @@ import parserSource from "./deterministicParser.ts?raw";
 import explainerSource from "./transactionExplainer.ts?raw";
 import gatewaySource from "./redactionGateway.ts?raw";
 import workerSource from "./assistant.worker.ts?raw";
+import { sha256hex } from "./sha256";
+
+export { sha256hex };
 
 const SMOLLM2_MODEL_ID = "HuggingFaceTB/SmolLM2-135M-Instruct:q4";
 
@@ -28,13 +31,7 @@ export interface InferenceReceipt {
   shortRef: string;
 }
 
-export async function sha256hex(input: string): Promise<string> {
-  const encoded = new TextEncoder().encode(input);
-  const buf = await crypto.subtle.digest("SHA-256", encoded);
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+
 
 export async function getDetCodeHash(): Promise<string> {
   if (_detCodeHash) return _detCodeHash;

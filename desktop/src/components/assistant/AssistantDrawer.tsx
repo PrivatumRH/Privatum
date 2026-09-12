@@ -13,6 +13,7 @@ import { smolLm2Engine } from "../../lib/assistant/wasmEngine";
 import { IntentProposalCard } from "./IntentProposalCard";
 import { InferenceReceiptChip } from "./InferenceReceiptChip";
 import { generateInferenceReceipt } from "../../lib/assistant/inferenceReceipt";
+import { sanitizePromptIngress } from "../../lib/assistant/redactionGateway";
 import type { Contact } from "../../lib/contacts";
 import type { SpendingGuardrailConfig, SpendingRecord } from "../../lib/spendGuardrails";
 
@@ -25,6 +26,13 @@ interface AssistantDrawerProps {
   spendingHistory: SpendingRecord[];
   transactionHistory: { type: "send" | "receive"; counterparty: string; amount: string; asset: string }[];
   onApplyIntent: (intent: ParsedIntent) => void;
+  /** Feature gate: inference_receipt_export (0.1.20). */
+  receiptExportEnabled?: boolean;
+  appVersion?: string;
+  /** Signs a receipt bundle digest with the device shard. Key never enters this tree. */
+  signDigest?: (digest: string) => Promise<string>;
+  recoverSigner?: (digest: string, signature: string) => Promise<string>;
+  onNotify?: (kind: "success" | "error" | "info", title: string, message: string) => void;
 }
 
 const DEFAULT_SUGGESTION_PROMPTS = [
@@ -43,6 +51,11 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
   spendingHistory,
   transactionHistory,
   onApplyIntent,
+  receiptExportEnabled = false,
+  appVersion = "0.1.20",
+  signDigest,
+  recoverSigner,
+  onNotify,
 }) => {
   const [messages, setMessages] = useState<AssistantMessage[]>([
     {
@@ -132,7 +145,10 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
       setMessages((prev) => [...prev, response]);
     } catch (err: any) {
       const errContent = `Assistant error: ${err?.message || "Failed to process query."}`;
-      const errReceipt = await generateInferenceReceipt(query, errContent, "deterministic");
+      // This catch sits outside the engine's redaction step, so redact again -
+      // a throw must never route a raw prompt into a receipt or transcript.
+      const errInput = sanitizePromptIngress(query).sanitized;
+      const errReceipt = await generateInferenceReceipt(errInput, errContent, "deterministic");
       setMessages((prev) => [
         ...prev,
         {
@@ -141,6 +157,7 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
           content: errContent,
           timestamp: Date.now(),
           inferenceReceipt: errReceipt,
+          transcript: { input: errInput, output: errContent },
         },
       ]);
     } finally {
@@ -263,7 +280,16 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
                   {msg.inferenceReceipt && (
-                    <InferenceReceiptChip receipt={msg.inferenceReceipt} />
+                    <InferenceReceiptChip
+                      receipt={msg.inferenceReceipt}
+                      transcript={msg.transcript}
+                      appVersion={appVersion}
+                      walletAddress={walletAddress}
+                      signDigest={signDigest}
+                      recoverSigner={recoverSigner}
+                      exportEnabled={receiptExportEnabled}
+                      onNotify={onNotify}
+                    />
                   )}
                 </div>
               ) : (

@@ -53,3 +53,10 @@ android/.expo/
 # Scratch images / screenshots
 image.png
 *.png.bak
+
+# Confidential handoff docs (never reaches the public mirror)
+Privacy Stack and Private Inference Build.pdf
+*.pdf
+
+# Python bytecode from scripts/
+scripts/__pycache__/

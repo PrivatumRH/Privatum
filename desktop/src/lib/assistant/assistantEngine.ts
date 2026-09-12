@@ -54,13 +54,20 @@ export async function processAssistantQuery(
   const redaction = sanitizePromptIngress(input);
   if (!redaction.allowed) {
     const alertContent = `Security Alert: ${redaction.reason}`;
-    const alertReceipt = await generateInferenceReceipt(input, alertContent, "deterministic");
+    // Hash the redaction placeholder, never the raw prompt: the input that
+    // triggered this branch IS the secret, and a receipt must never commit to it.
+    const alertReceipt = await generateInferenceReceipt(
+      redaction.sanitized,
+      alertContent,
+      "deterministic"
+    );
     return {
       id: `msg-${Date.now()}`,
       role: "assistant",
       content: alertContent,
       timestamp: Date.now(),
       inferenceReceipt: alertReceipt,
+      transcript: { input: redaction.sanitized, output: alertContent },
       safetyEvidence: {
         poisonVerdict: "danger",
         intentSummary: "Prompt rejected by client-side secret redaction gateway.",
@@ -88,6 +95,7 @@ export async function processAssistantQuery(
       intent: options?.intent,
       safetyEvidence: options?.safetyEvidence,
       inferenceReceipt,
+      transcript: { input: cleanText, output: content },
     };
   };
 

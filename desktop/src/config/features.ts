@@ -18,7 +18,8 @@ export type FeatureKey =
   | "transaction_receipt"
   | "recent_contacts"
   | "inference_receipt"
-  | "transaction_risk_score";
+  | "transaction_risk_score"
+  | "inference_receipt_export";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -41,6 +42,7 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   recent_contacts: "0.1.16",
   inference_receipt: "0.1.17",
   transaction_risk_score: "0.1.19",
+  inference_receipt_export: "0.1.20",
 };
 
 export const RELEASE_VERSIONS = [
@@ -64,6 +66,7 @@ export const RELEASE_VERSIONS = [
   "0.1.17",
   "0.1.18",
   "0.1.19",
+  "0.1.20",
 ] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 
