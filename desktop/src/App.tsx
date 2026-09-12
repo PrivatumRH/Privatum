@@ -90,6 +90,7 @@ import {
 } from "./lib/spendGuardrails";
 import { executeAccountBatch } from "./lib/execute";
 import { isFeatureActive, RELEASE_VERSIONS, type ReleaseVersion } from "./config/features";
+import { PortfolioSparklineCard } from "./components/PortfolioSparklineCard";
 
 const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.0": "Genesis 2-of-3 MPC",
@@ -106,6 +107,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.11": "Panic Freeze",
   "0.1.12": "In-App Spending Guardrails",
   "0.1.13": "Private Address Book",
+  "0.1.14": "Frontier Portfolio Sparkline & 24h PnL",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -315,7 +317,7 @@ export function App() {
   >("wallet");
 
   // Versioning and feature release stage preview
-  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.13");
+  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.14");
   const [previewVersion, setPreviewVersion] = useState<ReleaseVersion | null>(null);
 
   // Gasless Staking state
@@ -2379,34 +2381,48 @@ export function App() {
               </div>
             )}
 
-            {/* Hero Section */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-2">
-              <div>
-                <div className="text-4xl sm:text-5xl font-semibold tracking-tight text-white flex items-baseline gap-2 font-mono">
-                  <span>${totalUsdValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  <span className="text-xl sm:text-2xl font-normal text-slate-400 font-sans tracking-normal">USD</span>
+            {/* Hero Section / Portfolio Sparkline (v0.1.14) */}
+            {isFeatureActive("portfolio_sparkline", appVersion, previewVersion) ? (
+              <PortfolioSparklineCard
+                totalUsdValue={totalUsdValue}
+                usdgBalance={usdgBalance}
+                ethBalance={ethBalance}
+                ethPrice={ethPrice}
+                walletAddress={wallet?.address || walletAddress || accounts[0]?.address}
+                isGaslessActive={isGaslessActive}
+                onOpenSend={() => openSendModal()}
+                onOpenReceive={() => setShowReceiveModal(true)}
+                onOpenSwap={() => setActiveTab("swaps")}
+              />
+            ) : (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-2">
+                <div>
+                  <div className="text-4xl sm:text-5xl font-semibold tracking-tight text-white flex items-baseline gap-2 font-mono">
+                    <span>${totalUsdValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="text-xl sm:text-2xl font-normal text-slate-400 font-sans tracking-normal">USD</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    disabled={!wallet}
+                    onClick={() => openSendModal()}
+                    className="px-5 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-medium text-xs flex items-center gap-2 transition disabled:opacity-40"
+                  >
+                    <ArrowUpRight className="w-4 h-4" />
+                    <span>Send</span>
+                  </button>
+                  <button
+                    disabled={!wallet}
+                    onClick={() => setShowReceiveModal(true)}
+                    className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs border border-white/15 flex items-center gap-2 transition disabled:opacity-40"
+                  >
+                    <ArrowDownLeft className="w-4 h-4" />
+                    <span>Receive</span>
+                  </button>
                 </div>
               </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  disabled={!wallet}
-                  onClick={() => openSendModal()}
-                  className="px-5 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-medium text-xs flex items-center gap-2 transition disabled:opacity-40"
-                >
-                  <ArrowUpRight className="w-4 h-4" />
-                  <span>Send</span>
-                </button>
-                <button
-                  disabled={!wallet}
-                  onClick={() => setShowReceiveModal(true)}
-                  className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs border border-white/15 flex items-center gap-2 transition disabled:opacity-40"
-                >
-                  <ArrowDownLeft className="w-4 h-4" />
-                  <span>Receive</span>
-                </button>
-              </div>
-            </div>
+            )}
 
             {/* Spending Guardrails Card (v0.1.12) */}
             {isFeatureActive("spending_guardrails", appVersion, previewVersion) && (
