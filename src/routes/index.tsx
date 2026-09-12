@@ -533,6 +533,9 @@ function LandingPage() {
                       <div className="dropdown-links_wrapper">
                         <div className="nav-heading">Product</div>
                         <div className="dropdown-links">
+                          <a className="inner-link w-inline-block" href="/mobile" onClick={() => setDropdownOpen(false)}>
+                            <div>Mobile App</div>
+                          </a>
                           <a
                             aria-disabled="true"
                             className={`inner-link w-inline-block ${soonTip === "Private Send" ? "is-soon" : ""}`}
@@ -628,6 +631,9 @@ function LandingPage() {
               </div>
 
               {/* Desktop Direct Links */}
+              <a className="link on-desktop" href="/mobile">
+                Mobile
+              </a>
               <a className="link on-desktop" href="#pipeline">
                 Pipeline
               </a>
@@ -863,6 +869,9 @@ function LandingPage() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
                 <strong style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#687182", letterSpacing: "0.05em" }}>Pages</strong>
+                <a className="link mob" href="/mobile" onClick={() => setMobileMenuOpen(false)}>
+                  Mobile App
+                </a>
                 <a className="link mob" href="#overview" onClick={() => setMobileMenuOpen(false)}>
                   Overview
                 </a>
@@ -3233,6 +3242,9 @@ function LandingPage() {
                       <div className="dropdown-links">
                         <a className="inner-link w-inline-block" href="#download">
                           <div>Desktop Application</div>
+                        </a>
+                        <a className="inner-link w-inline-block" href="/mobile">
+                          <div>Mobile Application</div>
                         </a>
                         <a
                             aria-disabled="true"
