@@ -14,7 +14,8 @@ export type FeatureKey =
   | "panic_freeze"
   | "spending_guardrails"
   | "address_book"
-  | "portfolio_sparkline";
+  | "portfolio_sparkline"
+  | "transaction_receipt";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -33,6 +34,7 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   spending_guardrails: "0.1.12",
   address_book: "0.1.13",
   portfolio_sparkline: "0.1.14",
+  transaction_receipt: "0.1.15",
 };
 
 export const RELEASE_VERSIONS = [
@@ -51,6 +53,7 @@ export const RELEASE_VERSIONS = [
   "0.1.12",
   "0.1.13",
   "0.1.14",
+  "0.1.15",
 ] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 

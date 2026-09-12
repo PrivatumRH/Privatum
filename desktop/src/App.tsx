@@ -63,6 +63,10 @@ import { PayLinksTab } from "./components/PayLinksTab";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { StealthScannerModal } from "./components/StealthScannerModal";
 import { ContactsModal } from "./components/ContactsModal";
+import {
+  TransactionReceiptCard,
+  type TransactionReceipt,
+} from "./components/TransactionReceiptCard";
 import { AssistantWidget } from "./components/assistant/AssistantWidget";
 import {
   loadContacts,
@@ -108,6 +112,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.12": "In-App Spending Guardrails",
   "0.1.13": "Private Address Book",
   "0.1.14": "Portfolio Sparkline & 24h PnL",
+  "0.1.15": "Signed Transaction Receipts",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -317,7 +322,7 @@ export function App() {
   >("wallet");
 
   // Versioning and feature release stage preview
-  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.14");
+  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.15");
   const [previewVersion, setPreviewVersion] = useState<ReleaseVersion | null>(null);
 
   // Gasless Staking state
@@ -445,7 +450,8 @@ export function App() {
   const [sendAmount, setSendAmount] = useState<string>("");
   const [isSending, setIsSending] = useState<boolean>(false);
   const [txSuccessHash, setTxSuccessHash] = useState<string | null>(null);
-  const [sendStep, setSendStep] = useState<"form" | "preview">("form");
+  const [sendStep, setSendStep] = useState<"form" | "preview" | "receipt">("form");
+  const [sendReceipt, setSendReceipt] = useState<TransactionReceipt | null>(null);
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [simulationData, setSimulationData] = useState<{
     status: "success" | "warning";
@@ -1137,6 +1143,7 @@ export function App() {
       setActiveAccountId("primary");
       setShowBackupModal(false);
       setShowSendModal(false);
+      setSendReceipt(null);
       setShowReceiveModal(false);
       setShowCreateModal(false);
       setShowRecoverModal(false);
@@ -1433,7 +1440,14 @@ export function App() {
     setGuardAcknowledged(false);
     setIsSimulating(false);
     setTxSuccessHash(null);
+    setSendReceipt(null);
     setShowSendModal(true);
+  };
+
+  const closeSendModal = () => {
+    setShowSendModal(false);
+    setSendStep("form");
+    setSendReceipt(null);
   };
 
   const runSimulation = async (to: Address, amountStr: string, asset: "ETH" | "USDG") => {
@@ -1728,13 +1742,34 @@ export function App() {
         }
 
         addToast("success", "Stealth Transfer Complete", `Sent to one-time stealth address ${shortenAddress(batch.stealthAddress)}`);
+
+        const stealthReceiptEnabled = isFeatureActive("transaction_receipt", appVersion, previewVersion);
+        if (stealthReceiptEnabled) {
+          setSendReceipt({
+            hash: broadcastHash,
+            amount: sendAmount,
+            asset: sendAssetType,
+            recipient: batch.stealthAddress,
+            recipientLabel: `(Stealth) ${shortenAddress(batch.stealthAddress)}`,
+            timestamp: newRecord.timestamp,
+            gasless: isGaslessActive,
+            stealth: true,
+            feeEth: simulationData?.estimatedFeeEth,
+            feeUsd: simulationData?.estimatedFeeUsd,
+          });
+        }
+
         setSendAmount("");
         setSendRecipient("");
-        setSendStep("form");
         setSimulationData(null);
         setAddressVerdict(null);
         setGuardAcknowledged(false);
-        setShowSendModal(false);
+        if (stealthReceiptEnabled) {
+          setSendStep("receipt");
+        } else {
+          setSendStep("form");
+          setShowSendModal(false);
+        }
 
         setTimeout(() => {
           fetchBalances(wallet.address as Address);
@@ -1829,13 +1864,36 @@ export function App() {
 
       addToast("success", "Transfer Complete", `Sent ${sendAmount} ${sendAssetType} to ${shortenAddress(trimmedRecipient)}`);
 
+      const receiptEnabled = isFeatureActive("transaction_receipt", appVersion, previewVersion);
+      if (receiptEnabled) {
+        const matchedContact = findContactByAddress(contacts, trimmedRecipient);
+        setSendReceipt({
+          hash: broadcastHash,
+          amount: sendAmount,
+          asset: sendAssetType,
+          recipient: trimmedRecipient,
+          recipientLabel: matchedContact
+            ? `${matchedContact.name} · ${shortenAddress(trimmedRecipient)}`
+            : undefined,
+          timestamp: newRecord.timestamp,
+          gasless: isGaslessActive,
+          stealth: false,
+          feeEth: simulationData?.estimatedFeeEth,
+          feeUsd: simulationData?.estimatedFeeUsd,
+        });
+      }
+
       setSendAmount("");
       setSendRecipient("");
-      setSendStep("form");
       setSimulationData(null);
       setAddressVerdict(null);
       setGuardAcknowledged(false);
-      setShowSendModal(false);
+      if (receiptEnabled) {
+        setSendStep("receipt");
+      } else {
+        setSendStep("form");
+        setShowSendModal(false);
+      }
 
       // Poll updated balance
       setTimeout(() => {
@@ -3071,12 +3129,22 @@ export function App() {
       {showSendModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-[#181a23] border border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            {sendStep === "form" ? (
+            {sendStep === "receipt" && sendReceipt ? (
+              <TransactionReceiptCard
+                receipt={sendReceipt}
+                onDone={() => closeSendModal()}
+                onSendAnother={() => {
+                  setSendReceipt(null);
+                  setSendStep("form");
+                }}
+                onNotify={addToast}
+              />
+            ) : sendStep === "form" ? (
               <>
                 <div className="flex items-center justify-between">
                   <h3 className="text-base font-semibold text-white">Send</h3>
                   <button
-                    onClick={() => setShowSendModal(false)}
+                    onClick={() => closeSendModal()}
                     className="text-slate-400 hover:text-white p-1 transition"
                   >
                     <X className="w-4 h-4" />
@@ -3247,7 +3315,7 @@ export function App() {
                     <button
                       type="button"
                       disabled={isSending}
-                      onClick={() => setShowSendModal(false)}
+                      onClick={() => closeSendModal()}
                       className="flex-1 py-2.5 rounded-xl bg-white/10 text-slate-300 font-semibold text-xs hover:bg-white/15 border border-white/10 transition disabled:opacity-40"
                     >
                       Cancel
@@ -3276,7 +3344,7 @@ export function App() {
                   </button>
                   <h3 className="text-base font-semibold text-white">Preview Transfer</h3>
                   <button
-                    onClick={() => setShowSendModal(false)}
+                    onClick={() => closeSendModal()}
                     className="text-slate-400 hover:text-white p-1 transition"
                   >
                     <X className="w-4 h-4" />
