@@ -110,6 +110,7 @@ import { isFeatureActive, RELEASE_VERSIONS, type ReleaseVersion } from "./config
 import { PortfolioSparklineCard } from "./components/PortfolioSparklineCard";
 import { evaluateTransactionRisk } from "./lib/riskScore";
 import { TransactionRiskScoreRow } from "./components/TransactionRiskScoreRow";
+import { RecipientAutocomplete } from "./components/RecipientAutocomplete";
 
 const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.0": "Genesis 2-of-3 MPC",
@@ -136,6 +137,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.21": "Browser Receipt Verifier",
   "0.1.22": "Live Threshold Signing Visual",
   "0.1.23": "Rolling Budget Forecast",
+  "0.1.24": "Recipient Contact Autocomplete",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -3350,15 +3352,46 @@ export function App() {
                           })}
                         </div>
                       )}
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder={isStealthSend ? "st:eth:0x... or 0x..." : "0x..."}
+                    {isFeatureActive("contact_autocomplete", appVersion, previewVersion) ? (
+                      <RecipientAutocomplete
                         value={sendRecipient}
-                        onChange={(e) => setSendRecipient(e.target.value.trim())}
-                        className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
+                        onChange={(val) => setSendRecipient(val)}
+                        onSelectContact={(candidate) => {
+                          setSendRecipient(candidate.address);
+                          if (candidate.address.startsWith("st:eth:") || candidate.address.length > 66) {
+                            setIsStealthSend(true);
+                          }
+                          if (wallet?.address) {
+                            recordContactUsage(wallet.address, candidate.address);
+                          }
+                        }}
+                        contacts={contacts}
+                        transactions={transactions}
+                        ownAddress={wallet?.address}
+                        addressHistory={transactions.map((t) => ({
+                          counterparty: t.counterparty,
+                          type: t.type,
+                          amount: t.amount,
+                          asset: t.asset,
+                        }))}
+                        placeholder={
+                          isStealthSend
+                            ? "st:eth:0x... or contact name"
+                            : "0x... or contact name"
+                        }
+                        isStealthSend={isStealthSend}
                       />
-                    </div>
+                    ) : (
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder={isStealthSend ? "st:eth:0x... or 0x..." : "0x..."}
+                          value={sendRecipient}
+                          onChange={(e) => setSendRecipient(e.target.value.trim())}
+                          className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
+                        />
+                      </div>
+                    )}
                     {findContactByAddress(contacts, sendRecipient) && (
                       <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 font-sans">
                         <span>Contact:</span>
