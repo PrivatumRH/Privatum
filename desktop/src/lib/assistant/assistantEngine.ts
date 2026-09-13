@@ -19,14 +19,18 @@ import {
 import type { AssistantMessage, EngineMode, ParsedIntent } from "./types";
 import { generateInferenceReceipt } from "./inferenceReceipt";
 
+import { evaluateLedgerQuery } from "./ledgerQueries";
+import { parseMultiIntent } from "./multiIntent";
+
 export interface ProcessAssistantInputParams {
   input: string;
   walletAddress?: string;
   contacts?: Contact[];
   guardrailConfig?: SpendingGuardrailConfig;
   spendingHistory?: SpendingRecord[];
-  transactionHistory?: { type: "send" | "receive"; counterparty: string; amount: string; asset: string }[];
+  transactionHistory?: { type: "send" | "receive"; counterparty: string; amount: string; asset: string; timestamp?: number; hash?: string }[];
   preferredEngine?: EngineMode;
+  onToken?: (token: string) => void;
 }
 
 /**
@@ -99,7 +103,60 @@ export async function processAssistantQuery(
     };
   };
 
-  // STEP 2: Deterministic NLP Parsing
+  // STEP 2: Multi-Intent Command Chaining (Compound Instructions)
+  const multiPlan = parseMultiIntent(cleanText, contacts);
+  if (multiPlan) {
+    const lines = [
+      `Multi-Step Execution Plan (${multiPlan.steps.length} actions):`,
+      "",
+      ...multiPlan.steps.map((s) => `* ${s.label}: ${s.summary}`),
+      "",
+      "Click below to review each action and execute with your local shard.",
+    ];
+
+    return await createResponse(lines.join("\n"), {
+      intent: {
+        type: "multi_intent_plan",
+        steps: multiPlan.steps,
+      },
+      safetyEvidence: {
+        intentSummary: `Chained Execution (${multiPlan.steps.length} steps)`,
+      },
+    });
+  }
+
+  // STEP 3: Local Natural Language Ledger Queries
+  const ledgerRes = evaluateLedgerQuery(cleanText, {
+    walletAddress,
+    contacts,
+    guardrailConfig,
+    spendingHistory,
+    transactionHistory,
+  });
+
+  if (ledgerRes && ledgerRes.handled) {
+    const lines = [ledgerRes.summary];
+    if (ledgerRes.details && ledgerRes.details.length > 0) {
+      lines.push("");
+      for (const d of ledgerRes.details) {
+        lines.push(`* ${d}`);
+      }
+    }
+
+    return await createResponse(lines.join("\n"), {
+      intent: {
+        type: "ledger_query",
+        queryType: ledgerRes.queryType,
+        summary: ledgerRes.summary,
+        details: ledgerRes.details,
+      },
+      safetyEvidence: {
+        intentSummary: `Ledger Query: ${ledgerRes.queryType || "inquiry"}`,
+      },
+    });
+  }
+
+  // STEP 4: Deterministic NLP Parsing
   const parsed = parseDeterministicIntent(cleanText, contacts);
 
   if (parsed) {
@@ -292,7 +349,7 @@ export async function processAssistantQuery(
       }
     } else {
       try {
-        const answer = await smolLm2Engine.generate(cleanText);
+        const answer = await smolLm2Engine.generate(cleanText, undefined, params.onToken);
         if (answer && answer.trim().length > 0) {
           return await createResponse(answer.trim(), { engine: "smollm2_wasm" });
         }

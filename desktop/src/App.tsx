@@ -138,6 +138,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.22": "Live Threshold Signing Visual",
   "0.1.23": "Rolling Budget Forecast",
   "0.1.24": "Recipient Contact Autocomplete",
+  "0.1.25": "AI Financial Intelligence & Multi-Intent Chaining",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {

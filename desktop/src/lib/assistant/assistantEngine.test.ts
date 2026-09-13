@@ -60,4 +60,30 @@ describe("Assistant Engine Pipeline", () => {
     const res = await processAssistantQuery({ input: "whats the time" });
     expect(res.content).toContain("The current local time is");
   });
+
+  it("processes multi-intent compound commands", async () => {
+    const raw = "Send 10 USDG to 0x3c204d1697b85d2a7e1d79459d619a852d11e0dc and create a 25 USDG pay link";
+    const res = await processAssistantQuery({ input: raw });
+    expect(res.intent?.type).toBe("multi_intent_plan");
+    if (res.intent?.type === "multi_intent_plan") {
+      expect(res.intent.steps.length).toBe(2);
+      expect(res.intent.steps[0].intent.type).toBe("send_transfer");
+      expect(res.intent.steps[1].intent.type).toBe("create_paylink");
+    }
+  });
+
+  it("processes natural language spending headroom queries", async () => {
+    const res = await processAssistantQuery({
+      input: "How much headroom do I have left?",
+      guardrailConfig: {
+        enabled: true,
+        singleTxLimitUsd: 500,
+        dailyLimitUsd: 1000,
+        strictMode: true,
+      },
+      spendingHistory: [],
+    });
+    expect(res.intent?.type).toBe("ledger_query");
+    expect(res.content).toContain("1000.00 USD remaining");
+  });
 });

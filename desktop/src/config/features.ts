@@ -22,7 +22,8 @@ export type FeatureKey =
   | "inference_receipt_export"
   | "threshold_visual"
   | "guardrail_budget_bar"
-  | "contact_autocomplete";
+  | "contact_autocomplete"
+  | "ai_intelligence";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -49,6 +50,7 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   threshold_visual: "0.1.22",
   guardrail_budget_bar: "0.1.23",
   contact_autocomplete: "0.1.24",
+  ai_intelligence: "0.1.25",
 };
 
 export const RELEASE_VERSIONS = [
@@ -77,6 +79,7 @@ export const RELEASE_VERSIONS = [
   "0.1.22",
   "0.1.23",
   "0.1.24",
+  "0.1.25",
 ] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 
