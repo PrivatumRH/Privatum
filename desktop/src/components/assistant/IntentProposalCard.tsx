@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpRight, Shield, ShieldAlert, Link2, Lock, Unlock, ArrowRight, X } from "lucide-react";
+import { ArrowUpRight, Shield, ShieldAlert, Link2, Lock, Unlock, ArrowRight, X, Layers } from "lucide-react";
 import type { ParsedIntent } from "../../lib/assistant/types";
 import type { InferenceReceipt } from "../../lib/assistant/inferenceReceipt";
 import { evaluateTransactionRisk } from "../../lib/riskScore";
@@ -313,6 +313,56 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
             </button>
           )}
         </div>
+      </div>
+    );
+  }
+
+  if (intent.type === "multi_intent_plan") {
+    return (
+      <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3.5 text-xs">
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-1.5 font-medium text-white">
+            <Layers className="h-3.5 w-3.5 text-purple-400" />
+            <span>Multi-Step Execution Plan ({intent.steps.length} actions)</span>
+          </div>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="p-1 text-white/40 hover:text-white rounded hover:bg-white/5 transition-colors"
+              title="Dismiss proposal"
+              aria-label="Dismiss proposal"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="space-y-2 mb-3">
+          {intent.steps.map((step) => (
+            <div
+              key={step.stepIndex}
+              className="flex items-center justify-between gap-2 p-2 rounded-lg bg-black/30 border border-white/5"
+            >
+              <div className="min-w-0">
+                <div className="font-medium text-white truncate text-[11px]">{step.label}</div>
+                <div className="text-[10px] text-white/60 truncate">{step.summary}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onApplyIntent(step.intent)}
+                className="shrink-0 py-1 px-2.5 rounded bg-white/10 hover:bg-white/20 text-white font-medium text-[10px] transition-colors cursor-pointer"
+              >
+                Execute
+              </button>
+            </div>
+          ))}
+        </div>
+        {receipt && (
+          <div className="flex items-center justify-between text-[10px] pt-1 border-t border-white/5">
+            <span className="text-white/40">Inference Proof:</span>
+            <span className="font-mono text-white/50">{receipt.shortRef}</span>
+          </div>
+        )}
       </div>
     );
   }

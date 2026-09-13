@@ -41,12 +41,31 @@ export interface ParsedCheckAddressIntent {
   address: string;
 }
 
+export interface ParsedMultiIntent {
+  type: "multi_intent_plan";
+  steps: {
+    intent: ParsedIntent;
+    stepIndex: number;
+    label: string;
+    summary: string;
+  }[];
+}
+
+export interface ParsedLedgerQueryIntent {
+  type: "ledger_query";
+  queryType?: string;
+  summary: string;
+  details?: string[];
+}
+
 export type ParsedIntent =
   | ParsedTransferIntent
   | ParsedPaylinkIntent
   | ParsedFreezeIntent
   | ParsedUnfreezeIntent
   | ParsedCheckAddressIntent
+  | ParsedMultiIntent
+  | ParsedLedgerQueryIntent
   | { type: "view_guardrails" }
   | { type: "view_contacts" }
   | { type: "explain_tx"; txHash: string }

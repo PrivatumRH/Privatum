@@ -87,11 +87,27 @@ self.addEventListener("message", async (event: MessageEvent) => {
         { role: "user", content: prompt },
       ];
 
+      let streamer: any = null;
+      try {
+        const { TextStreamer } = await import("@huggingface/transformers");
+        if (TextStreamer && gen.tokenizer) {
+          streamer = new TextStreamer(gen.tokenizer, {
+            skip_prompt: true,
+            callback_function: (token: string) => {
+              self.postMessage({ id, type: "generate_token", token });
+            },
+          });
+        }
+      } catch (streamErr) {
+        // Fallback to non-streaming output if TextStreamer is not supported
+      }
+
       const output = await gen(messages, {
         max_new_tokens: 80,
         temperature: 0.2,
         do_sample: false,
         return_full_text: false,
+        streamer: streamer || undefined,
       });
 
       let reply = "";

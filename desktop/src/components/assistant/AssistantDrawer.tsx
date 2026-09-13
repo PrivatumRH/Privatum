@@ -36,10 +36,10 @@ interface AssistantDrawerProps {
 }
 
 const DEFAULT_SUGGESTION_PROMPTS = [
-  "Send 10 USDG to Alice",
-  "Freeze wallet for 24h",
-  "What are my spending limits?",
-  "Create paylink for 20 USDG",
+  "How much have I spent today?",
+  "Who are my top recipients?",
+  "Send 10 USDG to Alice and create a 20 USDG pay link",
+  "Can I send 150 USDG?",
 ];
 
 export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({

@@ -10,7 +10,7 @@ class SmolLM2WasmEngine {
   private currentProgress: ModelLoadingProgress = { status: "idle" };
   private pendingRequests = new Map<
     string,
-    { resolve: (val: string) => void; reject: (err: any) => void }
+    { resolve: (val: string) => void; reject: (err: any) => void; onToken?: (token: string) => void }
   >();
   private reqCounter = 0;
 
@@ -54,7 +54,7 @@ class SmolLM2WasmEngine {
       });
 
       this.worker.onmessage = (event: MessageEvent) => {
-        const { id, type, status, progress, text, error } = event.data || {};
+        const { id, type, status, progress, text, token, error } = event.data || {};
 
         if (type === "progress") {
           this.notifyProgress({ status, progress, text });
@@ -71,6 +71,11 @@ class SmolLM2WasmEngine {
         } else if (type === "init_error") {
           this.isLoading = false;
           this.notifyProgress({ status: "error", text: error || "Model initialization failed." });
+        } else if (type === "generate_token") {
+          const pending = this.pendingRequests.get(id);
+          if (pending && pending.onToken && token) {
+            pending.onToken(token);
+          }
         } else if (type === "generate_success") {
           const pending = this.pendingRequests.get(id);
           if (pending) {
@@ -135,13 +140,17 @@ class SmolLM2WasmEngine {
   /**
    * Generates text off-thread in the background Web Worker to ensure zero UI freezes.
    */
-  public async generate(prompt: string, systemPrompt?: string): Promise<string> {
+  public async generate(
+    prompt: string,
+    systemPrompt?: string,
+    onToken?: (token: string) => void
+  ): Promise<string> {
     const worker = this.ensureWorker();
 
     if (worker) {
       const id = `req-${++this.reqCounter}-${Date.now()}`;
       return new Promise<string>((resolve, reject) => {
-        this.pendingRequests.set(id, { resolve, reject });
+        this.pendingRequests.set(id, { resolve, reject, onToken });
         worker.postMessage({ id, type: "generate", prompt, systemPrompt });
 
         // Timeout safety (30 seconds)
