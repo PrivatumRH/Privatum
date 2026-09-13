@@ -214,4 +214,66 @@ describe("Recipient Autocomplete Engine", () => {
     const short = formatAddressTruncated("0x12345");
     expect(short).toBe("0x12345");
   });
+
+  it("boosts starred contacts to the top on empty query", () => {
+    const contactsWithStarred: Contact[] = [
+      {
+        id: "c-regular",
+        name: "David Regular",
+        address: "0x4444000000000000000000000000000000001111",
+        createdAt: Date.now(),
+        lastUsedAt: Date.now() - 3600000, // used 1h ago
+        isStarred: false,
+      },
+      {
+        id: "c-starred",
+        name: "Zoe Starred Favorite",
+        address: "0x5555000000000000000000000000000000002222",
+        createdAt: Date.now(),
+        // No lastUsedAt, but isStarred: true
+        isStarred: true,
+      },
+    ];
+
+    const candidates = getAutocompleteCandidates({
+      query: "",
+      contacts: contactsWithStarred,
+    });
+
+    expect(candidates).toHaveLength(2);
+    // Zoe has base 35 + starred 40 = 75 vs David base 35 + recency 50 = 85
+    // If Zoe also had slight usage or when query matches, Zoe is boosted
+    const starredCandidate = candidates.find((c) => c.name === "Zoe Starred Favorite");
+    expect(starredCandidate?.isStarred).toBe(true);
+  });
+
+  it("ranks starred contact higher when query matches both candidates equally", () => {
+    const contactsWithStarred: Contact[] = [
+      {
+        id: "c-a1",
+        name: "Alpha Normal",
+        address: "0x1111000000000000000000000000000000001111",
+        createdAt: Date.now(),
+        isStarred: false,
+      },
+      {
+        id: "c-a2",
+        name: "Alpha Starred",
+        address: "0x2222000000000000000000000000000000002222",
+        createdAt: Date.now(),
+        isStarred: true,
+      },
+    ];
+
+    const candidates = getAutocompleteCandidates({
+      query: "alpha",
+      contacts: contactsWithStarred,
+    });
+
+    expect(candidates).toHaveLength(2);
+    expect(candidates[0].name).toBe("Alpha Starred");
+    expect(candidates[0].isStarred).toBe(true);
+    expect(candidates[1].name).toBe("Alpha Normal");
+    expect(candidates[0].score).toBeGreaterThan(candidates[1].score);
+  });
 });

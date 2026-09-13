@@ -24,7 +24,8 @@ export type FeatureKey =
   | "guardrail_budget_bar"
   | "contact_autocomplete"
   | "ai_intelligence"
-  | "ledger_export";
+  | "ledger_export"
+  | "starred_contacts";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -53,6 +54,7 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   contact_autocomplete: "0.1.24",
   ai_intelligence: "0.1.25",
   ledger_export: "0.1.26",
+  starred_contacts: "0.1.27",
 };
 
 export const RELEASE_VERSIONS = [
@@ -83,6 +85,7 @@ export const RELEASE_VERSIONS = [
   "0.1.24",
   "0.1.25",
   "0.1.26",
+  "0.1.27",
 ] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 
