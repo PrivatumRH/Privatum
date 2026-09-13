@@ -104,6 +104,8 @@ import {
   type CeremonyStage,
 } from "./lib/thresholdCeremony";
 import { ThresholdSignatureVisual } from "./components/ThresholdSignatureVisual";
+import { GuardrailBudgetBar } from "./components/GuardrailBudgetBar";
+import { nextCapacityRelease, formatCountdown } from "./lib/guardrailForecast";
 import { isFeatureActive, RELEASE_VERSIONS, type ReleaseVersion } from "./config/features";
 import { PortfolioSparklineCard } from "./components/PortfolioSparklineCard";
 import { evaluateTransactionRisk } from "./lib/riskScore";
@@ -133,6 +135,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.20": "Verifiable Receipt Export",
   "0.1.21": "Browser Receipt Verifier",
   "0.1.22": "Live Threshold Signing Visual",
+  "0.1.23": "Rolling Budget Forecast",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -342,7 +345,7 @@ export function App() {
   >("wallet");
 
   // Versioning and feature release stage preview
-  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.22");
+  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.23");
   const [previewVersion, setPreviewVersion] = useState<ReleaseVersion | null>(null);
 
   // Gasless Staking state
@@ -529,6 +532,12 @@ export function App() {
   // Private Address Book & Local Contacts (v0.1.13)
   const [contacts, setContacts] = useState<Contact[]>([]);
   const recentContacts = useMemo(() => getRecentContacts(contacts, 3), [contacts]);
+
+  /** When guardrail headroom next returns, so blocked transfers can say so. */
+  const nextGuardrailRelease = useMemo(
+    () => nextCapacityRelease(guardrailHistory),
+    [guardrailHistory]
+  );
   const [showContactsModal, setShowContactsModal] = useState<boolean>(false);
 
   // Transaction Risk Scoring (v0.1.18)
@@ -3570,6 +3579,23 @@ export function App() {
                   )
                 )}
 
+                {/* Rolling budget state (v0.1.23). Shown always, not only once a
+                    transfer already trips a warning, and it names when headroom
+                    actually returns rather than leaving "wait for the rolling
+                    window to clear" as the only guidance. */}
+                {isFeatureActive("guardrail_budget_bar", appVersion, previewVersion) &&
+                  guardrailConfig.enabled && (
+                    <GuardrailBudgetBar
+                      config={guardrailConfig}
+                      history={guardrailHistory}
+                      pendingUsd={
+                        sendAmount && parseFloat(sendAmount) > 0
+                          ? estimateUsdValue(sendAmount, sendAssetType)
+                          : 0
+                      }
+                    />
+                  )}
+
                 {/* Spending Guardrail Warning Interstitial (v0.1.12) */}
                 {guardrailVerdict && guardrailVerdict.warning && (
                   <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-2.5">
@@ -3592,7 +3618,16 @@ export function App() {
 
                     {!guardrailVerdict.allowed ? (
                       <div className="p-2 rounded-lg bg-red-500/15 border border-red-500/25 text-red-200 text-[11px] font-medium">
-                        Strict mode active: Transfers exceeding guardrails cannot be authorized. Adjust limits in settings or wait for rolling window to clear.
+                        Strict mode active: Transfers exceeding guardrails cannot be authorized.
+                        Adjust limits in settings
+                        {nextGuardrailRelease ? (
+                          <>
+                            , or wait {formatCountdown(nextGuardrailRelease.inMs)} for $
+                            {nextGuardrailRelease.amountUsd.toFixed(2)} of headroom to return.
+                          </>
+                        ) : (
+                          " to authorize this transfer."
+                        )}
                       </div>
                     ) : (
                       <label className="flex items-start gap-2 cursor-pointer select-none pt-1">
