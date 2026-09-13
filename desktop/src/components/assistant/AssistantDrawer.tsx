@@ -131,6 +131,9 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
     setInputText("");
     setIsProcessing(true);
 
+    let hasStreamedToken = false;
+    const streamMsgId = `stream-${Date.now()}`;
+
     try {
       const response = await processAssistantQuery({
         input: query,
@@ -140,9 +143,33 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
         spendingHistory,
         transactionHistory,
         preferredEngine: engineMode,
+        onToken: (token: string) => {
+          if (!hasStreamedToken) {
+            hasStreamedToken = true;
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: streamMsgId,
+                role: "assistant",
+                content: token,
+                timestamp: Date.now(),
+              },
+            ]);
+          } else {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === streamMsgId ? { ...m, content: m.content + token } : m))
+            );
+          }
+        },
       });
 
-      setMessages((prev) => [...prev, response]);
+      if (hasStreamedToken) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === streamMsgId ? response : m))
+        );
+      } else {
+        setMessages((prev) => [...prev, response]);
+      }
     } catch (err: any) {
       const errContent = `Assistant error: ${err?.message || "Failed to process query."}`;
       // This catch sits outside the engine's redaction step, so redact again -
@@ -218,19 +245,40 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
           </button>
         </div>
 
-        {/* Model Loading Progress Bar */}
-        {engineMode === "smollm2_wasm" && wasmProgress.status === "downloading" && (
+        {/* Model Loading / Status Bar */}
+        {engineMode === "smollm2_wasm" && (wasmProgress.status === "loading" || wasmProgress.status === "downloading") && (
           <div className="px-4 py-2 bg-[#f54842]/5 border-b border-[#f54842]/20 text-xs">
             <div className="flex justify-between text-white/60 mb-1 text-[11px]">
-              <span>{wasmProgress.text}</span>
-              <span>{wasmProgress.progress}%</span>
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="w-3 h-3 animate-spin text-[#f54842]" />
+                {wasmProgress.text || (wasmProgress.status === "downloading" ? "Downloading AI model..." : "Initializing on-device AI runtime...")}
+              </span>
+              <span>{wasmProgress.progress ? `${wasmProgress.progress}%` : "5%"}</span>
             </div>
             <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#f54842] transition-all duration-300"
-                style={{ width: `${wasmProgress.progress || 0}%` }}
+                style={{ width: `${wasmProgress.progress || 8}%` }}
               />
             </div>
+          </div>
+        )}
+        {engineMode === "smollm2_wasm" && wasmProgress.status === "ready" && (
+          <div className="px-4 py-1.5 bg-emerald-500/5 border-b border-emerald-500/20 text-[11px] text-emerald-400 flex items-center justify-between">
+            <span>On-device AI active (SmolLM2-135M)</span>
+            <span className="text-[10px] text-emerald-500/60 font-mono">100% offline</span>
+          </div>
+        )}
+        {engineMode === "smollm2_wasm" && wasmProgress.status === "error" && (
+          <div className="px-4 py-1.5 bg-amber-500/5 border-b border-amber-500/20 text-[11px] text-amber-300/80 flex items-center justify-between">
+            <span>Model unavailable offline. Local Knowledge Base active.</span>
+            <button
+              type="button"
+              onClick={() => smolLm2Engine.init()}
+              className="text-[10px] text-amber-400 underline hover:text-white"
+            >
+              Retry
+            </button>
           </div>
         )}
 
