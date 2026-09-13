@@ -96,6 +96,14 @@ import {
   type GuardrailVerdict,
 } from "./lib/spendGuardrails";
 import { executeAccountBatch } from "./lib/execute";
+import {
+  createCeremony,
+  reduceCeremony,
+  timeStage,
+  type CeremonyEvent,
+  type CeremonyStage,
+} from "./lib/thresholdCeremony";
+import { ThresholdSignatureVisual } from "./components/ThresholdSignatureVisual";
 import { isFeatureActive, RELEASE_VERSIONS, type ReleaseVersion } from "./config/features";
 import { PortfolioSparklineCard } from "./components/PortfolioSparklineCard";
 import { evaluateTransactionRisk } from "./lib/riskScore";
@@ -124,6 +132,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.19": "Transaction Risk Scoring",
   "0.1.20": "Verifiable Receipt Export",
   "0.1.21": "Browser Receipt Verifier",
+  "0.1.22": "Live Threshold Signing Visual",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -333,7 +342,7 @@ export function App() {
   >("wallet");
 
   // Versioning and feature release stage preview
-  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.21");
+  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.22");
   const [previewVersion, setPreviewVersion] = useState<ReleaseVersion | null>(null);
 
   // Gasless Staking state
@@ -463,6 +472,7 @@ export function App() {
   const [txSuccessHash, setTxSuccessHash] = useState<string | null>(null);
   const [sendStep, setSendStep] = useState<"form" | "preview" | "receipt">("form");
   const [sendReceipt, setSendReceipt] = useState<TransactionReceipt | null>(null);
+  const [ceremony, setCeremony] = useState<CeremonyStage[]>(createCeremony());
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [simulationData, setSimulationData] = useState<{
     status: "success" | "warning";
@@ -1736,6 +1746,12 @@ export function App() {
 
     setIsSending(true);
     setTxSuccessHash(null);
+    setCeremony(createCeremony(isStealthSend && isMeta ? "batch" : "standard"));
+
+    // Observation only: every stage reported here reflects work the send
+    // genuinely performs, so the visual cannot run ahead of reality.
+    const onStage = (event: CeremonyEvent) =>
+      setCeremony((prev) => reduceCeremony(prev, event));
 
     try {
       const parsedAmount =
@@ -1761,6 +1777,7 @@ export function App() {
           values: batch.values,
           datas: batch.datas,
           sponsor: isGaslessActive,
+          onStage,
         });
 
         setTxSuccessHash(broadcastHash);
@@ -1833,25 +1850,38 @@ export function App() {
       }
 
       // Standard transfer UserOp
-      const userOpBase = wallet.buildTransferUserOp({
-        to: trimmedRecipient as Address,
-        amount: parsedAmount,
-        asset: sendAssetType,
-      });
+      const userOpBase = await timeStage("userop", onStage, async () =>
+        wallet.buildTransferUserOp({
+          to: trimmedRecipient as Address,
+          amount: parsedAmount,
+          asset: sendAssetType,
+        })
+      );
 
-      // 2. Obtain 2-of-3 threshold signature (Shard A locally + Shard B via co-signer)
+      // 2. Obtain 2-of-3 threshold signature (Shard A locally + Shard B via co-signer).
+      //    Signed CONCURRENTLY, exactly as wallet.signUserOp does internally; the
+      //    two are timed apart only so the UI can tell the local device signature
+      //    from the co-signer round-trip.
       const userOpHash = getUserOpHash(userOpBase, wallet.entryPointAddress, wallet.chainId);
-      const signature = await wallet.signUserOp(userOpHash);
+      const [sigA, sigB] = await Promise.all([
+        timeStage("shard_a", onStage, () => wallet.shardA.signHash(userOpHash)),
+        timeStage("shard_b", onStage, () => wallet.shardB.signHash(userOpHash, wallet.apiKey)),
+      ]);
+      const signature = await timeStage("combine", onStage, async () =>
+        PrivatumWallet.combineSignatures(sigA, sigB)
+      );
 
       // 3. Submit transaction
       let broadcastHash: string;
       try {
-        const receipt = await submitUserOp({
-          userOp: { ...userOpBase, signature },
-          entryPoint: wallet.entryPointAddress,
-          apiUrl: wallet.apiUrl,
-          sponsor: isGaslessActive,
-        });
+        const receipt = await timeStage("submit", onStage, () =>
+          submitUserOp({
+            userOp: { ...userOpBase, signature },
+            entryPoint: wallet.entryPointAddress,
+            apiUrl: wallet.apiUrl,
+            sponsor: isGaslessActive,
+          })
+        );
         broadcastHash = receipt.userOpHash;
       } catch (bundlerErr: any) {
         const errMsg = String(bundlerErr?.message || "");
@@ -3662,6 +3692,13 @@ export function App() {
                     <TransactionRiskScoreRow assessment={riskAssessment} />
                   )}
                 </div>
+
+                {/* Live threshold ceremony, shown only while a send is actually
+                    in flight. Every row is measured, so it cannot run ahead of
+                    the signing it depicts. */}
+                {isSending && isFeatureActive("threshold_visual", appVersion, previewVersion) && (
+                  <ThresholdSignatureVisual stages={ceremony} />
+                )}
 
                 {/* Action buttons */}
                 <div className="flex gap-2 pt-2">
