@@ -17,6 +17,31 @@ non-zero when something cannot be proven (useful in CI).
 
 Exit codes: `0` nothing failed, `1` a check failed, `2` bad usage.
 
+## Three ways to verify, one implementation
+
+| Where | How |
+|---|---|
+| In the app | Expand a receipt, click **Verify** |
+| Command line | `bun run verify:receipt <bundle.json>` |
+| Browser | Open `web-verifier/dist/verify.html`, drop the file on it |
+
+All three call the same `verifyReceiptBundle` from
+`src/lib/assistant/receiptExport.ts`, so they agree by construction rather than
+by good intentions.
+
+### Building the browser verifier
+
+```sh
+bun run build:verifier
+```
+
+Bundles the verification module into a single self-contained HTML file at
+`web-verifier/dist/verify.html`. No CDN, no external requests, no build output
+to host anywhere - open it from disk with the network switched off and it still
+works. A verifier that fetches its crypto from a CDN is asking you to trust that
+CDN, which defeats the point, so the build fails outright if a network primitive
+turns up in the bundle.
+
 ## What a passing result means
 
 The verifier recomputes, from the plaintext in the bundle:
