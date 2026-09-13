@@ -60,3 +60,9 @@ Privacy Stack and Private Inference Build.pdf
 
 # Python bytecode from scripts/
 scripts/__pycache__/
+
+# The built browser verifier is itself the deliverable: someone checking a
+# receipt should not need a toolchain to do it. Tracked on purpose, against the
+# blanket dist/ rule above.
+!desktop/web-verifier/dist/
+!desktop/web-verifier/dist/verify.html

@@ -67,6 +67,7 @@ export const RELEASE_VERSIONS = [
   "0.1.18",
   "0.1.19",
   "0.1.20",
+  "0.1.21",
 ] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 

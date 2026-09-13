@@ -123,6 +123,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.18": "Inline Pay Link QR Preview",
   "0.1.19": "Transaction Risk Scoring",
   "0.1.20": "Verifiable Receipt Export",
+  "0.1.21": "Browser Receipt Verifier",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -332,7 +333,7 @@ export function App() {
   >("wallet");
 
   // Versioning and feature release stage preview
-  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.20");
+  const [appVersion] = useState<string>((import.meta.env.VITE_APP_VERSION as string) || "0.1.21");
   const [previewVersion, setPreviewVersion] = useState<ReleaseVersion | null>(null);
 
   // Gasless Staking state

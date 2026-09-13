@@ -12,6 +12,6 @@
     "jsx": "react-jsx",
     "strict": true
   },
-  "include": ["src"],
+  "include": ["src", "web-verifier/main.ts"],
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
 }

@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Verify a Privatum Inference Receipt</title>
+<style>
+  :root {
+    --bg: #08080a;
+    --panel: #101013;
+    --panel-2: #16161b;
+    --line: rgba(255,255,255,0.08);
+    --line-2: rgba(255,255,255,0.14);
+    --text: #ececf1;
+    --muted: rgba(236,236,241,0.46);
+    --faint: rgba(236,236,241,0.28);
+    --accent: #f54842;
+    --pass: #34d399;
+    --fail: #f87171;
+    --warn: #fbbf24;
+    --mono: "Cascadia Mono", "SF Mono", "JetBrains Mono", Consolas, ui-monospace, monospace;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--sans); line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 48px 20px 96px; }
+
+  header { margin-bottom: 36px; }
+  .brand {
+    font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; margin-bottom: 14px;
+  }
+  h1 { font-size: clamp(26px, 5vw, 38px); line-height: 1.15; margin: 0 0 14px; letter-spacing: -0.02em; }
+  .lede { color: var(--muted); font-size: 15px; max-width: 62ch; margin: 0; }
+  .lede strong { color: var(--text); font-weight: 600; }
+
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 16px; padding: 22px;
+  }
+  #drop {
+    border: 1.5px dashed var(--line-2); border-radius: 14px;
+    padding: 40px 24px; text-align: center; cursor: pointer;
+    transition: border-color .15s, background .15s;
+    background: var(--panel-2);
+  }
+  #drop:hover, #drop.dragging { border-color: var(--accent); background: rgba(245,72,66,0.05); }
+  #drop:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .drop-title { font-weight: 600; font-size: 15px; margin-bottom: 5px; }
+  .drop-sub { color: var(--faint); font-size: 12.5px; }
+  #picker { display: none; }
+
+  .or { text-align: center; color: var(--faint); font-size: 11px;
+        letter-spacing: .16em; text-transform: uppercase; margin: 18px 0 14px; }
+  textarea {
+    width: 100%; min-height: 110px; resize: vertical;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 11px;
+    padding: 13px; font-family: var(--mono); font-size: 12px; line-height: 1.6;
+  }
+  textarea:focus { outline: none; border-color: var(--line-2); }
+  .actions { display: flex; gap: 10px; margin-top: 13px; flex-wrap: wrap; }
+  button {
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    padding: 10px 20px; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--line-2); background: rgba(255,255,255,0.05);
+    color: var(--text); transition: background .15s, border-color .15s;
+  }
+  button:hover { background: rgba(255,255,255,0.1); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: #e03b35; }
+
+  #results { margin-top: 30px; }
+  #results.hidden { display: none; }
+
+  .verdict {
+    border-radius: 14px; padding: 20px 22px; margin-bottom: 20px;
+    border: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px;
+  }
+  .verdict-pass { background: rgba(52,211,153,0.08); border-color: rgba(52,211,153,0.32); }
+  .verdict-fail { background: rgba(248,113,113,0.08); border-color: rgba(248,113,113,0.32); }
+  .verdict-word { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+  .verdict-pass .verdict-word { color: var(--pass); }
+  .verdict-fail .verdict-word { color: var(--fail); }
+  .verdict-sub { color: var(--muted); font-size: 13.5px; }
+
+  .meta {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+    gap: 12px; margin: 0 0 20px; padding: 16px 18px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  }
+  .meta div { min-width: 0; }
+  .meta dt { font-size: 10px; letter-spacing: .13em; text-transform: uppercase;
+             color: var(--faint); margin-bottom: 3px; }
+  .meta dd { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+  .mono { font-family: var(--mono); font-size: 11.5px; }
+
+  table.checks { width: 100%; border-collapse: collapse;
+                 background: var(--panel); border: 1px solid var(--line);
+                 border-radius: 12px; overflow: hidden; }
+  table.checks tr { border-bottom: 1px solid var(--line); }
+  table.checks tr:last-child { border-bottom: none; }
+  table.checks td { padding: 12px 14px; vertical-align: top; font-size: 13px; }
+  .cell-status { width: 104px; }
+  .cell-label { width: 152px; font-weight: 600; }
+  .cell-detail { color: var(--muted); font-size: 12.5px; }
+  .pill { display: inline-block; font-family: var(--mono); font-size: 10px;
+          font-weight: 700; letter-spacing: .06em; padding: 3px 8px; border-radius: 5px; }
+  .pill-pass { background: rgba(52,211,153,0.14); color: var(--pass); }
+  .pill-fail { background: rgba(248,113,113,0.14); color: var(--fail); }
+  .pill-unverifiable { background: rgba(251,191,36,0.14); color: var(--warn); }
+  .pill-skipped { background: rgba(255,255,255,0.06); color: var(--faint); }
+
+  .transcript { margin-top: 20px; background: var(--panel);
+                border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; }
+  .transcript summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .transcript summary:hover { color: var(--text); }
+  .transcript-body h4 { font-size: 10px; letter-spacing: .13em; text-transform: uppercase;
+                        color: var(--faint); margin: 16px 0 6px; }
+  .transcript-body pre { background: var(--panel-2); border: 1px solid var(--line);
+                         border-radius: 9px; padding: 12px; margin: 0;
+                         font-family: var(--mono); font-size: 12px;
+                         white-space: pre-wrap; overflow-wrap: anywhere; }
+
+  .caveat { margin-top: 20px; padding: 18px 20px; background: var(--panel);
+            border: 1px solid var(--line); border-left: 2px solid var(--warn);
+            border-radius: 12px; }
+  .caveat h4 { margin: 0 0 5px; font-size: 12px; letter-spacing: .05em;
+               text-transform: uppercase; color: var(--warn); }
+  .caveat h4 + p { margin: 0 0 16px; }
+  .caveat p:last-child { margin-bottom: 0; }
+  .caveat p { color: var(--muted); font-size: 13px; }
+  .caveat strong { color: var(--warn); font-weight: 700; }
+
+  footer { margin-top: 44px; padding-top: 22px; border-top: 1px solid var(--line);
+           color: var(--faint); font-size: 12.5px; }
+  footer p { margin: 0 0 9px; max-width: 68ch; }
+  footer code { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+
+  @media (max-width: 620px) {
+    .cell-label, .cell-status { width: auto; }
+    table.checks td { display: block; padding: 6px 14px; }
+    table.checks td.cell-status { padding-top: 13px; }
+    table.checks td.cell-detail { padding-bottom: 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">Privatum</div>
+    <h1>Verify an inference receipt</h1>
+    <p class="lede">
+      Every response from the Privatum Assistant carries digests of the prompt, the reply
+      and the pipeline that produced it. This page recomputes them <strong>in your
+      browser</strong> — nothing is uploaded, no request leaves this page, and it works
+      offline. You are checking the arithmetic yourself, not taking our word for it.
+    </p>
+  </header>
+
+  <div class="panel">
+    <div id="drop" tabindex="0" role="button" aria-label="Choose a receipt bundle file">
+      <div class="drop-title">Drop a receipt bundle here</div>
+      <div class="drop-sub">or click to choose a <code>.json</code> file</div>
+    </div>
+    <input type="file" id="picker" accept="application/json,.json" />
+
+    <div class="or">or paste it</div>
+    <textarea id="paste" spellcheck="false" placeholder='{ "format": "privatum-receipt/1", ... }'></textarea>
+    <div class="actions">
+      <button class="primary" id="verify-pasted" type="button">Verify</button>
+      <button id="clear" type="button">Clear</button>
+    </div>
+  </div>
+
+  <div id="results" class="hidden"></div>
+
+  <footer>
+    <p>
+      A receipt bundle contains the prompt and the response in plain text. That is what
+      makes it checkable — SHA-256 is one-way, so a verifier holding only hashes could
+      prove nothing. Exporting a receipt is therefore a deliberate disclosure of that one
+      exchange.
+    </p>
+    <p>
+      This page bundles the same verification module the desktop app and the
+      <code>verify-receipt</code> CLI run, so all three agree by construction rather than
+      by good intentions.
+    </p>
+  </footer>
+</div>
+<script>/*__PRIVATUM_VERIFIER_BUNDLE__*/</script>
+</body>
+</html>
