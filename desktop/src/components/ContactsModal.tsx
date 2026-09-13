@@ -12,12 +12,14 @@ import {
   Download,
   Upload,
   Check,
+  Star,
 } from "lucide-react";
 import {
   type Contact,
   type ContactCategory,
   addContact,
   updateContact,
+  toggleStarContact,
   deleteContact,
   searchContacts,
   saveContacts,
@@ -33,8 +35,9 @@ interface ContactsModalProps {
   addToast: (type: "success" | "error" | "info", title: string, message?: string) => void;
 }
 
-const CATEGORIES: (ContactCategory | "All")[] = [
+const CATEGORIES: (ContactCategory | "All" | "Starred")[] = [
   "All",
+  "Starred",
   "Personal",
   "Work",
   "Exchange",
@@ -52,7 +55,7 @@ export function ContactsModal({
   addToast,
 }: ContactsModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<ContactCategory | "All">("All");
+  const [selectedCategory, setSelectedCategory] = useState<ContactCategory | "All" | "Starred">("All");
 
   // Form states (adding or editing)
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -61,6 +64,7 @@ export function ContactsModal({
   const [formAddress, setFormAddress] = useState("");
   const [formCategory, setFormCategory] = useState<ContactCategory>("Personal");
   const [formNote, setFormNote] = useState("");
+  const [formIsStarred, setFormIsStarred] = useState(false);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -76,6 +80,7 @@ export function ContactsModal({
     setFormAddress("");
     setFormCategory("Personal");
     setFormNote("");
+    setFormIsStarred(false);
     setIsFormOpen(true);
   };
 
@@ -85,6 +90,7 @@ export function ContactsModal({
     setFormAddress(contact.address);
     setFormCategory(contact.category || "Personal");
     setFormNote(contact.note || "");
+    setFormIsStarred(Boolean(contact.isStarred));
     setIsFormOpen(true);
   };
 
@@ -101,6 +107,7 @@ export function ContactsModal({
         address: formAddress,
         category: formCategory,
         note: formNote,
+        isStarred: formIsStarred,
       });
       onContactsChange(updated);
       addToast("success", "Contact Updated", `Saved changes to ${formName.trim()}`);
@@ -110,6 +117,7 @@ export function ContactsModal({
         address: formAddress,
         category: formCategory,
         note: formNote,
+        isStarred: formIsStarred,
       });
       onContactsChange([newContact, ...contacts]);
       addToast("success", "Contact Added", `Added ${formName.trim()} to address book`);
@@ -272,6 +280,19 @@ export function ContactsModal({
               />
             </div>
 
+            <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer pt-0.5">
+              <input
+                type="checkbox"
+                checked={formIsStarred}
+                onChange={(e) => setFormIsStarred(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-white/20 bg-black/40 text-amber-400 focus:ring-0 cursor-pointer"
+              />
+              <span className="flex items-center gap-1.5">
+                <Star className={`w-3.5 h-3.5 ${formIsStarred ? "text-amber-400 fill-amber-400" : "text-slate-400"}`} />
+                <span>Mark as Starred (Quick-Pay shelf favorite)</span>
+              </span>
+            </label>
+
             <div className="flex justify-end gap-2 pt-1">
               <button
                 type="button"
@@ -345,8 +366,11 @@ export function ContactsModal({
                     {contact.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 space-y-0.5">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <span className="font-semibold text-white truncate">{contact.name}</span>
+                      {contact.isStarred && (
+                        <Star className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />
+                      )}
                       {contact.category && (
                         <span className="text-[10px] font-mono text-slate-500">
                           ({contact.category})
@@ -389,6 +413,26 @@ export function ContactsModal({
 
                 {/* Actions */}
                 <div className="flex items-center gap-1.5 shrink-0 ml-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = toggleStarContact(walletAddress, contact.id);
+                      onContactsChange(updated);
+                      addToast(
+                        "info",
+                        contact.isStarred ? "Contact Unstarred" : "Contact Starred",
+                        `${contact.name} ${contact.isStarred ? "removed from" : "added to"} favorites`
+                      );
+                    }}
+                    className={`p-1.5 rounded-lg transition cursor-pointer ${
+                      contact.isStarred
+                        ? "text-amber-400 hover:text-amber-300 hover:bg-amber-400/10"
+                        : "text-slate-500 hover:text-white hover:bg-white/5"
+                    }`}
+                    title={contact.isStarred ? "Remove from starred" : "Mark as starred"}
+                  >
+                    <Star className={`w-3.5 h-3.5 ${contact.isStarred ? "fill-amber-400" : ""}`} />
+                  </button>
                   {onSelectSend && (
                     <button
                       type="button"

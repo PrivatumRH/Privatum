@@ -40,6 +40,7 @@ import {
   Shield,
   BookUser,
   Download,
+  Star,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -77,6 +78,7 @@ import {
   findContactByAddress,
   recordContactUsage,
   getRecentContacts,
+  getStarredContacts,
   type Contact,
 } from "./lib/contacts";
 import { buildStealthSendBatch, parseMetaAddress } from "./lib/stealth";
@@ -142,6 +144,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.24": "Recipient Contact Autocomplete",
   "0.1.25": "AI Financial Intelligence & Multi-Intent Chaining",
   "0.1.26": "Local Ledger CSV & JSON Export",
+  "0.1.27": "Starred Contacts & Quick-Pay Shelf",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -538,6 +541,7 @@ export function App() {
   // Private Address Book & Local Contacts (v0.1.13)
   const [contacts, setContacts] = useState<Contact[]>([]);
   const recentContacts = useMemo(() => getRecentContacts(contacts, 3), [contacts]);
+  const starredContacts = useMemo(() => getStarredContacts(contacts), [contacts]);
 
   /** When guardrail headroom next returns, so blocked transfers can say so. */
   const nextGuardrailRelease = useMemo(
@@ -3342,13 +3346,14 @@ export function App() {
                         </button>
                       )}
                     </div>
-                    {isFeatureActive("recent_contacts", appVersion, previewVersion) &&
-                      recentContacts.length > 0 && (
+                    {isFeatureActive("starred_contacts", appVersion, previewVersion) &&
+                      starredContacts.length > 0 && (
                         <div className="flex items-center gap-1.5 mb-2 overflow-x-auto pb-0.5">
-                          <span className="text-[10px] uppercase tracking-wider text-slate-500 shrink-0">
-                            Recent
+                          <span className="text-[10px] uppercase tracking-wider text-amber-400 font-medium shrink-0 flex items-center gap-1">
+                            <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+                            Starred
                           </span>
-                          {recentContacts.map((contact) => {
+                          {starredContacts.map((contact) => {
                             const isActive =
                               sendRecipient.trim().toLowerCase() ===
                               contact.address.trim().toLowerCase();
@@ -3356,18 +3361,75 @@ export function App() {
                               <button
                                 key={contact.id}
                                 type="button"
-                                title={contact.address}
-                                onClick={() => setSendRecipient(contact.address)}
-                                className={`shrink-0 px-2.5 py-1 rounded-full border text-[11px] font-medium transition cursor-pointer ${
+                                title={`${contact.name} (${contact.address})`}
+                                onClick={() => {
+                                  setSendRecipient(contact.address);
+                                  if (
+                                    contact.address.startsWith("st:eth:") ||
+                                    contact.address.length > 66
+                                  ) {
+                                    setIsStealthSend(true);
+                                  }
+                                  if (wallet?.address) {
+                                    recordContactUsage(wallet.address, contact.address);
+                                  }
+                                }}
+                                className={`shrink-0 px-2.5 py-1 rounded-full border text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 ${
                                   isActive
-                                    ? "bg-white/15 border-white/30 text-white"
-                                    : "bg-white/[0.04] border-white/10 text-slate-300 hover:bg-white/[0.08] hover:border-white/20 hover:text-white"
+                                    ? "bg-amber-400/20 border-amber-400/50 text-amber-200"
+                                    : "bg-white/[0.04] border-white/10 text-slate-300 hover:bg-white/[0.08] hover:border-amber-400/30 hover:text-white"
                                 }`}
                               >
-                                {contact.name}
+                                <Star className="w-2.5 h-2.5 text-amber-400 fill-amber-400 shrink-0" />
+                                <span>{contact.name}</span>
                               </button>
                             );
                           })}
+                        </div>
+                      )}
+                    {isFeatureActive("recent_contacts", appVersion, previewVersion) &&
+                      recentContacts.filter(
+                        (rc) => !starredContacts.some((sc) => sc.id === rc.id)
+                      ).length > 0 && (
+                        <div className="flex items-center gap-1.5 mb-2 overflow-x-auto pb-0.5">
+                          <span className="text-[10px] uppercase tracking-wider text-slate-500 shrink-0">
+                            Recent
+                          </span>
+                          {recentContacts
+                            .filter(
+                              (rc) => !starredContacts.some((sc) => sc.id === rc.id)
+                            )
+                            .map((contact) => {
+                              const isActive =
+                                sendRecipient.trim().toLowerCase() ===
+                                contact.address.trim().toLowerCase();
+                              return (
+                                <button
+                                  key={contact.id}
+                                  type="button"
+                                  title={contact.address}
+                                  onClick={() => {
+                                    setSendRecipient(contact.address);
+                                    if (
+                                      contact.address.startsWith("st:eth:") ||
+                                      contact.address.length > 66
+                                    ) {
+                                      setIsStealthSend(true);
+                                    }
+                                    if (wallet?.address) {
+                                      recordContactUsage(wallet.address, contact.address);
+                                    }
+                                  }}
+                                  className={`shrink-0 px-2.5 py-1 rounded-full border text-[11px] font-medium transition cursor-pointer ${
+                                    isActive
+                                      ? "bg-white/15 border-white/30 text-white"
+                                      : "bg-white/[0.04] border-white/10 text-slate-300 hover:bg-white/[0.08] hover:border-white/20 hover:text-white"
+                                  }`}
+                                >
+                                  {contact.name}
+                                </button>
+                              );
+                            })}
                         </div>
                       )}
                     {isFeatureActive("contact_autocomplete", appVersion, previewVersion) ? (

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { User, X, Clock, AlertTriangle, Search, BookUser } from "lucide-react";
+import { User, X, Clock, AlertTriangle, Search, BookUser, Star } from "lucide-react";
 import { Contact } from "../lib/contacts";
 import { AddressGuardHistoryEntry } from "../lib/addressGuard";
 import {
@@ -214,6 +214,9 @@ export const RecipientAutocomplete: React.FC<RecipientAutocompleteProps> = ({
                         <span className="text-xs font-medium text-white truncate">
                           {candidate.name}
                         </span>
+                        {candidate.isStarred && (
+                          <Star className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />
+                        )}
                         {candidate.category && (
                           <span className="text-[10px] text-slate-400">
                             ({candidate.category})

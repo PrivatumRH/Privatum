@@ -22,6 +22,7 @@ export interface AutocompleteCandidate {
   address: string;
   name: string;
   isSavedContact: boolean;
+  isStarred?: boolean;
   contactId?: string;
   category?: ContactCategory;
   note?: string;
@@ -63,11 +64,15 @@ function computeScore(
   note?: string,
   lastUsedAt?: number,
   txCount = 0,
-  isSavedContact = false
+  isSavedContact = false,
+  isStarred = false
 ): number {
   if (!cleanQuery) {
-    // Empty query: score by saved status, recency and transaction volume
+    // Empty query: score by saved status, starred status, recency and transaction volume
     let base = isSavedContact ? 35 : 10;
+    if (isStarred) {
+      base += 40;
+    }
     if (lastUsedAt && lastUsedAt > 0) {
       const daysOld = (Date.now() - lastUsedAt) / (1000 * 60 * 60 * 24);
       if (daysOld <= 1) base += 50;
@@ -120,6 +125,9 @@ function computeScore(
 
   // If there was any textual match, apply recency and frequency bonuses
   if (score > 0) {
+    if (isStarred) {
+      score += 30;
+    }
     if (lastUsedAt && lastUsedAt > 0) {
       const daysOld = (Date.now() - lastUsedAt) / (1000 * 60 * 60 * 24);
       if (daysOld <= 7) score += 15;
@@ -182,6 +190,7 @@ export function getAutocompleteCandidates(
     const stats = txStatsByAddress.get(addrClean);
     const txCount = stats ? stats.count : 0;
     const effectiveLastUsed = c.lastUsedAt || (stats ? stats.lastTimestamp : undefined);
+    const isStarred = Boolean(c.isStarred);
 
     const score = computeScore(
       cleanQuery,
@@ -191,7 +200,8 @@ export function getAutocompleteCandidates(
       c.note,
       effectiveLastUsed,
       txCount,
-      true
+      true,
+      isStarred
     );
 
     // If query is present, only include items with a positive score
@@ -201,6 +211,7 @@ export function getAutocompleteCandidates(
       address: c.address.trim(),
       name: c.name.trim(),
       isSavedContact: true,
+      isStarred,
       contactId: c.id,
       category: c.category,
       note: c.note,

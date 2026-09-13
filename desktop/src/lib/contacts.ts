@@ -20,6 +20,7 @@ export interface Contact {
   category?: ContactCategory;
   createdAt: number;
   lastUsedAt?: number;
+  isStarred?: boolean;
 }
 
 function getStorageKey(walletAddress: string): string {
@@ -60,6 +61,7 @@ export function addContact(
     address: contact.address.trim(),
     note: contact.note?.trim() || undefined,
     category: contact.category || "Other",
+    isStarred: Boolean(contact.isStarred),
     createdAt: Date.now(),
   };
 
@@ -82,11 +84,26 @@ export function updateContact(
       address: updates.address !== undefined ? updates.address.trim() : c.address,
       note: updates.note !== undefined ? updates.note.trim() || undefined : c.note,
       category: updates.category !== undefined ? updates.category : c.category,
+      isStarred: updates.isStarred !== undefined ? updates.isStarred : c.isStarred,
     };
   });
 
   saveContacts(walletAddress, updated);
   return updated;
+}
+
+export function toggleStarContact(walletAddress: string, id: string): Contact[] {
+  const existing = loadContacts(walletAddress);
+  const updated = existing.map((c) => {
+    if (c.id !== id) return c;
+    return { ...c, isStarred: !c.isStarred };
+  });
+  saveContacts(walletAddress, updated);
+  return updated;
+}
+
+export function getStarredContacts(contacts: Contact[]): Contact[] {
+  return contacts.filter((c) => Boolean(c.isStarred));
 }
 
 export function deleteContact(walletAddress: string, id: string): Contact[] {
@@ -112,10 +129,12 @@ export function searchContacts(
 ): Contact[] {
   const cleanQuery = query.trim().toLowerCase();
   return contacts.filter((c) => {
-    const matchesCategory =
-      !categoryFilter ||
-      categoryFilter === "All" ||
-      c.category === categoryFilter;
+    let matchesCategory = true;
+    if (categoryFilter === "Starred") {
+      matchesCategory = Boolean(c.isStarred);
+    } else if (categoryFilter && categoryFilter !== "All") {
+      matchesCategory = c.category === categoryFilter;
+    }
 
     if (!matchesCategory) return false;
     if (!cleanQuery) return true;
