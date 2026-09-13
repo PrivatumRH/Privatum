@@ -21,6 +21,7 @@ import { generateInferenceReceipt } from "./inferenceReceipt";
 
 import { evaluateLedgerQuery } from "./ledgerQueries";
 import { parseMultiIntent } from "./multiIntent";
+import { queryKnowledgeBase } from "./knowledgeBase";
 
 export interface ProcessAssistantInputParams {
   input: string;
@@ -335,15 +336,57 @@ export async function processAssistantQuery(
     }
   }
 
-  // STEP 3: On-Device AI Execution (SmolLM2-135M via WebAssembly / ONNX)
+  // STEP 5: Privatum Domain Knowledge Base (Instant, deterministic zero-latency answers)
+  const kbAnswer = queryKnowledgeBase(cleanText);
+  if (kbAnswer) {
+    const lines = [
+      kbAnswer.summary,
+      "",
+      ...kbAnswer.bulletPoints.map((b) => `* ${b}`),
+    ];
+    if (kbAnswer.suggestedActions && kbAnswer.suggestedActions.length > 0) {
+      lines.push("");
+      lines.push("Actions:");
+      for (const a of kbAnswer.suggestedActions) {
+        lines.push(`* ${a}`);
+      }
+    }
+    return await createResponse(lines.join("\n"), {
+      safetyEvidence: {
+        intentSummary: `Knowledge: ${kbAnswer.topic.replace(/_/g, " ")}`,
+      },
+    });
+  }
+
+  // STEP 6: On-Device AI Execution (SmolLM2-135M via WebAssembly / ONNX)
   if (preferredEngine === "smollm2_wasm" || smolLm2Engine.isReady()) {
     if (!smolLm2Engine.isReady()) {
       // Trigger initialization in background if not already started
       smolLm2Engine.init().catch((err) => console.warn("[assistantEngine] smolLm2Engine init err:", err));
       const status = smolLm2Engine.getStatus();
-      if (status.status === "downloading") {
+      if (status.status === "downloading" || status.status === "loading") {
         return await createResponse(
-          `AI model is currently downloading (${status.progress || 15}%). In the meantime, Fast Parser is active and commands will execute immediately.`,
+          [
+            `On-device AI model is currently initializing (${status.text || "loading weights"} - ${status.progress || 10}%).`,
+            "",
+            "In the meantime, you can ask:",
+            "* `Explain how stealth addresses protect recipient privacy`",
+            "* `What are my spending limits?`",
+            "* `Send 10 USDG to Alice`",
+          ].join("\n"),
+          { engine: "deterministic" }
+        );
+      }
+      if (status.status === "error") {
+        return await createResponse(
+          [
+            `On-device AI model is unavailable (${status.text || "offline"}).`,
+            "",
+            "Local Fast Parser and Knowledge Base remain active. You can ask:",
+            "* `Explain how stealth addresses protect recipient privacy`",
+            "* `What are my spending limits?`",
+            "* `Send 10 USDG to Alice`",
+          ].join("\n"),
           { engine: "deterministic" }
         );
       }
@@ -359,7 +402,7 @@ export async function processAssistantQuery(
     }
   }
 
-  // STEP 4: Conversational Fast Parser
+  // STEP 7: Conversational Fast Parser
   const lower = cleanText.toLowerCase().trim();
 
   // Greetings
@@ -402,6 +445,7 @@ export async function processAssistantQuery(
         "* **Emergency**: `Freeze wallet for 24 hours`",
         "* **Safety Check**: `Check address 0x... for poisoning`",
         "* **Limits**: `What are my spending limits?`",
+        "* **Knowledge**: `Explain how stealth addresses protect recipient privacy`",
         "* **Contacts**: `Show my contacts`",
         "",
         "You can also toggle **Enable AI** above for open-ended conversational reasoning.",
@@ -410,16 +454,20 @@ export async function processAssistantQuery(
   }
 
   // Unparsed Fallback
-  return await createResponse(
-    [
-      "I did not recognize a transaction command in your message.",
-      "",
-      "Try actions like:",
-      "* `Send 10 USDG to Alice`",
-      "* `Check address 0x...`",
-      "* `What are my spending limits?`",
-      "",
-      "Or toggle **Enable AI** at the top of this drawer to ask open-ended questions.",
-    ].join("\n")
-  );
+  const fallbackLines = [
+    "I did not recognize that command or inquiry in your message.",
+    "",
+    "Try actions or questions like:",
+    "* `Explain how stealth addresses protect recipient privacy`",
+    "* `What are my spending limits?`",
+    "* `Send 10 USDG to Alice`",
+    "* `Check address 0x...`",
+  ];
+
+  if (preferredEngine !== "smollm2_wasm") {
+    fallbackLines.push("");
+    fallbackLines.push("Or toggle **Enable AI** at the top of this drawer to ask open-ended questions.");
+  }
+
+  return await createResponse(fallbackLines.join("\n"));
 }

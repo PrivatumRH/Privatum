@@ -86,4 +86,34 @@ describe("Assistant Engine Pipeline", () => {
     expect(res.intent?.type).toBe("ledger_query");
     expect(res.content).toContain("1000.00 USD remaining");
   });
+
+  it("answers conceptual privacy queries via domain knowledge base", async () => {
+    const res = await processAssistantQuery({
+      input: "Explain how stealth addresses protect recipient privacy",
+      preferredEngine: "deterministic",
+    });
+    expect(res.content).toContain("Stealth addresses protect recipient privacy");
+    expect(res.content).toContain("On-Chain Unlinkability");
+    expect(res.content).toContain("ERC-5564");
+    expect(res.inferenceReceipt?.engine).toBe("client-cpu-deterministic");
+  });
+
+  it("answers conceptual privacy queries under smollm2_wasm mode gracefully", async () => {
+    const res = await processAssistantQuery({
+      input: "Explain how stealth addresses protect recipient privacy",
+      preferredEngine: "smollm2_wasm",
+    });
+    expect(res.content).toContain("Stealth addresses protect recipient privacy");
+    expect(res.content).toContain("ERC-5564");
+    expect(res.inferenceReceipt?.engine).toBe("client-cpu-wasm");
+  });
+
+  it("does not tell user to toggle Enable AI if already in smollm2_wasm mode on unparsed query", async () => {
+    const res = await processAssistantQuery({
+      input: "xyz123randomnonexistentcommand",
+      preferredEngine: "smollm2_wasm",
+    });
+    expect(res.content).not.toContain("Or toggle **Enable AI**");
+    expect(res.content).toContain("Explain how stealth addresses protect recipient privacy");
+  });
 });

@@ -38,8 +38,14 @@ class SmolLM2WasmEngine {
     return this.isWorkerReady || this.directGenerator !== null;
   }
 
+  private initPromise: Promise<void> | null = null;
+
   public isModelLoading(): boolean {
-    return this.isLoading;
+    return (
+      this.isLoading ||
+      this.currentProgress.status === "loading" ||
+      this.currentProgress.status === "downloading"
+    );
   }
 
   private ensureWorker(): Worker | null {
@@ -109,32 +115,55 @@ class SmolLM2WasmEngine {
    */
   public async init(): Promise<void> {
     if (this.isReady()) return;
-    if (this.isLoading) return;
+    if (this.initPromise) return this.initPromise;
 
     this.isLoading = true;
-    const worker = this.ensureWorker();
+    this.initPromise = new Promise<void>((resolve) => {
+      const worker = this.ensureWorker();
 
-    if (worker) {
+      if (!worker) {
+        // Direct fallback for non-worker test environments
+        this.notifyProgress({ status: "loading", progress: 5, text: "Initializing on-device AI..." });
+        import("@huggingface/transformers")
+          .then(async ({ pipeline, env }) => {
+            env.allowLocalModels = false;
+            env.useBrowserCache = true;
+            this.directGenerator = await pipeline("text-generation", DEFAULT_WASM_MODEL, {
+              dtype: "q4",
+            });
+            this.notifyProgress({ status: "ready", progress: 100, text: "AI Ready" });
+            this.isLoading = false;
+            resolve();
+          })
+          .catch((err: any) => {
+            this.notifyProgress({ status: "error", text: err?.message || "Failed to load model." });
+            this.isLoading = false;
+            resolve();
+          });
+        return;
+      }
+
       this.notifyProgress({ status: "loading", progress: 5, text: "Initializing on-device AI..." });
+
+      const onInitDone = (event: MessageEvent) => {
+        const { type, status } = event.data || {};
+        if (type === "init_success" || (type === "progress" && status === "ready")) {
+          worker.removeEventListener("message", onInitDone);
+          this.isWorkerReady = true;
+          this.isLoading = false;
+          resolve();
+        } else if (type === "init_error" || (type === "progress" && status === "error")) {
+          worker.removeEventListener("message", onInitDone);
+          this.isLoading = false;
+          resolve();
+        }
+      };
+
+      worker.addEventListener("message", onInitDone);
       worker.postMessage({ type: "init" });
-      return;
-    }
+    });
 
-    // Direct fallback for non-worker test environments
-    try {
-      this.notifyProgress({ status: "loading", progress: 5, text: "Initializing on-device AI..." });
-      const { pipeline, env } = await import("@huggingface/transformers");
-      env.allowLocalModels = false;
-      env.useBrowserCache = true;
-      this.directGenerator = await pipeline("text-generation", DEFAULT_WASM_MODEL, {
-        dtype: "q4",
-      });
-      this.notifyProgress({ status: "ready", progress: 100, text: "AI Ready" });
-    } catch (err: any) {
-      this.notifyProgress({ status: "error", text: err?.message || "Failed to load model." });
-    } finally {
-      this.isLoading = false;
-    }
+    return this.initPromise;
   }
 
   /**
