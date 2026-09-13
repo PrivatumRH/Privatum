@@ -387,7 +387,10 @@ export async function verifyReceiptBundle(
 /** Parses untrusted JSON text into a bundle, without assuming it is valid. */
 export function parseReceiptBundle(json: string): SignedReceiptBundle | null {
   try {
-    const parsed = JSON.parse(json);
+    // Strip a UTF-8 BOM. Bundles that have been opened and re-saved by a
+    // Windows editor (Notepad, PowerShell's Set-Content) pick one up, and it
+    // would otherwise make a perfectly good receipt unparseable.
+    const parsed = JSON.parse(json.replace(/^﻿/, ""));
     if (!parsed || typeof parsed !== "object") return null;
     return parsed as SignedReceiptBundle;
   } catch {
