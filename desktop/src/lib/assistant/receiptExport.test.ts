@@ -297,6 +297,14 @@ describe("parseReceiptBundle", () => {
     expect(report.valid).toBe(true);
   });
 
+  it("tolerates a UTF-8 BOM from a Windows editor round-trip", async () => {
+    const bundle = await makeBundle();
+    const parsed = parseReceiptBundle("﻿" + JSON.stringify(bundle, null, 2));
+    expect(parsed).not.toBeNull();
+    const report = await verifyReceiptBundle(parsed!);
+    expect(report.valid).toBe(true);
+  });
+
   it("returns null on malformed JSON instead of throwing", () => {
     expect(parseReceiptBundle("{not json")).toBeNull();
     expect(parseReceiptBundle("null")).toBeNull();
