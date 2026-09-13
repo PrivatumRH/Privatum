@@ -8,12 +8,13 @@ import {
   type PublicClient,
 } from "viem";
 import {
-  type PrivatumWallet,
+  PrivatumWallet,
   robinhoodChain,
   getUserOpHash,
   submitUserOp,
 } from "@privatumrh/robinhood-chain-sdk";
 import { privateKeyToAccount } from "viem/accounts";
+import { timeStage, type CeremonyEvent, type CeremonyStageId } from "./thresholdCeremony";
 
 const PRIVATUM_ACCOUNT_ABI = parseAbi([
   "function execute(address target, uint256 value, bytes calldata data) external",
@@ -99,8 +100,14 @@ export async function executeAccountBatch(params: {
   values: bigint[];
   datas: Hex[];
   sponsor?: boolean;
+  /**
+   * Reports each stage of the threshold ceremony as it genuinely happens, so
+   * the UI can display measured progress rather than a timed animation.
+   * Purely observational - omitting it changes nothing about the send.
+   */
+  onStage?: (event: CeremonyEvent) => void;
 }): Promise<Hex> {
-  const { wallet, shardAPrivKey, client, targets, values, datas, sponsor } = params;
+  const { wallet, shardAPrivKey, client, targets, values, datas, sponsor, onStage } = params;
 
   const callData = encodeFunctionData({
     abi: PRIVATUM_ACCOUNT_ABI,
@@ -108,13 +115,20 @@ export async function executeAccountBatch(params: {
     args: [targets, values, datas],
   });
 
+  const timed = <T,>(id: CeremonyStageId, work: () => Promise<T>) =>
+    timeStage(id, onStage, work);
+
   try {
-    const nonce = await client.readContract({
-      address: wallet.entryPointAddress,
-      abi: parseAbi(["function getNonce(address sender, uint192 key) view returns (uint256)"]),
-      functionName: "getNonce",
-      args: [wallet.address, 0n],
-    }).catch(() => 0n);
+    const nonce = await timed("nonce", () =>
+      client
+        .readContract({
+          address: wallet.entryPointAddress,
+          abi: parseAbi(["function getNonce(address sender, uint192 key) view returns (uint256)"]),
+          functionName: "getNonce",
+          args: [wallet.address, 0n],
+        })
+        .catch(() => 0n)
+    );
 
     const userOpBase = {
       sender: wallet.address,
@@ -129,15 +143,31 @@ export async function executeAccountBatch(params: {
       paymasterAndData: "0x" as Hex,
     };
 
-    const userOpHash = getUserOpHash(userOpBase, wallet.entryPointAddress, wallet.chainId);
-    const signature = await wallet.signUserOp(userOpHash);
+    const userOpHash = await timed("userop", async () =>
+      getUserOpHash(userOpBase, wallet.entryPointAddress, wallet.chainId)
+    );
 
-    const receipt = await submitUserOp({
-      userOp: { ...userOpBase, signature },
-      entryPoint: wallet.entryPointAddress,
-      apiUrl: wallet.apiUrl,
-      sponsor,
-    });
+    // Shard A and Shard B are signed CONCURRENTLY, exactly as
+    // PrivatumWallet.signUserOp does. They are timed separately only so the
+    // UI can distinguish the local device signature from the co-signer
+    // round-trip; serialising them here would make real sends slower.
+    const [sigA, sigB] = await Promise.all([
+      timed("shard_a", () => wallet.shardA.signHash(userOpHash)),
+      timed("shard_b", () => wallet.shardB.signHash(userOpHash, wallet.apiKey)),
+    ]);
+
+    const signature = await timed("combine", async () =>
+      PrivatumWallet.combineSignatures(sigA, sigB)
+    );
+
+    const receipt = await timed("submit", () =>
+      submitUserOp({
+        userOp: { ...userOpBase, signature },
+        entryPoint: wallet.entryPointAddress,
+        apiUrl: wallet.apiUrl,
+        sponsor,
+      })
+    );
     return receipt.userOpHash;
   } catch (bundlerErr: any) {
     if (shardAPrivKey) {
