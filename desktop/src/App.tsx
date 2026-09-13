@@ -41,6 +41,7 @@ import {
   BookUser,
   Download,
   Star,
+  Keyboard,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -115,6 +116,9 @@ import { PortfolioSparklineCard } from "./components/PortfolioSparklineCard";
 import { evaluateTransactionRisk } from "./lib/riskScore";
 import { TransactionRiskScoreRow } from "./components/TransactionRiskScoreRow";
 import { RecipientAutocomplete } from "./components/RecipientAutocomplete";
+import { useGlobalHotkeys } from "./lib/hotkeys";
+import { KeyboardShortcutsModal } from "./components/KeyboardShortcutsModal";
+import { GuardrailSettingsModal } from "./components/GuardrailSettingsModal";
 
 const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.0": "Genesis 2-of-3 MPC",
@@ -145,6 +149,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.25": "AI Financial Intelligence & Multi-Intent Chaining",
   "0.1.26": "Local Ledger CSV & JSON Export",
   "0.1.27": "Starred Contacts & Quick-Pay Shelf",
+  "0.1.28": "Global Hotkeys & Keyboard Cheat Sheet",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -550,6 +555,8 @@ export function App() {
   );
   const [showContactsModal, setShowContactsModal] = useState<boolean>(false);
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
+  const [showGuardrailsModal, setShowGuardrailsModal] = useState<boolean>(false);
 
   // Transaction Risk Scoring (v0.1.18)
   const riskAssessment = useMemo(() => {
@@ -1533,6 +1540,71 @@ export function App() {
     setSendReceipt(null);
   };
 
+  // Global Hotkeys Suite (v0.1.28)
+  useGlobalHotkeys({
+    enabled: isFeatureActive("global_hotkeys", appVersion, previewVersion),
+    onSend: () => {
+      if (wallet) openSendModal();
+    },
+    onReceive: () => {
+      if (wallet) setShowReceiveModal(true);
+    },
+    onContacts: () => {
+      setShowContactsModal(true);
+    },
+    onGuardrails: () => {
+      setShowGuardrailsModal(true);
+    },
+    onExport: () => {
+      setShowExportModal(true);
+    },
+    onHelp: () => {
+      setShowShortcutsModal(true);
+    },
+    onEscape: () => {
+      if (showShortcutsModal) {
+        setShowShortcutsModal(false);
+        return;
+      }
+      if (showSendModal) {
+        closeSendModal();
+        return;
+      }
+      if (showReceiveModal) {
+        setShowReceiveModal(false);
+        return;
+      }
+      if (showContactsModal) {
+        setShowContactsModal(false);
+        return;
+      }
+      if (showExportModal) {
+        setShowExportModal(false);
+        return;
+      }
+      if (showGuardrailsModal) {
+        setShowGuardrailsModal(false);
+        return;
+      }
+      if (showStealthScanner) {
+        setShowStealthScanner(false);
+        return;
+      }
+      if (showBackupModal) {
+        setShowBackupModal(false);
+        return;
+      }
+      if (showCreateModal) {
+        setShowCreateModal(false);
+        return;
+      }
+      if (showRecoverModal) {
+        setShowRecoverModal(false);
+        return;
+      }
+    },
+  });
+
   const runSimulation = async (to: Address, amountStr: string, asset: "ETH" | "USDG") => {
     setIsSimulating(true);
     setSimulationData(null);
@@ -2497,6 +2569,19 @@ export function App() {
               >
                 <Scan className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Stealth Inbox</span>
+              </button>
+            )}
+
+            {/* Keyboard Shortcuts Trigger (v0.1.28) */}
+            {isFeatureActive("global_hotkeys", appVersion, previewVersion) && (
+              <button
+                onClick={() => setShowShortcutsModal(true)}
+                className="h-8 px-2.5 rounded-[10px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-white text-xs font-mono border border-white/[0.06] transition flex items-center gap-1.5 cursor-pointer"
+                title="Keyboard Shortcuts (?)"
+              >
+                <Keyboard className="w-3.5 h-3.5" />
+                <span className="hidden md:inline font-sans text-[11px]">Hotkeys</span>
+                <kbd className="hidden lg:inline px-1 py-0.2 text-[10px] bg-white/10 rounded border border-white/20">?</kbd>
               </button>
             )}
 
@@ -4311,8 +4396,37 @@ export function App() {
           } else if (intent.type === "view_contacts") {
             setShowContactsModal(true);
           } else if (intent.type === "view_guardrails") {
-            setActiveTab("wallet");
+            setShowGuardrailsModal(true);
           } else if (intent.type === "export_ledger") {
+            setShowExportModal(true);
+          }
+        }}
+      />
+
+      {/* Modal: Spending Guardrails Settings (v0.1.28) */}
+      <GuardrailSettingsModal
+        walletAddress={wallet?.address || walletAddress || accounts[0]?.address || "0x0000000000000000000000000000000000000000"}
+        config={guardrailConfig}
+        isOpen={showGuardrailsModal}
+        onClose={() => setShowGuardrailsModal(false)}
+        onSave={(newCfg) => setGuardrailConfig(newCfg)}
+        onHistoryReset={() => setGuardrailHistory([])}
+      />
+
+      {/* Modal: Keyboard Shortcuts Cheat Sheet (v0.1.28) */}
+      <KeyboardShortcutsModal
+        isOpen={showShortcutsModal}
+        onClose={() => setShowShortcutsModal(false)}
+        onAction={(actionKey) => {
+          if (actionKey === "s") {
+            if (wallet) openSendModal();
+          } else if (actionKey === "r") {
+            if (wallet) setShowReceiveModal(true);
+          } else if (actionKey === "c") {
+            setShowContactsModal(true);
+          } else if (actionKey === "g") {
+            setShowGuardrailsModal(true);
+          } else if (actionKey === "e") {
             setShowExportModal(true);
           }
         }}

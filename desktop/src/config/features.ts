@@ -25,7 +25,8 @@ export type FeatureKey =
   | "contact_autocomplete"
   | "ai_intelligence"
   | "ledger_export"
-  | "starred_contacts";
+  | "starred_contacts"
+  | "global_hotkeys";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -55,6 +56,7 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   ai_intelligence: "0.1.25",
   ledger_export: "0.1.26",
   starred_contacts: "0.1.27",
+  global_hotkeys: "0.1.28",
 };
 
 export const RELEASE_VERSIONS = [
@@ -86,6 +88,7 @@ export const RELEASE_VERSIONS = [
   "0.1.25",
   "0.1.26",
   "0.1.27",
+  "0.1.28",
 ] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 
