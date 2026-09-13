@@ -39,6 +39,7 @@ import {
   ShieldAlert,
   Shield,
   BookUser,
+  Download,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -65,6 +66,7 @@ import { PayLinksTab } from "./components/PayLinksTab";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { StealthScannerModal } from "./components/StealthScannerModal";
 import { ContactsModal } from "./components/ContactsModal";
+import { ExportLedgerModal } from "./components/ExportLedgerModal";
 import {
   TransactionReceiptCard,
   type TransactionReceipt,
@@ -139,6 +141,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.23": "Rolling Budget Forecast",
   "0.1.24": "Recipient Contact Autocomplete",
   "0.1.25": "AI Financial Intelligence & Multi-Intent Chaining",
+  "0.1.26": "Local Ledger CSV & JSON Export",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -542,6 +545,7 @@ export function App() {
     [guardrailHistory]
   );
   const [showContactsModal, setShowContactsModal] = useState<boolean>(false);
+  const [showExportModal, setShowExportModal] = useState<boolean>(false);
 
   // Transaction Risk Scoring (v0.1.18)
   const riskAssessment = useMemo(() => {
@@ -2628,15 +2632,28 @@ export function App() {
                   <ArrowLeftRight className="w-4 h-4 text-slate-400" />
                   <h2 className="text-sm font-semibold text-white">Latest transactions</h2>
                 </div>
-                <a
-                  href={walletAddress ? `https://robinhoodchain.blockscout.com/address/${walletAddress}` : "https://robinhoodchain.blockscout.com"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1"
-                >
-                  <span>View all</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
+                <div className="flex items-center gap-3">
+                  {isFeatureActive("ledger_export", appVersion, previewVersion) && (
+                    <button
+                      type="button"
+                      onClick={() => setShowExportModal(true)}
+                      className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/10"
+                      title="Export transactions to CSV or JSON"
+                    >
+                      <Download className="w-3.5 h-3.5 text-[#f54842]" />
+                      <span>Export</span>
+                    </button>
+                  )}
+                  <a
+                    href={walletAddress ? `https://robinhoodchain.blockscout.com/address/${walletAddress}` : "https://robinhoodchain.blockscout.com"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1"
+                  >
+                    <span>View all</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
               </div>
 
               <div className="rounded-2xl border border-white/[0.08] overflow-hidden bg-[#181a22]">
@@ -4191,6 +4208,16 @@ export function App() {
         addToast={addToast}
       />
 
+      {/* Modal: Export Ledger (v0.1.26) */}
+      <ExportLedgerModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        transactions={transactions}
+        contacts={contacts}
+        walletAddress={wallet?.address || walletAddress || accounts[0]?.address}
+        onNotify={addToast}
+      />
+
       {/* Privatum Assistant Widget (V2 On-Device AI) */}
       <AssistantWidget
         walletAddress={wallet?.address || walletAddress || accounts[0]?.address}
@@ -4223,6 +4250,8 @@ export function App() {
             setShowContactsModal(true);
           } else if (intent.type === "view_guardrails") {
             setActiveTab("wallet");
+          } else if (intent.type === "export_ledger") {
+            setShowExportModal(true);
           }
         }}
       />
