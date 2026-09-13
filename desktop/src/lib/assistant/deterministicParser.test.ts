@@ -83,4 +83,12 @@ describe("Deterministic NLP Parser", () => {
     const res = parseDeterministicIntent("check address 0x3c204d1697b85d2a7e1d79459d619a852d11e0dc", mockContacts);
     expect(res?.type).toBe("check_address");
   });
+
+  it("parses export ledger intent", () => {
+    const res = parseDeterministicIntent("export my transaction history to csv", mockContacts);
+    expect(res?.type).toBe("export_ledger");
+
+    const res2 = parseDeterministicIntent("download ledger", mockContacts);
+    expect(res2?.type).toBe("export_ledger");
+  });
 });

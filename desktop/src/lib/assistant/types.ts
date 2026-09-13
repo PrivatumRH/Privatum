@@ -6,6 +6,7 @@ export type AssistantIntentType =
   | "check_address"
   | "view_guardrails"
   | "view_contacts"
+  | "export_ledger"
   | "explain_tx"
   | "general_query";
 
@@ -68,6 +69,7 @@ export type ParsedIntent =
   | ParsedLedgerQueryIntent
   | { type: "view_guardrails" }
   | { type: "view_contacts" }
+  | { type: "export_ledger" }
   | { type: "explain_tx"; txHash: string }
   | { type: "general_query"; query: string };
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpRight, Shield, ShieldAlert, Link2, Lock, Unlock, ArrowRight, X, Layers } from "lucide-react";
+import { ArrowUpRight, Shield, ShieldAlert, Link2, Lock, Unlock, ArrowRight, X, Layers, Download } from "lucide-react";
 import type { ParsedIntent } from "../../lib/assistant/types";
 import type { InferenceReceipt } from "../../lib/assistant/inferenceReceipt";
 import { evaluateTransactionRisk } from "../../lib/riskScore";
@@ -313,6 +313,41 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
             </button>
           )}
         </div>
+      </div>
+    );
+  }
+
+  if (intent.type === "export_ledger") {
+    return (
+      <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3.5 text-xs">
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-1.5 font-medium text-white">
+            <Download className="h-3.5 w-3.5 text-[#f54842]" />
+            <span>Export Transaction History</span>
+          </div>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="p-1 text-white/40 hover:text-white rounded hover:bg-white/5 transition-colors"
+              title="Dismiss proposal"
+              aria-label="Dismiss proposal"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <p className="text-white/70 mb-3 leading-relaxed">
+          Download your local ledger as RFC-4180 CSV or structured audit JSON for tax accounting and self-custody records.
+        </p>
+        <button
+          type="button"
+          onClick={() => onApplyIntent(intent)}
+          className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-white bg-[#f54842] hover:bg-[#e03e38] transition-colors"
+        >
+          <span>Open Export Dialog</span>
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
       </div>
     );
   }

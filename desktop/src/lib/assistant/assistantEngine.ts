@@ -334,6 +334,19 @@ export async function processAssistantQuery(
         { intent: parsed }
       );
     }
+
+    // 2H: Export Ledger
+    if (parsed.type === "export_ledger") {
+      return await createResponse(
+        "Transaction export ready. Click below to download your transaction history as RFC-4180 CSV or structured audit JSON.",
+        {
+          intent: parsed,
+          safetyEvidence: {
+            intentSummary: "Export Transaction History",
+          },
+        }
+      );
+    }
   }
 
   // STEP 5: Privatum Domain Knowledge Base (Instant, deterministic zero-latency answers)

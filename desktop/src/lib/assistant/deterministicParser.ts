@@ -108,6 +108,18 @@ export function parseDeterministicIntent(
     return { type: "view_contacts" };
   }
 
+  // 6b. Export Ledger Query
+  if (
+    lower.includes("export") ||
+    lower.includes("download ledger") ||
+    lower.includes("download transactions") ||
+    lower.includes("download tx") ||
+    lower.includes("export csv") ||
+    lower.includes("export json")
+  ) {
+    return { type: "export_ledger" };
+  }
+
   // 7. Transfer / Send Intent
   if (
     lower.startsWith("send") ||
