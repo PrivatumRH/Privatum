@@ -39,6 +39,12 @@ export const SHORTCUTS_REGISTRY: ShortcutItem[] = [
     category: "Management",
   },
   {
+    key: "B",
+    label: "Vault Backup",
+    description: "Export or restore client-side encrypted state archive (.privvault)",
+    category: "Management",
+  },
+  {
     key: "?",
     label: "Keyboard Shortcuts",
     description: "Show this keyboard reference cheat sheet",
@@ -87,6 +93,7 @@ export interface GlobalHotkeyHandlers {
   onContacts?: () => void;
   onGuardrails?: () => void;
   onExport?: () => void;
+  onBackup?: () => void;
   onHelp?: () => void;
   onEscape?: () => void;
   enabled?: boolean;
@@ -172,6 +179,15 @@ export function handleGlobalHotkey(
       }
       break;
 
+    case "b":
+    case "B":
+      if (handlers.onBackup) {
+        handlers.onBackup();
+        if (typeof event.preventDefault === "function") event.preventDefault();
+        return true;
+      }
+      break;
+
     case "?":
       if (handlers.onHelp) {
         handlers.onHelp();
@@ -208,6 +224,7 @@ export function useGlobalHotkeys(handlers: GlobalHotkeyHandlers): void {
     handlers.onContacts,
     handlers.onGuardrails,
     handlers.onExport,
+    handlers.onBackup,
     handlers.onHelp,
     handlers.onEscape,
     handlers.enabled,
