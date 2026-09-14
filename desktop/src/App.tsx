@@ -43,6 +43,7 @@ import {
   Star,
   Keyboard,
   Tag,
+  Database,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -70,6 +71,7 @@ import { UpdateBanner } from "./components/UpdateBanner";
 import { StealthScannerModal } from "./components/StealthScannerModal";
 import { ContactsModal } from "./components/ContactsModal";
 import { ExportLedgerModal } from "./components/ExportLedgerModal";
+import { VaultBackupModal } from "./components/VaultBackupModal";
 import {
   TransactionReceiptCard,
   type TransactionReceipt,
@@ -162,6 +164,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.28": "Global Hotkeys & Keyboard Cheat Sheet",
   "0.1.29": "Pre-Flight Balance Diff Preview",
   "0.1.30": "Transaction Tagging & Cost-Center Labels",
+  "0.1.31": "One-Click Encrypted Full-State Backup & Restore",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -581,8 +584,37 @@ export function App() {
   );
   const [showContactsModal, setShowContactsModal] = useState<boolean>(false);
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
+  const [showVaultModal, setShowVaultModal] = useState<boolean>(false);
   const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
   const [showGuardrailsModal, setShowGuardrailsModal] = useState<boolean>(false);
+
+  const handleVaultRestored = () => {
+    try {
+      const stored = localStorage.getItem("privatum_accounts");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setAccounts(parsed);
+        }
+      }
+      const activeId = localStorage.getItem("privatum_active_account_id") || "primary";
+      setActiveAccountId(activeId);
+      const targetAddr =
+        localStorage.getItem(`privatum_wallet_address_${activeId}`) ||
+        localStorage.getItem("privatum_wallet_address");
+      if (targetAddr) {
+        setWalletAddress(targetAddr);
+        const key = `privatum_transactions_${targetAddr.toLowerCase()}`;
+        const tStored = localStorage.getItem(key);
+        setTransactions(tStored ? JSON.parse(tStored) : []);
+        setGuardrailConfig(loadGuardrailConfig(targetAddr));
+        setGuardrailHistory(loadSpendingHistory(targetAddr));
+        setContacts(loadContacts(targetAddr));
+      }
+    } catch (e) {
+      console.error("Failed to re-sync local state after vault restore", e);
+    }
+  };
 
   // Transaction Risk Scoring (v0.1.18)
   const riskAssessment = useMemo(() => {
@@ -1626,6 +1658,9 @@ export function App() {
     onExport: () => {
       setShowExportModal(true);
     },
+    onBackup: () => {
+      setShowVaultModal(true);
+    },
     onHelp: () => {
       setShowShortcutsModal(true);
     },
@@ -1648,6 +1683,10 @@ export function App() {
       }
       if (showExportModal) {
         setShowExportModal(false);
+        return;
+      }
+      if (showVaultModal) {
+        setShowVaultModal(false);
         return;
       }
       if (showGuardrailsModal) {
@@ -2526,6 +2565,17 @@ export function App() {
               </button>
             )}
 
+            {/* Encrypted Vault Backup & Restore (v0.1.31) */}
+            {isFeatureActive("vault_backup", appVersion, previewVersion) && (
+              <button
+                onClick={() => setShowVaultModal(true)}
+                title="Encrypted Vault Backup & Restore"
+                className="w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer text-slate-400 hover:text-white hover:bg-white/5 relative"
+              >
+                <Database className="w-5 h-5" />
+              </button>
+            )}
+
             <button
               onClick={() => setActiveTab("shards")}
               title="Shard Health"
@@ -2803,6 +2853,17 @@ export function App() {
                     >
                       <Download className="w-3.5 h-3.5 text-[#f54842]" />
                       <span>Export</span>
+                    </button>
+                  )}
+                  {isFeatureActive("vault_backup", appVersion, previewVersion) && (
+                    <button
+                      type="button"
+                      onClick={() => setShowVaultModal(true)}
+                      className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/10"
+                      title="Encrypted vault backup and restore (.privvault)"
+                    >
+                      <Database className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Vault</span>
                     </button>
                   )}
                   <a
@@ -4571,6 +4632,14 @@ export function App() {
         onNotify={addToast}
       />
 
+      {/* Modal: Full-State Encrypted Vault Backup & Restore (v0.1.31) */}
+      <VaultBackupModal
+        isOpen={showVaultModal}
+        onClose={() => setShowVaultModal(false)}
+        onRestored={handleVaultRestored}
+        onNotify={addToast}
+      />
+
       {/* Privatum Assistant Widget (V2 On-Device AI) */}
       <AssistantWidget
         walletAddress={wallet?.address || walletAddress || accounts[0]?.address}
@@ -4634,6 +4703,8 @@ export function App() {
             setShowGuardrailsModal(true);
           } else if (actionKey === "e") {
             setShowExportModal(true);
+          } else if (actionKey === "b") {
+            setShowVaultModal(true);
           }
         }}
       />
