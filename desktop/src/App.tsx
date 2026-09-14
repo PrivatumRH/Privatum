@@ -119,6 +119,8 @@ import { RecipientAutocomplete } from "./components/RecipientAutocomplete";
 import { useGlobalHotkeys } from "./lib/hotkeys";
 import { KeyboardShortcutsModal } from "./components/KeyboardShortcutsModal";
 import { GuardrailSettingsModal } from "./components/GuardrailSettingsModal";
+import { computeBalanceDiff } from "./lib/balanceDiff";
+import { PreFlightBalanceDiff } from "./components/PreFlightBalanceDiff";
 
 const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.0": "Genesis 2-of-3 MPC",
@@ -150,6 +152,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.26": "Local Ledger CSV & JSON Export",
   "0.1.27": "Starred Contacts & Quick-Pay Shelf",
   "0.1.28": "Global Hotkeys & Keyboard Cheat Sheet",
+  "0.1.29": "Pre-Flight Balance Diff Preview",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -570,6 +573,19 @@ export function App() {
       isStealth: isStealthSend,
     });
   }, [sendRecipient, addressVerdict, guardrailVerdict, contacts, transactions, simulationData, isStealthSend]);
+
+  // Pre-Flight Asset & Balance Diff Preview (v0.1.29)
+  const preFlightDiff = useMemo(() => {
+    return computeBalanceDiff({
+      asset: sendAssetType,
+      sendAmount,
+      usdgBalance,
+      ethBalance,
+      estimatedFeeEth: simulationData?.estimatedFeeEth || "0.000021",
+      isGaslessActive,
+      ethPrice,
+    });
+  }, [sendAssetType, sendAmount, usdgBalance, ethBalance, simulationData, isGaslessActive, ethPrice]);
 
   // Animated popup toast alerts
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -3864,6 +3880,11 @@ export function App() {
                   </div>
                 )}
 
+                {/* Pre-Flight Asset & Balance Diff Preview (v0.1.29) */}
+                {isFeatureActive("balance_diff", appVersion, previewVersion) && (
+                  <PreFlightBalanceDiff diff={preFlightDiff} />
+                )}
+
                 {/* Details Breakdown */}
                 <div className="bg-black/40 border border-white/10 rounded-xl p-3.5 space-y-2.5 text-xs">
                   <div className="flex items-center justify-between">
@@ -3949,7 +3970,8 @@ export function App() {
                       isSending ||
                       isSimulating ||
                       Boolean(addressVerdict && requiresAcknowledgement(addressVerdict) && !guardAcknowledged) ||
-                      Boolean(guardrailVerdict && guardrailVerdict.warning && (!guardrailVerdict.allowed || !guardrailAcknowledged))
+                      Boolean(guardrailVerdict && guardrailVerdict.warning && (!guardrailVerdict.allowed || !guardrailAcknowledged)) ||
+                      Boolean(isFeatureActive("balance_diff", appVersion, previewVersion) && (preFlightDiff.hasInsufficientAsset || preFlightDiff.hasInsufficientGas))
                     }
                     onClick={() => handleSendTransaction()}
                     className="flex-1 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2"
