@@ -29,7 +29,8 @@ export type FeatureKey =
   | "global_hotkeys"
   | "balance_diff"
   | "transaction_tagging"
-  | "vault_backup";
+  | "vault_backup"
+  | "session_lock";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -63,6 +64,7 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   balance_diff: "0.1.29",
   transaction_tagging: "0.1.30",
   vault_backup: "0.1.31",
+  session_lock: "0.1.32",
 };
 
 export const RELEASE_VERSIONS = [
@@ -98,6 +100,7 @@ export const RELEASE_VERSIONS = [
   "0.1.29",
   "0.1.30",
   "0.1.31",
+  "0.1.32",
 ] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 

@@ -9,6 +9,21 @@ const GITHUB_REPO_NAME = process.env.GITHUB_REPO_NAME || "privatum";
 const ACTIONS_REPO_OWNER = process.env.ACTIONS_REPO_OWNER || "NotADeveloper7";
 const ACTIONS_REPO_NAME = process.env.ACTIONS_REPO_NAME || "privatum";
 
+export function isPublicDownloadMirror(): boolean {
+  return (process.env.GITHUB_REPO_DOWNLOAD_MIRROR || "").toLowerCase().trim() === "public";
+}
+
+export function getEffectiveReposToTry(): string[] {
+  const isPublic = isPublicDownloadMirror();
+  const primaryRepo = isPublic ? `${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}` : `${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}`;
+  const secondaryRepo = isPublic ? `${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}` : `${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}`;
+
+  if (primaryRepo === secondaryRepo) {
+    return [primaryRepo];
+  }
+  return [primaryRepo, secondaryRepo];
+}
+
 function getGitToken(): string {
   return (process.env.GIT_TOKEN || process.env.GITHUB_TOKEN || "").trim();
 }
@@ -52,8 +67,7 @@ interface ArtifactMatch {
 }
 
 /**
- * Fetch releases from GitHub API across repositories:
- * checks ACTIONS_REPO (NotADeveloper7) first, then public GITHUB_REPO (PrivatumRH).
+ * Fetch releases from GitHub API across repositories governed by GITHUB_REPO_DOWNLOAD_MIRROR.
  */
 async function fetchGithubReleases(): Promise<ReleaseResponse[]> {
   const token = getGitToken();
@@ -65,10 +79,7 @@ async function fetchGithubReleases(): Promise<ReleaseResponse[]> {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const reposToTry = [
-    `${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}`,
-    ...(ACTIONS_REPO_OWNER !== GITHUB_REPO_OWNER ? [`${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}`] : []),
-  ];
+  const reposToTry = getEffectiveReposToTry();
 
   const allReleases: ReleaseResponse[] = [];
 
@@ -145,10 +156,7 @@ async function fetchLatestArtifact(platformName: string): Promise<ArtifactMatch 
     "User-Agent": "Privatum-Backend",
   };
 
-  const reposToTry = [
-    `${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}`,
-    ...(ACTIONS_REPO_OWNER !== GITHUB_REPO_OWNER ? [`${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}`] : []),
-  ];
+  const reposToTry = getEffectiveReposToTry();
 
   const p = platformName.toLowerCase();
 
@@ -410,21 +418,27 @@ downloadsRouter.get("/v1/downloads/mobile", (_req: Request, res: ExpressResponse
   res.redirect(307, "/v1/downloads/mobile/latest");
 });
 
-const FALLBACK_DIRECT_URLS: Record<string, string> = {
-  windows: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_x64-setup.exe`,
-  win: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_x64-setup.exe`,
-  exe: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_x64-setup.exe`,
-  msi: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_x64-setup.exe`,
-  macos: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/latest/download/PRIVATUM_aarch64.app.tar.gz`,
-  mac: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/latest/download/PRIVATUM_aarch64.app.tar.gz`,
-  darwin: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/latest/download/PRIVATUM_aarch64.app.tar.gz`,
-  dmg: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/latest/download/PRIVATUM_aarch64.app.tar.gz`,
-  linux: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_amd64.deb`,
-  deb: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_amd64.deb`,
-  appimage: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/latest/download/PRIVATUM_0.1.0_amd64.deb`,
-  android: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/download/v0.1.13/privatum-mobile.apk`,
-  apk: `https://github.com/${ACTIONS_REPO_OWNER}/${ACTIONS_REPO_NAME}/releases/download/v0.1.13/privatum-mobile.apk`,
-};
+export function getFallbackDirectUrls(): Record<string, string> {
+  const isPublic = isPublicDownloadMirror();
+  const owner = isPublic ? GITHUB_REPO_OWNER : ACTIONS_REPO_OWNER;
+  const repo = isPublic ? GITHUB_REPO_NAME : ACTIONS_REPO_NAME;
+
+  return {
+    windows: `https://github.com/${owner}/${repo}/releases/latest/download/PRIVATUM_0.1.0_x64-setup.exe`,
+    win: `https://github.com/${owner}/${repo}/releases/latest/download/PRIVATUM_0.1.0_x64-setup.exe`,
+    exe: `https://github.com/${owner}/${repo}/releases/latest/download/PRIVATUM_0.1.0_x64-setup.exe`,
+    msi: `https://github.com/${owner}/${repo}/releases/latest/download/PRIVATUM_0.1.0_x64-setup.exe`,
+    macos: `https://github.com/${owner}/${repo}/releases/latest/download/PRIVATUM_aarch64.app.tar.gz`,
+    mac: `https://github.com/${owner}/${repo}/releases/latest/download/PRIVATUM_aarch64.app.tar.gz`,
+    darwin: `https://github.com/${owner}/${repo}/releases/latest/download/PRIVATUM_aarch64.app.tar.gz`,
+    dmg: `https://github.com/${owner}/${repo}/releases/latest/download/PRIVATUM_aarch64.app.tar.gz`,
+    linux: `https://github.com/${owner}/${repo}/releases/latest/download/PRIVATUM_0.1.0_amd64.deb`,
+    deb: `https://github.com/${owner}/${repo}/releases/latest/download/PRIVATUM_0.1.0_amd64.deb`,
+    appimage: `https://github.com/${owner}/${repo}/releases/latest/download/PRIVATUM_0.1.0_amd64.deb`,
+    android: `https://github.com/${owner}/${repo}/releases/download/v0.1.13/privatum-mobile.apk`,
+    apk: `https://github.com/${owner}/${repo}/releases/download/v0.1.13/privatum-mobile.apk`,
+  };
+}
 
 // Aliases for mobile download routes
 downloadsRouter.get("/v1/downloads/mobile/android", (_req: Request, res: ExpressResponse) => {
@@ -525,7 +539,7 @@ downloadsRouter.get("/v1/downloads/:platform", async (req: Request, res: Express
     }
 
     // 3. Fallback: Direct desktop release URLs (if defined)
-    const fallbackUrl = FALLBACK_DIRECT_URLS[rawPlatform];
+    const fallbackUrl = getFallbackDirectUrls()[rawPlatform];
     if (fallbackUrl) {
       res.redirect(302, fallbackUrl);
       return;

@@ -45,6 +45,12 @@ export const SHORTCUTS_REGISTRY: ShortcutItem[] = [
     category: "Management",
   },
   {
+    key: "L",
+    label: "Lock Workspace",
+    description: "Immediately engage privacy lockscreen and mask session",
+    category: "General",
+  },
+  {
     key: "?",
     label: "Keyboard Shortcuts",
     description: "Show this keyboard reference cheat sheet",
@@ -94,6 +100,7 @@ export interface GlobalHotkeyHandlers {
   onGuardrails?: () => void;
   onExport?: () => void;
   onBackup?: () => void;
+  onLock?: () => void;
   onHelp?: () => void;
   onEscape?: () => void;
   enabled?: boolean;
@@ -188,6 +195,15 @@ export function handleGlobalHotkey(
       }
       break;
 
+    case "l":
+    case "L":
+      if (handlers.onLock) {
+        handlers.onLock();
+        if (typeof event.preventDefault === "function") event.preventDefault();
+        return true;
+      }
+      break;
+
     case "?":
       if (handlers.onHelp) {
         handlers.onHelp();
@@ -225,6 +241,7 @@ export function useGlobalHotkeys(handlers: GlobalHotkeyHandlers): void {
     handlers.onGuardrails,
     handlers.onExport,
     handlers.onBackup,
+    handlers.onLock,
     handlers.onHelp,
     handlers.onEscape,
     handlers.enabled,

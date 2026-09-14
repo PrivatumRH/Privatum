@@ -21,6 +21,7 @@ permissions:
 jobs:
   build:
     name: Build and Package Android APK
+    if: github.repository_owner == 'PrivatumRH' || github.repository == 'PrivatumRH/privatum' || github.repository == 'PrivatumRH/Privatum'
     runs-on: ubuntu-latest
 
     steps:
