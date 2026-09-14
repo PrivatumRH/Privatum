@@ -37,6 +37,8 @@ describe("Local Ledger Export", () => {
       asset: "USDG",
       timestamp: now - 1000 * 60 * 60 * 2, // 2 hours ago
       status: "confirmed",
+      tag: "Payroll",
+      note: "August core dev retainer",
     },
     {
       id: "tx-2",
@@ -47,6 +49,8 @@ describe("Local Ledger Export", () => {
       asset: "USDG",
       timestamp: now - 1000 * 60 * 60 * 24 * 10, // 10 days ago
       status: "confirmed",
+      tag: "Vendor",
+      note: "Cloud infra monthly",
     },
     {
       id: "tx-3",
@@ -78,25 +82,28 @@ describe("Local Ledger Export", () => {
     const lines = csv.split("\r\n");
 
     expect(lines[0]).toBe(
-      "Date (UTC),Time (UTC),Timestamp,Type,Asset,Amount,USD Estimate,Counterparty Address,Counterparty Name,Status,Transaction Hash,Explorer Link"
+      "Date (UTC),Time (UTC),Timestamp,Type,Asset,Amount,USD Estimate,Cost Center / Tag,Internal Note,Counterparty Address,Counterparty Name,Status,Transaction Hash,Explorer Link"
     );
     expect(lines.length).toBe(4);
 
-    // Line 1 should resolve Alice
+    // Line 1 should resolve Alice and Payroll tag
     expect(lines[1]).toContain("SEND");
     expect(lines[1]).toContain("USDG");
+    expect(lines[1]).toContain("Payroll");
+    expect(lines[1]).toContain("August core dev retainer");
     expect(lines[1]).toContain("Alice");
     expect(lines[1]).toContain("250.00");
 
     // Line 2 should properly escape "Acme, Inc." due to embedded comma
+    expect(lines[2]).toContain("Vendor");
     expect(lines[2]).toContain('"Acme, Inc."');
 
-    // Line 3 should handle unknown counterparty gracefully
+    // Line 3 should handle untagged transaction gracefully
     expect(lines[3]).toContain("RECEIVE");
     expect(lines[3]).toContain("ETH");
   });
 
-  it("exports structured JSON with full audit metadata", () => {
+  it("exports structured JSON with full audit metadata and tags", () => {
     const jsonStr = exportToJson(mockTransactions, mockContacts, "0xmywallet");
     const parsed = JSON.parse(jsonStr);
 
@@ -109,13 +116,19 @@ describe("Local Ledger Export", () => {
     const first = parsed.transactions[0];
     expect(first.counterpartyName).toBe("Alice");
     expect(first.counterpartyCategory).toBe("Personal");
+    expect(first.tag).toBe("Payroll");
+    expect(first.note).toBe("August core dev retainer");
     expect(first.explorerUrl).toContain("robinhoodchain.blockscout.com/tx/0xaaaa");
+
+    const third = parsed.transactions[2];
+    expect(third.tag).toBeNull();
+    expect(third.note).toBeNull();
   });
 
   it("handles empty transaction history cleanly", () => {
     const csv = exportToCsv([], []);
     expect(csv).toBe(
-      "Date (UTC),Time (UTC),Timestamp,Type,Asset,Amount,USD Estimate,Counterparty Address,Counterparty Name,Status,Transaction Hash,Explorer Link"
+      "Date (UTC),Time (UTC),Timestamp,Type,Asset,Amount,USD Estimate,Cost Center / Tag,Internal Note,Counterparty Address,Counterparty Name,Status,Transaction Hash,Explorer Link"
     );
 
     const json = JSON.parse(exportToJson([], []));

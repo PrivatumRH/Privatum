@@ -6,11 +6,17 @@ import {
   type LedgerDateFilter,
   type LedgerExportFormat,
   filterTransactionsByDate,
+  filterTransactionsByTag,
   exportToCsv,
   exportToJson,
   getExportFilename,
   downloadLedgerFile,
 } from "../lib/exportLedger";
+import {
+  type TransactionTag,
+  TRANSACTION_TAGS,
+  getTagConfig,
+} from "../lib/transactionTags";
 import { estimateUsdValue } from "../lib/spendGuardrails";
 
 interface ExportLedgerModalProps {
@@ -32,11 +38,13 @@ export const ExportLedgerModal: React.FC<ExportLedgerModalProps> = ({
 }) => {
   const [format, setFormat] = useState<LedgerExportFormat>("csv");
   const [dateFilter, setDateFilter] = useState<LedgerDateFilter>("all");
+  const [tagFilter, setTagFilter] = useState<TransactionTag | "all">("all");
   const [isExported, setIsExported] = useState(false);
 
   const filteredTransactions = useMemo(() => {
-    return filterTransactionsByDate(transactions, dateFilter);
-  }, [transactions, dateFilter]);
+    const byDate = filterTransactionsByDate(transactions, dateFilter);
+    return filterTransactionsByTag(byDate, tagFilter);
+  }, [transactions, dateFilter, tagFilter]);
 
   const totalUsdVolume = useMemo(() => {
     return filteredTransactions.reduce((sum, tx) => {
@@ -161,6 +169,43 @@ export const ExportLedgerModal: React.FC<ExportLedgerModalProps> = ({
                   {item.label}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Cost Center / Tag Filter */}
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-slate-300">Cost Center / Tag</label>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setTagFilter("all")}
+                className={`py-1.5 px-2.5 rounded-lg border text-xs font-medium transition cursor-pointer ${
+                  tagFilter === "all"
+                    ? "bg-white/15 border-white/30 text-white"
+                    : "bg-[#181a23] border-white/5 text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                All Tags
+              </button>
+              {TRANSACTION_TAGS.map((t) => {
+                const style = getTagConfig(t);
+                const active = tagFilter === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTagFilter(t)}
+                    className={`py-1.5 px-2.5 rounded-lg border text-xs font-medium transition flex items-center gap-1.5 cursor-pointer ${
+                      active
+                        ? `${style?.bgClass} ${style?.borderClass} ${style?.textClass}`
+                        : "bg-[#181a23] border-white/5 text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${style?.dotClass}`} />
+                    <span>{t}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
