@@ -3349,20 +3349,22 @@ export function App() {
       {/* Modal: Send Transaction */}
       {showSendModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="bg-[#181a23] border border-white/15 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+          <div className="bg-[#181a23] border border-white/15 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl max-h-[90vh] flex flex-col">
             {sendStep === "receipt" && sendReceipt ? (
-              <TransactionReceiptCard
-                receipt={sendReceipt}
-                onDone={() => closeSendModal()}
-                onSendAnother={() => {
-                  setSendReceipt(null);
-                  setSendStep("form");
-                }}
-                onNotify={addToast}
-              />
+              <div className="overflow-y-auto flex-1 min-h-0 pr-1">
+                <TransactionReceiptCard
+                  receipt={sendReceipt}
+                  onDone={() => closeSendModal()}
+                  onSendAnother={() => {
+                    setSendReceipt(null);
+                    setSendStep("form");
+                  }}
+                  onNotify={addToast}
+                />
+              </div>
             ) : sendStep === "form" ? (
-              <>
-                <div className="flex items-center justify-between">
+              <div className="flex flex-col flex-1 min-h-0">
+                <div className="flex items-center justify-between shrink-0 mb-4">
                   <h3 className="text-base font-semibold text-white">Send</h3>
                   <button
                     onClick={() => closeSendModal()}
@@ -3372,7 +3374,7 @@ export function App() {
                   </button>
                 </div>
 
-                <form onSubmit={handlePreviewTransfer} className="space-y-4">
+                <form onSubmit={handlePreviewTransfer} className="space-y-4 overflow-y-auto flex-1 min-h-0 pr-1">
                   <div>
                     <label className="text-xs text-slate-400 block mb-1.5">Asset</label>
                     <div className="grid grid-cols-2 gap-2">
@@ -3668,29 +3670,31 @@ export function App() {
                     </button>
                   </div>
                 </form>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => setSendStep("form")}
-                    className="text-xs text-slate-400 hover:text-white flex items-center gap-1.5 transition"
-                  >
-                    <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back</span>
-                  </button>
-                  <h3 className="text-base font-semibold text-white">Preview Transfer</h3>
-                  <button
-                    onClick={() => closeSendModal()}
-                    className="text-slate-400 hover:text-white p-1 transition"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
                 </div>
+              ) : (
+                <div className="flex flex-col flex-1 min-h-0">
+                  <div className="flex items-center justify-between shrink-0 pb-3 border-b border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setSendStep("form")}
+                      className="text-xs text-slate-400 hover:text-white flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Back</span>
+                    </button>
+                    <h3 className="text-base font-semibold text-white">Preview Transfer</h3>
+                    <button
+                      onClick={() => closeSendModal()}
+                      className="text-slate-400 hover:text-white p-1 transition cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
 
-                {/* Amount and asset banner */}
-                <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08] flex flex-col items-center justify-center text-center space-y-1">
+                  {/* Scrollable preview body */}
+                  <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 my-3 min-h-0">
+                    {/* Amount and asset banner */}
+                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08] flex flex-col items-center justify-center text-center space-y-1">
                   <div className="flex items-center gap-2 mb-1">
                     <TokenAvatar
                       symbol={sendAssetType}
@@ -3954,40 +3958,42 @@ export function App() {
                   <ThresholdSignatureVisual stages={ceremony} />
                 )}
 
-                {/* Action buttons */}
-                <div className="flex gap-2 pt-2">
-                  <button
-                    type="button"
-                    disabled={isSending}
-                    onClick={() => setSendStep("form")}
-                    className="flex-1 py-2.5 rounded-xl bg-white/10 text-slate-300 font-semibold text-xs hover:bg-white/15 border border-white/10 transition disabled:opacity-40"
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    disabled={
-                      isSending ||
-                      isSimulating ||
-                      Boolean(addressVerdict && requiresAcknowledgement(addressVerdict) && !guardAcknowledged) ||
-                      Boolean(guardrailVerdict && guardrailVerdict.warning && (!guardrailVerdict.allowed || !guardrailAcknowledged)) ||
-                      Boolean(isFeatureActive("balance_diff", appVersion, previewVersion) && (preFlightDiff.hasInsufficientAsset || preFlightDiff.hasInsufficientGas))
-                    }
-                    onClick={() => handleSendTransaction()}
-                    className="flex-1 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2"
-                  >
-                    {isSending ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Signing & Sending...</span>
-                      </>
-                    ) : (
-                      <span>Confirm & Send</span>
-                    )}
-                  </button>
+                  </div>
+
+                  {/* Action buttons pinned at bottom */}
+                  <div className="flex gap-2 pt-3 border-t border-white/10 shrink-0">
+                    <button
+                      type="button"
+                      disabled={isSending}
+                      onClick={() => setSendStep("form")}
+                      className="flex-1 py-2.5 rounded-xl bg-white/10 text-slate-300 font-semibold text-xs hover:bg-white/15 border border-white/10 transition disabled:opacity-40 cursor-pointer"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      disabled={
+                        isSending ||
+                        isSimulating ||
+                        Boolean(addressVerdict && requiresAcknowledgement(addressVerdict) && !guardAcknowledged) ||
+                        Boolean(guardrailVerdict && guardrailVerdict.warning && (!guardrailVerdict.allowed || !guardrailAcknowledged)) ||
+                        Boolean(isFeatureActive("balance_diff", appVersion, previewVersion) && (preFlightDiff.hasInsufficientAsset || preFlightDiff.hasInsufficientGas))
+                      }
+                      onClick={() => handleSendTransaction()}
+                      className="flex-1 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {isSending ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Signing & Sending...</span>
+                        </>
+                      ) : (
+                        <span>Confirm & Send</span>
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </>
-            )}
+              )}
           </div>
         </div>
       )}
