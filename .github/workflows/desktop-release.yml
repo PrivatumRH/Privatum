@@ -25,6 +25,7 @@ permissions:
 jobs:
   build-tauri:
     name: Build (${{ matrix.platform }})
+    if: github.repository_owner == 'PrivatumRH' || github.repository == 'PrivatumRH/privatum' || github.repository == 'PrivatumRH/Privatum'
     runs-on: ${{ matrix.platform }}
     strategy:
       fail-fast: false

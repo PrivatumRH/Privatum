@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   Wallet,
   ShieldCheck,
@@ -72,6 +72,13 @@ import { StealthScannerModal } from "./components/StealthScannerModal";
 import { ContactsModal } from "./components/ContactsModal";
 import { ExportLedgerModal } from "./components/ExportLedgerModal";
 import { VaultBackupModal } from "./components/VaultBackupModal";
+import { LockScreen } from "./components/LockScreen";
+import { LockSettingsModal } from "./components/LockSettingsModal";
+import {
+  loadLockConfig,
+  isSessionExpired,
+  type SessionLockConfig,
+} from "./lib/sessionLock";
 import {
   TransactionReceiptCard,
   type TransactionReceipt,
@@ -165,6 +172,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.29": "Pre-Flight Balance Diff Preview",
   "0.1.30": "Transaction Tagging & Cost-Center Labels",
   "0.1.31": "One-Click Encrypted Full-State Backup & Restore",
+  "0.1.32": "Workstation Auto-Lock & Session Screen",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -587,6 +595,58 @@ export function App() {
   const [showVaultModal, setShowVaultModal] = useState<boolean>(false);
   const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
   const [showGuardrailsModal, setShowGuardrailsModal] = useState<boolean>(false);
+  const [isLocked, setIsLocked] = useState<boolean>(false);
+  const [showLockSettingsModal, setShowLockSettingsModal] = useState<boolean>(false);
+  const [pendingLockAfterPinSetup, setPendingLockAfterPinSetup] = useState<boolean>(false);
+  const [lockConfig, setLockConfig] = useState<SessionLockConfig>(() => loadLockConfig());
+  const lastActivityRef = useRef<number>(Date.now());
+
+  // Inactivity auto-lock session watcher
+  useEffect(() => {
+    const handleActivity = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    window.addEventListener("pointermove", handleActivity);
+    window.addEventListener("keydown", handleActivity);
+    window.addEventListener("click", handleActivity);
+    window.addEventListener("scroll", handleActivity);
+
+    const interval = setInterval(() => {
+      if (!isLocked && isFeatureActive("session_lock", appVersion, previewVersion)) {
+        const currentCfg = loadLockConfig();
+        setLockConfig(currentCfg);
+        if (
+          currentCfg.enabled &&
+          currentCfg.hasPin &&
+          currentCfg.timeoutMinutes > 0 &&
+          isSessionExpired(lastActivityRef.current, currentCfg.timeoutMinutes)
+        ) {
+          setIsLocked(true);
+        }
+      }
+    }, 5000);
+
+    return () => {
+      window.removeEventListener("pointermove", handleActivity);
+      window.removeEventListener("keydown", handleActivity);
+      window.removeEventListener("click", handleActivity);
+      window.removeEventListener("scroll", handleActivity);
+      clearInterval(interval);
+    };
+  }, [isLocked, appVersion, previewVersion]);
+
+  const handleTriggerLock = () => {
+    if (!isFeatureActive("session_lock", appVersion, previewVersion)) return;
+    const cfg = loadLockConfig();
+    if (!cfg.hasPin) {
+      addToast("info", "Set Passcode First", "Please configure a session PIN before locking your workstation.");
+      setPendingLockAfterPinSetup(true);
+      setShowLockSettingsModal(true);
+      return;
+    }
+    setIsLocked(true);
+  };
 
   const handleVaultRestored = () => {
     try {
@@ -1661,10 +1721,17 @@ export function App() {
     onBackup: () => {
       setShowVaultModal(true);
     },
+    onLock: () => {
+      handleTriggerLock();
+    },
     onHelp: () => {
       setShowShortcutsModal(true);
     },
     onEscape: () => {
+      if (showLockSettingsModal) {
+        setShowLockSettingsModal(false);
+        return;
+      }
       if (showShortcutsModal) {
         setShowShortcutsModal(false);
         return;
@@ -2705,6 +2772,30 @@ export function App() {
                 <span className="hidden md:inline font-sans text-[11px]">Hotkeys</span>
                 <kbd className="hidden lg:inline px-1 py-0.2 text-[10px] bg-white/10 rounded border border-white/20">?</kbd>
               </button>
+            )}
+
+            {/* Workstation Auto-Lock Trigger (v0.1.32) */}
+            {isFeatureActive("session_lock", appVersion, previewVersion) && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleTriggerLock}
+                  className="h-8 px-2.5 rounded-[10px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-white text-xs font-mono border border-white/[0.06] transition flex items-center gap-1.5 cursor-pointer"
+                  title="Lock Workstation (L)"
+                >
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden md:inline font-sans text-[11px]">Lock</span>
+                  <kbd className="hidden lg:inline px-1 py-0.2 text-[10px] bg-white/10 rounded border border-white/20">L</kbd>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLockSettingsModal(true)}
+                  className="h-8 w-8 rounded-[10px] bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-white transition flex items-center justify-center border border-white/[0.06] cursor-pointer"
+                  title="Lock Screen Settings"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                </button>
+              </div>
             )}
 
             {/* Account Switcher (v0.1.5) */}
@@ -4705,8 +4796,47 @@ export function App() {
             setShowExportModal(true);
           } else if (actionKey === "b") {
             setShowVaultModal(true);
+          } else if (actionKey === "l") {
+            handleTriggerLock();
           }
         }}
+      />
+
+      {/* Workstation Lock Screen (v0.1.32) */}
+      {isLocked && isFeatureActive("session_lock", appVersion, previewVersion) && (
+        <LockScreen
+          walletName={(() => {
+            const acc = accounts.find((a) => a.id === activeAccountId) || accounts[0];
+            if (!acc) return "Primary Account";
+            const idx = accounts.indexOf(acc);
+            return getAccountDisplayName(acc, idx >= 0 ? idx : 0);
+          })()}
+          walletAddress={wallet?.address || walletAddress || accounts[0]?.address}
+          onUnlock={() => {
+            lastActivityRef.current = Date.now();
+            setIsLocked(false);
+          }}
+          onNotify={addToast}
+        />
+      )}
+
+      {/* Modal: Lock Settings (v0.1.32) */}
+      <LockSettingsModal
+        isOpen={showLockSettingsModal}
+        pendingLock={pendingLockAfterPinSetup}
+        onClose={() => {
+          setShowLockSettingsModal(false);
+          setPendingLockAfterPinSetup(false);
+        }}
+        onPinConfigured={() => {
+          setPendingLockAfterPinSetup(false);
+          setIsLocked(true);
+        }}
+        onLockNow={() => {
+          setPendingLockAfterPinSetup(false);
+          setIsLocked(true);
+        }}
+        onNotify={addToast}
       />
     </div>
   );

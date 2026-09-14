@@ -122,6 +122,21 @@ describe("Global Hotkeys Engine", () => {
       expect(onBackup).toHaveBeenCalledTimes(2);
     });
 
+    it("triggers onLock for l and L", () => {
+      const onLock = mock(() => {});
+      const handlers: GlobalHotkeyHandlers = { onLock };
+
+      const eventLower = createMockEvent("l");
+      const handledLower = handleGlobalHotkey(eventLower, handlers);
+      expect(handledLower).toBe(true);
+      expect(onLock).toHaveBeenCalledTimes(1);
+
+      const eventUpper = createMockEvent("L");
+      const handledUpper = handleGlobalHotkey(eventUpper, handlers);
+      expect(handledUpper).toBe(true);
+      expect(onLock).toHaveBeenCalledTimes(2);
+    });
+
     it("triggers onHelp for ?", () => {
       const onHelp = mock(() => {});
       const handlers: GlobalHotkeyHandlers = { onHelp };
@@ -202,6 +217,7 @@ describe("Global Hotkeys Engine", () => {
       expect(keys).toContain("G");
       expect(keys).toContain("E");
       expect(keys).toContain("B");
+      expect(keys).toContain("L");
       expect(keys).toContain("?");
       expect(keys).toContain("Esc");
     });
