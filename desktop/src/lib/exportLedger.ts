@@ -8,6 +8,8 @@
 import type { Contact } from "./contacts";
 import { findContactByAddress } from "./contacts";
 import { estimateUsdValue } from "./spendGuardrails";
+import type { TransactionTag } from "./transactionTags";
+export { filterTransactionsByTag } from "./transactionTags";
 
 export type LedgerDateFilter = "all" | "30d" | "7d";
 export type LedgerExportFormat = "csv" | "json";
@@ -21,6 +23,8 @@ export interface ExportableTransaction {
   asset: "USDG" | "ETH";
   timestamp: number;
   status: "confirmed" | "pending";
+  tag?: TransactionTag;
+  note?: string;
 }
 
 /**
@@ -70,6 +74,8 @@ export function exportToCsv(
     "Asset",
     "Amount",
     "USD Estimate",
+    "Cost Center / Tag",
+    "Internal Note",
     "Counterparty Address",
     "Counterparty Name",
     "Status",
@@ -98,6 +104,8 @@ export function exportToCsv(
       escapeCsvField(tx.asset),
       escapeCsvField(tx.amount),
       escapeCsvField(usdEstimate),
+      escapeCsvField(tx.tag || ""),
+      escapeCsvField(tx.note || ""),
       escapeCsvField(tx.counterparty),
       escapeCsvField(matchedContact?.name || ""),
       escapeCsvField(tx.status),
@@ -137,6 +145,8 @@ export function exportToJson(
         asset: tx.asset,
         amount: tx.amount,
         usdEstimate,
+        tag: tx.tag || null,
+        note: tx.note || null,
         counterparty: tx.counterparty,
         counterpartyName: matchedContact?.name || null,
         counterpartyCategory: matchedContact?.category || null,
