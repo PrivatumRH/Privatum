@@ -31,7 +31,8 @@ export type FeatureKey =
   | "transaction_tagging"
   | "vault_backup"
   | "session_lock"
-  | "transfer_blacklist";
+  | "transfer_blacklist"
+  | "transfer_whitelist";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -67,6 +68,7 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   vault_backup: "0.1.31",
   session_lock: "0.1.32",
   transfer_blacklist: "0.1.33",
+  transfer_whitelist: "0.1.34",
 };
 
 export const RELEASE_VERSIONS = [
@@ -104,6 +106,7 @@ export const RELEASE_VERSIONS = [
   "0.1.31",
   "0.1.32",
   "0.1.33",
+  "0.1.34",
 ] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 
