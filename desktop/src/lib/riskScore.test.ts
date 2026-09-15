@@ -145,4 +145,27 @@ describe("Transaction Risk Scoring Engine", () => {
     expect(result.level).toBe("high");
     expect(result.score).toBe(75); // 15 (first-time) + 25 (warn) + 35 (revert)
   });
+
+  it("evaluates blacklisted destination as Critical 100 Risk immediately", () => {
+    const result = evaluateTransactionRisk({
+      recipient: "0xd90e2f925da726b50c4ed8d0fb90ad053324f31b",
+      blacklistVerdict: {
+        isBlacklisted: true,
+        entry: {
+          address: "0xd90e2f925da726b50c4ed8d0fb90ad053324f31b",
+          name: "Tornado Cash Router",
+          reason: "Sanctioned mixer contract",
+          category: "Sanctioned",
+          addedAt: 1700000000000,
+          source: "curated",
+        },
+      },
+    });
+
+    expect(result.level).toBe("high");
+    expect(result.score).toBe(100);
+    expect(result.label).toContain("Critical Risk");
+    expect(result.factors.some((f) => f.id === "transfer_blacklist" && f.status === "fail")).toBe(true);
+    expect(result.summary).toContain("strictly blocked");
+  });
 });

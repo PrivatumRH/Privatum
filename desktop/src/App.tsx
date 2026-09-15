@@ -44,6 +44,7 @@ import {
   Keyboard,
   Tag,
   Database,
+  Ban,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -74,6 +75,12 @@ import { ExportLedgerModal } from "./components/ExportLedgerModal";
 import { VaultBackupModal } from "./components/VaultBackupModal";
 import { LockScreen } from "./components/LockScreen";
 import { LockSettingsModal } from "./components/LockSettingsModal";
+import { BlacklistModal } from "./components/BlacklistModal";
+import {
+  getAllBlacklistEntries,
+  checkAddressBlacklist,
+  type BlacklistEntry,
+} from "./lib/transferBlacklist";
 import {
   loadLockConfig,
   isSessionExpired,
@@ -173,6 +180,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.30": "Transaction Tagging & Cost-Center Labels",
   "0.1.31": "One-Click Encrypted Full-State Backup & Restore",
   "0.1.32": "Workstation Auto-Lock & Session Screen",
+  "0.1.33": "Transfer Blacklist & Malicious Threat Guard",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -599,7 +607,15 @@ export function App() {
   const [showLockSettingsModal, setShowLockSettingsModal] = useState<boolean>(false);
   const [pendingLockAfterPinSetup, setPendingLockAfterPinSetup] = useState<boolean>(false);
   const [lockConfig, setLockConfig] = useState<SessionLockConfig>(() => loadLockConfig());
+  const [showBlacklistModal, setShowBlacklistModal] = useState<boolean>(false);
+  const [blacklistPrefillAddress, setBlacklistPrefillAddress] = useState<string>("");
+  const [blacklistEntries, setBlacklistEntries] = useState<BlacklistEntry[]>(() => getAllBlacklistEntries());
   const lastActivityRef = useRef<number>(Date.now());
+
+  const sendBlacklistVerdict = useMemo(() => {
+    if (!isFeatureActive("transfer_blacklist", appVersion, previewVersion)) return null;
+    return checkAddressBlacklist(sendRecipient, blacklistEntries);
+  }, [sendRecipient, blacklistEntries, appVersion, previewVersion]);
 
   // Inactivity auto-lock session watcher
   useEffect(() => {
@@ -682,12 +698,13 @@ export function App() {
       recipient: sendRecipient,
       addressVerdict,
       guardrailVerdict,
+      blacklistVerdict: sendBlacklistVerdict,
       contacts,
       transactions,
       simulationReverted: simulationData ? simulationData.status !== "success" : false,
       isStealth: isStealthSend,
     });
-  }, [sendRecipient, addressVerdict, guardrailVerdict, contacts, transactions, simulationData, isStealthSend]);
+  }, [sendRecipient, addressVerdict, guardrailVerdict, sendBlacklistVerdict, contacts, transactions, simulationData, isStealthSend]);
 
   // Pre-Flight Asset & Balance Diff Preview (v0.1.29)
   const preFlightDiff = useMemo(() => {
@@ -1728,6 +1745,11 @@ export function App() {
       setShowShortcutsModal(true);
     },
     onEscape: () => {
+      if (showBlacklistModal) {
+        setShowBlacklistModal(false);
+        setBlacklistPrefillAddress("");
+        return;
+      }
       if (showLockSettingsModal) {
         setShowLockSettingsModal(false);
         return;
@@ -1841,6 +1863,15 @@ export function App() {
     e.preventDefault();
     if (!wallet) return;
 
+    if (sendBlacklistVerdict?.isBlacklisted) {
+      addToast(
+        "error",
+        "Transfer Hard-Blocked",
+        `Recipient is blacklisted (${sendBlacklistVerdict.entry?.category}: ${sendBlacklistVerdict.entry?.reason}). Outgoing transfers are strictly blocked.`
+      );
+      return;
+    }
+
     const trimmedRecipient = sendRecipient.trim();
     const isMeta = trimmedRecipient.startsWith("st:eth:0x") || (!trimmedRecipient.startsWith("st:") && trimmedRecipient.replace(/^0x/, "").length === 132);
 
@@ -1937,6 +1968,15 @@ export function App() {
   const handleSendTransaction = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!wallet) return;
+
+    if (sendBlacklistVerdict?.isBlacklisted) {
+      addToast(
+        "error",
+        "Transfer Blocked",
+        `Recipient is blacklisted (${sendBlacklistVerdict.entry?.category}). Transaction cannot be sent.`
+      );
+      return;
+    }
 
     if (addressVerdict && requiresAcknowledgement(addressVerdict) && !guardAcknowledged) {
       addToast(
@@ -2643,6 +2683,17 @@ export function App() {
               </button>
             )}
 
+            {isFeatureActive("transfer_blacklist", appVersion, previewVersion) && (
+              <button
+                type="button"
+                onClick={() => setShowBlacklistModal(true)}
+                title="Transfer Blacklist Guard"
+                className="w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer text-rose-300 hover:text-rose-200 hover:bg-rose-500/10 relative"
+              >
+                <Ban className="w-5 h-5" />
+              </button>
+            )}
+
             <button
               onClick={() => setActiveTab("shards")}
               title="Shard Health"
@@ -2957,6 +3008,17 @@ export function App() {
                       <span>Vault</span>
                     </button>
                   )}
+                  {isFeatureActive("transfer_blacklist", appVersion, previewVersion) && (
+                    <button
+                      type="button"
+                      onClick={() => setShowBlacklistModal(true)}
+                      className="text-xs text-rose-300 hover:text-rose-200 transition flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20"
+                      title="Manage transfer blacklist"
+                    >
+                      <Ban className="w-3.5 h-3.5" />
+                      <span>Blacklist</span>
+                    </button>
+                  )}
                   <a
                     href={walletAddress ? `https://robinhoodchain.blockscout.com/address/${walletAddress}` : "https://robinhoodchain.blockscout.com"}
                     target="_blank"
@@ -3060,6 +3122,21 @@ export function App() {
                                 onUpdate={(tag, note) => handleUpdateTransactionTag(tx.id, tag, note)}
                               />
                             </div>
+                          )}
+
+                          {isFeatureActive("transfer_blacklist", appVersion, previewVersion) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBlacklistPrefillAddress(tx.counterparty);
+                                setShowBlacklistModal(true);
+                              }}
+                              className="hidden lg:inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-rose-300 transition whitespace-nowrap"
+                              title="Blacklist counterparty"
+                            >
+                              <Ban className="w-3 h-3" />
+                              <span>Blacklist</span>
+                            </button>
                           )}
 
                           {/* Status */}
@@ -3849,6 +3926,19 @@ export function App() {
                         )}
                       </div>
                     )}
+                    {sendBlacklistVerdict?.isBlacklisted && (
+                      <div className="mt-2 p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-start gap-2.5 text-xs text-rose-200 animate-in fade-in duration-150">
+                        <Ban className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-semibold text-rose-300">
+                            Transfer Hard-Blocked ({sendBlacklistVerdict.entry?.category})
+                          </div>
+                          <div className="text-[11px] text-rose-200/80 mt-0.5 leading-relaxed">
+                            Recipient is listed in the transfer blacklist ({sendBlacklistVerdict.entry?.reason}). Outgoing transfers to this address are strictly disabled.
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -3978,8 +4068,8 @@ export function App() {
                     </button>
                     <button
                       type="submit"
-                      disabled={!sendAmount || !sendRecipient}
-                      className="flex-1 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2"
+                      disabled={!sendAmount || !sendRecipient || Boolean(sendBlacklistVerdict?.isBlacklisted)}
+                      className="flex-1 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <span>Preview Transfer</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -4111,6 +4201,22 @@ export function App() {
                       </label>
                     </div>
                   )
+                )}
+
+                {/* Transfer Blacklist Hard Block (v0.1.33) */}
+                {sendBlacklistVerdict?.isBlacklisted && (
+                  <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-start gap-2.5 text-xs text-rose-200 animate-in fade-in duration-150">
+                    <Ban className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-semibold text-rose-300">
+                        Transfer Hard-Blocked ({sendBlacklistVerdict.entry?.category})
+                      </div>
+                      <div className="text-[11px] text-rose-200/80 mt-0.5 leading-relaxed">
+                        Destination {shortenAddress(sendRecipient)} is listed in the transfer blacklist ({sendBlacklistVerdict.entry?.reason}).
+                        Signing and broadcasting are strictly disabled.
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {/* Rolling budget state (v0.1.23). Shown always, not only once a
@@ -4305,6 +4411,7 @@ export function App() {
                       disabled={
                         isSending ||
                         isSimulating ||
+                        Boolean(sendBlacklistVerdict?.isBlacklisted) ||
                         Boolean(addressVerdict && requiresAcknowledgement(addressVerdict) && !guardAcknowledged) ||
                         Boolean(guardrailVerdict && guardrailVerdict.warning && (!guardrailVerdict.allowed || !guardrailAcknowledged)) ||
                         Boolean(isFeatureActive("balance_diff", appVersion, previewVersion) && (preFlightDiff.hasInsufficientAsset || preFlightDiff.hasInsufficientGas))
@@ -4731,6 +4838,18 @@ export function App() {
         onNotify={addToast}
       />
 
+      {/* Modal: Transfer Blacklist & Threat Guard (v0.1.33) */}
+      <BlacklistModal
+        isOpen={showBlacklistModal}
+        initialAddress={blacklistPrefillAddress}
+        onClose={() => {
+          setShowBlacklistModal(false);
+          setBlacklistPrefillAddress("");
+        }}
+        onNotify={addToast}
+        onBlacklistUpdated={() => setBlacklistEntries(getAllBlacklistEntries())}
+      />
+
       {/* Privatum Assistant Widget (V2 On-Device AI) */}
       <AssistantWidget
         walletAddress={wallet?.address || walletAddress || accounts[0]?.address}
@@ -4841,4 +4960,3 @@ export function App() {
     </div>
   );
 }
-
