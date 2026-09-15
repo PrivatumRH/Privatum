@@ -80,8 +80,6 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
     }
   }, [isOpen, initialAddress]);
 
-  if (!isOpen) return null;
-
   const handleRefresh = () => {
     const fresh = getAllBlacklistEntries();
     setEntries(fresh);
@@ -218,6 +216,10 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
       return true;
     });
   }, [entries, searchQuery, selectedCategory, selectedSource]);
+
+  // Hooks must run in the same order while the modal opens and closes. Keep
+  // this guard after useMemo rather than returning above it.
+  if (!isOpen) return null;
 
   const customCount = entries.filter((e) => e.source === "user").length;
   const curatedCount = entries.filter((e) => e.source === "curated").length;
