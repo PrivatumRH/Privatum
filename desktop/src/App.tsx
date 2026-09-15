@@ -76,11 +76,13 @@ import { VaultBackupModal } from "./components/VaultBackupModal";
 import { LockScreen } from "./components/LockScreen";
 import { LockSettingsModal } from "./components/LockSettingsModal";
 import { BlacklistModal } from "./components/BlacklistModal";
+import { WhitelistModal } from "./components/WhitelistModal";
 import {
   getAllBlacklistEntries,
   checkAddressBlacklist,
   type BlacklistEntry,
 } from "./lib/transferBlacklist";
+import { isWhitelisted, loadWhitelist, loadWhitelistConfig, type WhitelistEntry } from "./lib/transferWhitelist";
 import {
   loadLockConfig,
   isSessionExpired,
@@ -181,6 +183,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.31": "One-Click Encrypted Full-State Backup & Restore",
   "0.1.32": "Workstation Auto-Lock & Session Screen",
   "0.1.33": "Transfer Blacklist & Malicious Threat Guard",
+  "0.1.34": "Transfer Whitelist & Strict Treasury Allowlist",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -610,12 +613,18 @@ export function App() {
   const [showBlacklistModal, setShowBlacklistModal] = useState<boolean>(false);
   const [blacklistPrefillAddress, setBlacklistPrefillAddress] = useState<string>("");
   const [blacklistEntries, setBlacklistEntries] = useState<BlacklistEntry[]>(() => getAllBlacklistEntries());
+  const [showWhitelistModal, setShowWhitelistModal] = useState<boolean>(false);
+  const [whitelistPrefillAddress, setWhitelistPrefillAddress] = useState<string>("");
+  const [whitelistEntries, setWhitelistEntries] = useState<WhitelistEntry[]>(() => loadWhitelist());
+  const [whitelistStrictMode, setWhitelistStrictMode] = useState(() => loadWhitelistConfig().strictMode);
   const lastActivityRef = useRef<number>(Date.now());
 
   const sendBlacklistVerdict = useMemo(() => {
     if (!isFeatureActive("transfer_blacklist", appVersion, previewVersion)) return null;
     return checkAddressBlacklist(sendRecipient, blacklistEntries);
   }, [sendRecipient, blacklistEntries, appVersion, previewVersion]);
+  const sendWhitelistAllowed = useMemo(() => isWhitelisted(sendRecipient, whitelistEntries), [sendRecipient, whitelistEntries]);
+  const strictWhitelistBlock = isFeatureActive("transfer_whitelist", appVersion, previewVersion) && whitelistStrictMode && !sendWhitelistAllowed;
 
   // Inactivity auto-lock session watcher
   useEffect(() => {
@@ -1750,6 +1759,11 @@ export function App() {
         setBlacklistPrefillAddress("");
         return;
       }
+      if (showWhitelistModal) {
+        setShowWhitelistModal(false);
+        setWhitelistPrefillAddress("");
+        return;
+      }
       if (showLockSettingsModal) {
         setShowLockSettingsModal(false);
         return;
@@ -1871,6 +1885,10 @@ export function App() {
       );
       return;
     }
+    if (strictWhitelistBlock) {
+      addToast("error", "Treasury Allowlist Block", "Strict Allowlist Mode permits transfers only to approved counterparties.");
+      return;
+    }
 
     const trimmedRecipient = sendRecipient.trim();
     const isMeta = trimmedRecipient.startsWith("st:eth:0x") || (!trimmedRecipient.startsWith("st:") && trimmedRecipient.replace(/^0x/, "").length === 132);
@@ -1975,6 +1993,10 @@ export function App() {
         "Transfer Blocked",
         `Recipient is blacklisted (${sendBlacklistVerdict.entry?.category}). Transaction cannot be sent.`
       );
+      return;
+    }
+    if (strictWhitelistBlock) {
+      addToast("error", "Transfer Blocked", "Recipient is not approved in Strict Allowlist Mode.");
       return;
     }
 
@@ -2693,6 +2715,9 @@ export function App() {
                 <Ban className="w-5 h-5" />
               </button>
             )}
+            {isFeatureActive("transfer_whitelist", appVersion, previewVersion) && (
+              <button type="button" onClick={() => setShowWhitelistModal(true)} title="Transfer Whitelist" className="w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/10"><ShieldCheck className="w-5 h-5" /></button>
+            )}
 
             <button
               onClick={() => setActiveTab("shards")}
@@ -3019,6 +3044,9 @@ export function App() {
                       <span>Blacklist</span>
                     </button>
                   )}
+                  {isFeatureActive("transfer_whitelist", appVersion, previewVersion) && (
+                    <button type="button" onClick={() => setShowWhitelistModal(true)} className="text-xs text-emerald-300 hover:text-emerald-200 transition flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-emerald-500/10" title="Manage transfer whitelist"><ShieldCheck className="w-3.5 h-3.5" /><span>Whitelist</span></button>
+                  )}
                   <a
                     href={walletAddress ? `https://robinhoodchain.blockscout.com/address/${walletAddress}` : "https://robinhoodchain.blockscout.com"}
                     target="_blank"
@@ -3137,6 +3165,9 @@ export function App() {
                               <Ban className="w-3 h-3" />
                               <span>Blacklist</span>
                             </button>
+                          )}
+                          {isFeatureActive("transfer_whitelist", appVersion, previewVersion) && (
+                            <button type="button" onClick={() => { setWhitelistPrefillAddress(tx.counterparty); setShowWhitelistModal(true); }} className="hidden xl:inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-emerald-300 transition whitespace-nowrap" title="Approve counterparty"><CheckCircle2 className="w-3 h-3" /><span>Approve</span></button>
                           )}
 
                           {/* Status */}
@@ -3939,6 +3970,9 @@ export function App() {
                         </div>
                       </div>
                     )}
+                    {strictWhitelistBlock && sendRecipient.trim() && (
+                      <div className="mt-2 p-3 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-100"><ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" /><div><div className="font-semibold text-amber-200">Strict Allowlist Block</div><div className="text-[11px] text-amber-100/80 mt-0.5">This recipient is not approved. Open Whitelist to add it with your workstation PIN.</div></div></div>
+                    )}
                   </div>
 
                   <div>
@@ -4068,7 +4102,7 @@ export function App() {
                     </button>
                     <button
                       type="submit"
-                      disabled={!sendAmount || !sendRecipient || Boolean(sendBlacklistVerdict?.isBlacklisted)}
+                      disabled={!sendAmount || !sendRecipient || Boolean(sendBlacklistVerdict?.isBlacklisted) || strictWhitelistBlock}
                       className="flex-1 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <span>Preview Transfer</span>
@@ -4217,6 +4251,9 @@ export function App() {
                       </div>
                     </div>
                   </div>
+                )}
+                {strictWhitelistBlock && (
+                  <div className="p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-100"><ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" /><div><div className="font-semibold text-amber-200">Signing Blocked by Strict Allowlist</div><div className="text-[11px] text-amber-100/80 mt-0.5">Approve this destination in the Transfer Whitelist before it can receive funds.</div></div></div>
                 )}
 
                 {/* Rolling budget state (v0.1.23). Shown always, not only once a
@@ -4412,6 +4449,7 @@ export function App() {
                         isSending ||
                         isSimulating ||
                         Boolean(sendBlacklistVerdict?.isBlacklisted) ||
+                        strictWhitelistBlock ||
                         Boolean(addressVerdict && requiresAcknowledgement(addressVerdict) && !guardAcknowledged) ||
                         Boolean(guardrailVerdict && guardrailVerdict.warning && (!guardrailVerdict.allowed || !guardrailAcknowledged)) ||
                         Boolean(isFeatureActive("balance_diff", appVersion, previewVersion) && (preFlightDiff.hasInsufficientAsset || preFlightDiff.hasInsufficientGas))
@@ -4848,6 +4886,15 @@ export function App() {
         }}
         onNotify={addToast}
         onBlacklistUpdated={() => setBlacklistEntries(getAllBlacklistEntries())}
+      />
+
+      <WhitelistModal
+        isOpen={showWhitelistModal}
+        initialAddress={whitelistPrefillAddress}
+        onClose={() => { setShowWhitelistModal(false); setWhitelistPrefillAddress(""); }}
+        onNotify={addToast}
+        onChanged={() => { setWhitelistEntries(loadWhitelist()); setWhitelistStrictMode(loadWhitelistConfig().strictMode); }}
+        onRequirePinSetup={() => { setShowWhitelistModal(false); setShowLockSettingsModal(true); }}
       />
 
       {/* Privatum Assistant Widget (V2 On-Device AI) */}
