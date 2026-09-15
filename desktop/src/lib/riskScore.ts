@@ -1,6 +1,7 @@
 import type { AddressGuardVerdict } from "./addressGuard";
 import type { GuardrailVerdict } from "./spendGuardrails";
 import type { Contact } from "./contacts";
+import type { BlacklistVerdict } from "./transferBlacklist";
 
 export type RiskLevel = "low" | "medium" | "high";
 
@@ -24,6 +25,7 @@ export interface EvaluateRiskParams {
   recipient: string;
   addressVerdict?: AddressGuardVerdict | { level: string; lookalikeOf?: string; detail?: string } | null;
   guardrailVerdict?: GuardrailVerdict | { allowed: boolean; warning?: boolean; message?: string } | null;
+  blacklistVerdict?: BlacklistVerdict | { isBlacklisted: boolean; entry?: { name?: string; reason?: string; category?: string } } | null;
   contacts?: (Contact | { address: string })[];
   transactions?: { type: "send" | "receive"; counterparty: string }[];
   simulationReverted?: boolean;
@@ -35,6 +37,7 @@ export function evaluateTransactionRisk(params: EvaluateRiskParams): Transaction
     recipient,
     addressVerdict,
     guardrailVerdict,
+    blacklistVerdict,
     contacts = [],
     transactions = [],
     simulationReverted = false,
@@ -44,6 +47,27 @@ export function evaluateTransactionRisk(params: EvaluateRiskParams): Transaction
   let score = 0;
   const factors: RiskFactor[] = [];
   const lowerRecipient = (recipient || "").toLowerCase().trim();
+
+  // 0. Transfer Blacklist & Threat Feed Interception (Hard Stop)
+  if (blacklistVerdict?.isBlacklisted) {
+    const cat = blacklistVerdict.entry?.category || "Malicious";
+    const reason = blacklistVerdict.entry?.reason || "Blacklisted counterparty";
+    const name = blacklistVerdict.entry?.name ? ` (${blacklistVerdict.entry.name})` : "";
+    factors.push({
+      id: "transfer_blacklist",
+      name: "Transfer Blacklist",
+      status: "fail",
+      description: `Critical threat detected: destination is blacklisted under ${cat}${name}. Reason: ${reason}.`,
+    });
+    return {
+      score: 100,
+      level: "high",
+      label: "Critical Risk (Blacklisted)",
+      color: "#f64943",
+      summary: `Transfer is strictly blocked. Recipient matches an active threat entry: ${cat} - ${reason}.`,
+      factors,
+    };
+  }
 
   // 1. Recipient History Check
   const isKnownContact = contacts.some((c) => c.address.toLowerCase() === lowerRecipient);
