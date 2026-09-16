@@ -26,6 +26,7 @@ import {
   type BlacklistEntry,
   type BlacklistCategory,
 } from "../lib/transferBlacklist";
+import { recordCopiedAddress } from "../lib/clipboardSanitizer";
 
 interface BlacklistModalProps {
   isOpen: boolean;
@@ -137,6 +138,7 @@ export const BlacklistModal: React.FC<BlacklistModalProps> = ({
   };
 
   const handleCopy = (address: string) => {
+    recordCopiedAddress(address, "Blacklisted address");
     navigator.clipboard.writeText(address);
     setCopiedAddress(address);
     setTimeout(() => setCopiedAddress(null), 1500);

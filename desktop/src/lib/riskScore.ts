@@ -2,6 +2,7 @@ import type { AddressGuardVerdict } from "./addressGuard";
 import type { GuardrailVerdict } from "./spendGuardrails";
 import type { Contact } from "./contacts";
 import type { BlacklistVerdict } from "./transferBlacklist";
+import type { ClipboardSanitizerVerdict } from "./clipboardSanitizer";
 
 export type RiskLevel = "low" | "medium" | "high";
 
@@ -26,6 +27,7 @@ export interface EvaluateRiskParams {
   addressVerdict?: AddressGuardVerdict | { level: string; lookalikeOf?: string; detail?: string } | null;
   guardrailVerdict?: GuardrailVerdict | { allowed: boolean; warning?: boolean; message?: string } | null;
   blacklistVerdict?: BlacklistVerdict | { isBlacklisted: boolean; entry?: { name?: string; reason?: string; category?: string } } | null;
+  clipboardVerdict?: ClipboardSanitizerVerdict | null;
   contacts?: (Contact | { address: string })[];
   transactions?: { type: "send" | "receive"; counterparty: string }[];
   simulationReverted?: boolean;
@@ -38,6 +40,7 @@ export function evaluateTransactionRisk(params: EvaluateRiskParams): Transaction
     addressVerdict,
     guardrailVerdict,
     blacklistVerdict,
+    clipboardVerdict,
     contacts = [],
     transactions = [],
     simulationReverted = false,
@@ -67,6 +70,25 @@ export function evaluateTransactionRisk(params: EvaluateRiskParams): Transaction
       summary: `Transfer is strictly blocked. Recipient matches an active threat entry: ${cat} - ${reason}.`,
       factors,
     };
+  }
+
+  // 0b. Clipboard Hijacker or Lookalike Collision Detected
+  if (clipboardVerdict?.isCompromised) {
+    score += 50;
+    factors.push({
+      id: "clipboard_sanitizer",
+      name: "Clipboard Sanitizer",
+      status: "fail",
+      description: clipboardVerdict.message,
+    });
+  } else if (clipboardVerdict?.severity === "warning") {
+    score += 20;
+    factors.push({
+      id: "clipboard_sanitizer",
+      name: "Clipboard Sanitizer",
+      status: "warn",
+      description: clipboardVerdict.message,
+    });
   }
 
   // 1. Recipient History Check

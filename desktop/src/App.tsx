@@ -147,36 +147,44 @@ import {
   filterTransactionsByTag,
 } from "./lib/transactionTags";
 import { TransactionTagChip } from "./components/TransactionTagChip";
+import {
+  stripHiddenUnicode,
+  recordCopiedAddress,
+  inspectPastedAddress,
+  type ClipboardSanitizerVerdict,
+  type KnownReference,
+} from "./lib/clipboardSanitizer";
+import { ClipboardSanitizerBanner } from "./components/ClipboardSanitizerBanner";
 
 const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.0": "Genesis 2-of-3 MPC",
   "0.1.1": "Updates & Private Send",
   "0.1.2": "Robinhood DEX Swaps",
   "0.1.3": "Cross-Chain Swaps",
-  "0.1.4": "NFTs & Collectibles",
-  "0.1.5": "Multi-Wallet & Keychain",
-  "0.1.6": "Robinhood RWA Registry",
-  "0.1.7": "Gasless Staking & Protocol Sponsor",
-  "0.1.8": "Bridge Spread Rebates",
+  "0.1.4": "NFT Vault & Gallery",
+  "0.1.5": "Multi-Wallet Keychain",
+  "0.1.6": "RWA & Equities Tracking",
+  "0.1.7": "Gasless Staking",
+  "0.1.8": "Bridge Rebates",
   "0.1.9": "Disposable Pay Links",
   "0.1.10": "Address Poisoning Guard",
-  "0.1.11": "Panic Freeze",
-  "0.1.12": "In-App Spending Guardrails",
+  "0.1.11": "Panic Freeze & Recovery",
+  "0.1.12": "Spending Guardrails",
   "0.1.13": "Private Address Book",
-  "0.1.14": "Portfolio Sparkline & 24h PnL",
-  "0.1.15": "Signed Transaction Receipts",
-  "0.1.16": "Recent Contacts Quick Send",
-  "0.1.17": "AI Inference Receipts",
-  "0.1.18": "Inline Pay Link QR Preview",
-  "0.1.19": "Transaction Risk Scoring",
-  "0.1.20": "Verifiable Receipt Export",
-  "0.1.21": "Browser Receipt Verifier",
-  "0.1.22": "Live Threshold Signing Visual",
-  "0.1.23": "Rolling Budget Forecast",
-  "0.1.24": "Recipient Contact Autocomplete",
-  "0.1.25": "AI Financial Intelligence & Multi-Intent Chaining",
-  "0.1.26": "Local Ledger CSV & JSON Export",
-  "0.1.27": "Starred Contacts & Quick-Pay Shelf",
+  "0.1.14": "Portfolio Performance & Sparkline",
+  "0.1.15": "Transaction Receipt & Export",
+  "0.1.16": "Recent Counterparties & Speed Dial",
+  "0.1.17": "Local Inference Receipt & Audit",
+  "0.1.18": "Pre-Flight Simulation",
+  "0.1.19": "Transaction Risk Scoring Engine",
+  "0.1.20": "Inference Receipt Cryptographic Export",
+  "0.1.21": "Telemetry Settings & Privacy Dashboard",
+  "0.1.22": "Threshold Signature Ceremony Visualizer",
+  "0.1.23": "Guardrail Dynamic Capacity Budget Bar",
+  "0.1.24": "Recipient Contact Autocomplete & Speed Dial",
+  "0.1.25": "AI Intelligence & Local Natural Language Engine",
+  "0.1.26": "Cryptographic Audit Ledger Export (CSV/JSON)",
+  "0.1.27": "Starred VIP Contacts & Quick Filter",
   "0.1.28": "Global Hotkeys & Keyboard Cheat Sheet",
   "0.1.29": "Pre-Flight Balance Diff Preview",
   "0.1.30": "Transaction Tagging & Cost-Center Labels",
@@ -184,6 +192,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.32": "Workstation Auto-Lock & Session Screen",
   "0.1.33": "Transfer Blacklist & Malicious Threat Guard",
   "0.1.34": "Transfer Whitelist & Strict Treasury Allowlist",
+  "0.1.35": "Clipboard Hijack & Lookalike Address Sanitizer",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -626,6 +635,44 @@ export function App() {
   const sendWhitelistAllowed = useMemo(() => isWhitelisted(sendRecipient, whitelistEntries), [sendRecipient, whitelistEntries]);
   const strictWhitelistBlock = isFeatureActive("transfer_whitelist", appVersion, previewVersion) && whitelistStrictMode && !sendWhitelistAllowed;
 
+  const [clipboardDismissed, setClipboardDismissed] = useState<boolean>(false);
+
+  const clipboardSanitizerVerdict = useMemo(() => {
+    if (!isFeatureActive("clipboard_sanitizer", appVersion, previewVersion)) return null;
+    if (!sendRecipient || !sendRecipient.trim()) return null;
+
+    const knownReferences: KnownReference[] = [
+      ...contacts.map((c) => ({
+        address: c.address,
+        label: c.name,
+        source: "contact" as const,
+        isStarred: c.isStarred,
+      })),
+      ...whitelistEntries.map((w) => ({
+        address: w.address,
+        label: w.label,
+        source: "whitelist" as const,
+      })),
+      ...accounts.map((a) => ({
+        address: a.address,
+        label: a.name || "Your Account",
+        source: "account" as const,
+      })),
+      ...transactions
+        .filter((t) => t.counterparty && /^0x[0-9a-f]{40}$/i.test(t.counterparty))
+        .map((t) => ({
+          address: t.counterparty,
+          label: "Past Recipient",
+          source: "history" as const,
+        })),
+    ];
+
+    return inspectPastedAddress({
+      rawInput: sendRecipient,
+      knownReferences,
+    });
+  }, [sendRecipient, contacts, whitelistEntries, accounts, transactions, appVersion, previewVersion]);
+
   // Inactivity auto-lock session watcher
   useEffect(() => {
     const handleActivity = () => {
@@ -708,12 +755,13 @@ export function App() {
       addressVerdict,
       guardrailVerdict,
       blacklistVerdict: sendBlacklistVerdict,
+      clipboardVerdict: clipboardDismissed ? null : clipboardSanitizerVerdict,
       contacts,
       transactions,
       simulationReverted: simulationData ? simulationData.status !== "success" : false,
       isStealth: isStealthSend,
     });
-  }, [sendRecipient, addressVerdict, guardrailVerdict, sendBlacklistVerdict, contacts, transactions, simulationData, isStealthSend]);
+  }, [sendRecipient, addressVerdict, guardrailVerdict, sendBlacklistVerdict, clipboardSanitizerVerdict, clipboardDismissed, contacts, transactions, simulationData, isStealthSend]);
 
   // Pre-Flight Asset & Balance Diff Preview (v0.1.29)
   const preFlightDiff = useMemo(() => {
@@ -797,6 +845,7 @@ export function App() {
   );
 
   const copyToClipboard = (text: string, label: string) => {
+    recordCopiedAddress(text, label);
     navigator.clipboard.writeText(text);
     addToast("success", "Copied", `${label} copied to clipboard`);
   };
@@ -1887,6 +1936,10 @@ export function App() {
     }
     if (strictWhitelistBlock) {
       addToast("error", "Treasury Allowlist Block", "Strict Allowlist Mode permits transfers only to approved counterparties.");
+      return;
+    }
+    if (clipboardSanitizerVerdict?.isCompromised && !clipboardDismissed) {
+      addToast("error", "Clipboard Tampering Detected", clipboardSanitizerVerdict.message);
       return;
     }
 
@@ -3907,9 +3960,21 @@ export function App() {
                     {isFeatureActive("contact_autocomplete", appVersion, previewVersion) ? (
                       <RecipientAutocomplete
                         value={sendRecipient}
-                        onChange={(val) => setSendRecipient(val)}
+                        onChange={(val) => {
+                          const { cleaned } = stripHiddenUnicode(val);
+                          setSendRecipient(cleaned);
+                          setClipboardDismissed(false);
+                        }}
+                        onPaste={(e) => {
+                          const pasted = e.clipboardData.getData("text");
+                          const { strippedCount } = stripHiddenUnicode(pasted);
+                          if (strippedCount > 0) {
+                            addToast("info", "Cleaned Address", `Sanitized ${strippedCount} hidden unicode character(s).`);
+                          }
+                        }}
                         onSelectContact={(candidate) => {
                           setSendRecipient(candidate.address);
+                          setClipboardDismissed(false);
                           if (candidate.address.startsWith("st:eth:") || candidate.address.length > 66) {
                             setIsStealthSend(true);
                           }
@@ -3939,7 +4004,11 @@ export function App() {
                           type="text"
                           placeholder={isStealthSend ? "st:eth:0x... or 0x..." : "0x..."}
                           value={sendRecipient}
-                          onChange={(e) => setSendRecipient(e.target.value.trim())}
+                          onChange={(e) => {
+                            const { cleaned } = stripHiddenUnicode(e.target.value.trim());
+                            setSendRecipient(cleaned);
+                            setClipboardDismissed(false);
+                          }}
                           className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-white/30"
                         />
                       </div>
@@ -3955,6 +4024,20 @@ export function App() {
                             ({findContactByAddress(contacts, sendRecipient)?.category})
                           </span>
                         )}
+                      </div>
+                    )}
+                    {/* Clipboard Hijack & Lookalike Address Sanitizer (v0.1.35) */}
+                    {!clipboardDismissed && clipboardSanitizerVerdict && clipboardSanitizerVerdict.severity !== "clean" && (
+                      <div className="mt-2">
+                        <ClipboardSanitizerBanner
+                          verdict={clipboardSanitizerVerdict}
+                          onRestoreAddress={(restored) => {
+                            setSendRecipient(restored);
+                            setClipboardDismissed(true);
+                            addToast("info", "Address Restored", "Restored intended address from session clipboard.");
+                          }}
+                          onDismiss={() => setClipboardDismissed(true)}
+                        />
                       </div>
                     )}
                     {sendBlacklistVerdict?.isBlacklisted && (
@@ -4102,7 +4185,13 @@ export function App() {
                     </button>
                     <button
                       type="submit"
-                      disabled={!sendAmount || !sendRecipient || Boolean(sendBlacklistVerdict?.isBlacklisted) || strictWhitelistBlock}
+                      disabled={
+                        !sendAmount ||
+                        !sendRecipient ||
+                        Boolean(sendBlacklistVerdict?.isBlacklisted) ||
+                        strictWhitelistBlock ||
+                        Boolean(clipboardSanitizerVerdict?.isCompromised && !clipboardDismissed)
+                      }
                       className="flex-1 py-2.5 rounded-xl bg-[#f64943] hover:bg-[#e03d38] text-white font-semibold text-xs transition disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <span>Preview Transfer</span>
@@ -4235,6 +4324,20 @@ export function App() {
                       </label>
                     </div>
                   )
+                )}
+
+                {/* Clipboard Hijack & Lookalike Warning in Step 2 */}
+                {!clipboardDismissed && clipboardSanitizerVerdict && clipboardSanitizerVerdict.severity === "danger" && (
+                  <ClipboardSanitizerBanner
+                    verdict={clipboardSanitizerVerdict}
+                    onRestoreAddress={(restored) => {
+                      setSendRecipient(restored);
+                      setClipboardDismissed(true);
+                      setSendStep("form");
+                      addToast("info", "Address Restored", "Restored intended address from session clipboard.");
+                    }}
+                    onDismiss={() => setClipboardDismissed(true)}
+                  />
                 )}
 
                 {/* Transfer Blacklist Hard Block (v0.1.33) */}
@@ -4450,6 +4553,7 @@ export function App() {
                         isSimulating ||
                         Boolean(sendBlacklistVerdict?.isBlacklisted) ||
                         strictWhitelistBlock ||
+                        Boolean(clipboardSanitizerVerdict?.isCompromised && !clipboardDismissed) ||
                         Boolean(addressVerdict && requiresAcknowledgement(addressVerdict) && !guardAcknowledged) ||
                         Boolean(guardrailVerdict && guardrailVerdict.warning && (!guardrailVerdict.allowed || !guardrailAcknowledged)) ||
                         Boolean(isFeatureActive("balance_diff", appVersion, previewVersion) && (preFlightDiff.hasInsufficientAsset || preFlightDiff.hasInsufficientGas))

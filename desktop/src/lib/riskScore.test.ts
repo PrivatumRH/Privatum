@@ -168,4 +168,24 @@ describe("Transaction Risk Scoring Engine", () => {
     expect(result.factors.some((f) => f.id === "transfer_blacklist" && f.status === "fail")).toBe(true);
     expect(result.summary).toContain("strictly blocked");
   });
+
+  it("escalates risk score when clipboard sanitizer detects clipper tampering", () => {
+    const result = evaluateTransactionRisk({
+      recipient: "0x532f99999999999999999999999999999999e456",
+      clipboardVerdict: {
+        isCompromised: true,
+        issueType: "clipper_tamper",
+        severity: "danger",
+        title: "Potential Clipboard Hijacker Detected",
+        message: "Malware may have swapped your clipboard destination.",
+        cleanedAddress: "0x532f99999999999999999999999999999999e456",
+        originalRaw: "0x532f99999999999999999999999999999999e456",
+        strippedCount: 0,
+      },
+    });
+
+    expect(result.level).toBe("high");
+    expect(result.score).toBeGreaterThanOrEqual(65); // 15 (first-time) + 50 (clipboard fail)
+    expect(result.factors.some((f) => f.id === "clipboard_sanitizer" && f.status === "fail")).toBe(true);
+  });
 });

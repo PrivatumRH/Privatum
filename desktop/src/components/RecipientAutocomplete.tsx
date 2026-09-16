@@ -22,6 +22,7 @@ export interface RecipientAutocompleteProps {
   disabled?: boolean;
   autoFocus?: boolean;
   className?: string;
+  onPaste?: (e: React.ClipboardEvent<HTMLInputElement>) => void;
 }
 
 function formatTimeAgo(timestamp?: number): string {
@@ -50,6 +51,7 @@ export const RecipientAutocomplete: React.FC<RecipientAutocompleteProps> = ({
   disabled = false,
   autoFocus = false,
   className = "",
+  onPaste,
 }) => {
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
@@ -144,6 +146,7 @@ export const RecipientAutocomplete: React.FC<RecipientAutocompleteProps> = ({
           disabled={disabled}
           autoFocus={autoFocus}
           onFocus={() => setIsFocused(true)}
+          onPaste={onPaste}
           onChange={(e) => {
             onChange(e.target.value);
             setHighlightedIndex(-1);
