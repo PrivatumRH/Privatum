@@ -24,6 +24,7 @@ import {
   searchContacts,
   saveContacts,
 } from "../lib/contacts";
+import { recordCopiedAddress } from "../lib/clipboardSanitizer";
 
 interface ContactsModalProps {
   walletAddress: string;
@@ -133,6 +134,8 @@ export function ContactsModal({
   };
 
   const handleCopy = (id: string, address: string) => {
+    const contact = contacts.find((c) => c.id === id);
+    recordCopiedAddress(address, contact?.name);
     navigator.clipboard.writeText(address);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
