@@ -116,4 +116,42 @@ describe("Assistant Engine Pipeline", () => {
     expect(res.content).not.toContain("Or toggle **Enable AI**");
     expect(res.content).toContain("Explain how stealth addresses protect recipient privacy");
   });
+
+  it("processes outbox queries and yields broadcast intent through pipeline", async () => {
+    const res = await processAssistantQuery({
+      input: "broadcast my queued transfers",
+      offlineOutbox: [
+        {
+          id: "tx-queued-1",
+          walletAddress: "0x1111111111111111111111111111111111111111",
+          nonce: 3,
+          recipient: "0x2222222222222222222222222222222222222222",
+          amount: "0.5",
+          asset: "ETH",
+          rawSignedTx: "0x02f8",
+          txHash: "0x3333",
+          gasLimit: "21000",
+          chainId: 11155111,
+          createdAt: Date.now(),
+          status: "queued",
+        },
+      ],
+      isOnline: true,
+      forceAirGap: false,
+    });
+    expect(res.intent?.type).toBe("broadcast_outbox");
+    expect(res.content).toContain("Found 1 queued transfer");
+    expect(res.safetyEvidence?.intentSummary).toContain("Outbox Intelligence");
+  });
+
+  it("answers conceptual offline outbox queries via domain knowledge base", async () => {
+    const res = await processAssistantQuery({
+      input: "How does the offline outbox work?",
+      preferredEngine: "deterministic",
+    });
+    expect(res.content).toContain("Offline Outbox allows you to sign transfers securely");
+    expect(res.content).toContain("Local Shard A Signing");
+    expect(res.content).toContain("Strict Sequential Nonces");
+  });
 });
+

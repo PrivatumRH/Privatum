@@ -18,7 +18,8 @@ import {
 } from "../addressGuard";
 import type { AssistantMessage, EngineMode, ParsedIntent } from "./types";
 import { generateInferenceReceipt } from "./inferenceReceipt";
-
+import type { OfflineTransaction } from "../offlineOutbox";
+import { evaluateOutboxQuery } from "./outboxQueries";
 import { evaluateLedgerQuery } from "./ledgerQueries";
 import { parseMultiIntent } from "./multiIntent";
 import { queryKnowledgeBase } from "./knowledgeBase";
@@ -30,6 +31,10 @@ export interface ProcessAssistantInputParams {
   guardrailConfig?: SpendingGuardrailConfig;
   spendingHistory?: SpendingRecord[];
   transactionHistory?: { type: "send" | "receive"; counterparty: string; amount: string; asset: string; timestamp?: number; hash?: string }[];
+  offlineOutbox?: OfflineTransaction[];
+  isOnline?: boolean;
+  forceAirGap?: boolean;
+  confirmedNonce?: number;
   preferredEngine?: EngineMode;
   onToken?: (token: string) => void;
 }
@@ -52,6 +57,10 @@ export async function processAssistantQuery(
     guardrailConfig,
     spendingHistory = [],
     transactionHistory = [],
+    offlineOutbox = [],
+    isOnline = true,
+    forceAirGap = false,
+    confirmedNonce = 0,
     preferredEngine = "deterministic",
   } = params;
 
@@ -126,7 +135,44 @@ export async function processAssistantQuery(
     });
   }
 
-  // STEP 3: Local Natural Language Ledger Queries
+  // STEP 3: Local Natural Language Outbox & Transaction Queue Intelligence
+  const outboxRes = evaluateOutboxQuery(cleanText, {
+    walletAddress,
+    offlineOutbox,
+    isOnline,
+    forceAirGap,
+    confirmedNonce,
+  });
+
+  if (outboxRes && outboxRes.handled) {
+    const lines = [outboxRes.summary];
+    if (outboxRes.details && outboxRes.details.length > 0) {
+      lines.push("");
+      for (const d of outboxRes.details) {
+        lines.push(`* ${d}`);
+      }
+    }
+
+    const intentToUse =
+      outboxRes.intent ||
+      (outboxRes.queryType
+        ? {
+            type: "outbox_query" as const,
+            queryType: outboxRes.queryType,
+            summary: outboxRes.summary,
+            details: outboxRes.details,
+          }
+        : undefined);
+
+    return await createResponse(lines.join("\n"), {
+      intent: intentToUse,
+      safetyEvidence: {
+        intentSummary: `Outbox Intelligence: ${outboxRes.queryType || (outboxRes.intent ? outboxRes.intent.type : "inquiry")}`,
+      },
+    });
+  }
+
+  // STEP 4: Local Natural Language Ledger Queries
   const ledgerRes = evaluateLedgerQuery(cleanText, {
     walletAddress,
     contacts,
@@ -157,7 +203,7 @@ export async function processAssistantQuery(
     });
   }
 
-  // STEP 4: Deterministic NLP Parsing
+  // STEP 5: Deterministic NLP Parsing
   const parsed = parseDeterministicIntent(cleanText, contacts);
 
   if (parsed) {

@@ -34,7 +34,8 @@ export type FeatureKey =
   | "transfer_blacklist"
   | "transfer_whitelist"
   | "clipboard_sanitizer"
-  | "offline_payments";
+  | "offline_payments"
+  | "ai_outbox_intelligence";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -73,6 +74,7 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   transfer_whitelist: "0.1.34",
   clipboard_sanitizer: "0.1.35",
   offline_payments: "0.1.36",
+  ai_outbox_intelligence: "0.1.37",
 };
 
 export const RELEASE_VERSIONS = [
@@ -113,6 +115,7 @@ export const RELEASE_VERSIONS = [
   "0.1.34",
   "0.1.35",
   "0.1.36",
+  "0.1.37",
 ] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 

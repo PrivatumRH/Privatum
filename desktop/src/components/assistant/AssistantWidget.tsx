@@ -3,6 +3,7 @@ import { AssistantDrawer } from "./AssistantDrawer";
 import type { ParsedIntent } from "../../lib/assistant/types";
 import type { Contact } from "../../lib/contacts";
 import type { SpendingGuardrailConfig, SpendingRecord } from "../../lib/spendGuardrails";
+import type { OfflineTransaction } from "../../lib/offlineOutbox";
 
 interface AssistantWidgetProps {
   walletAddress?: string;
@@ -10,6 +11,10 @@ interface AssistantWidgetProps {
   guardrailConfig: SpendingGuardrailConfig;
   spendingHistory: SpendingRecord[];
   transactionHistory: { type: "send" | "receive"; counterparty: string; amount: string; asset: string }[];
+  offlineOutbox?: OfflineTransaction[];
+  isOnline?: boolean;
+  forceAirGap?: boolean;
+  confirmedNonce?: number;
   onApplyIntent: (intent: ParsedIntent) => void;
   /** Feature gate: inference_receipt_export (0.1.20). */
   receiptExportEnabled?: boolean;
@@ -25,6 +30,10 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
   guardrailConfig,
   spendingHistory,
   transactionHistory,
+  offlineOutbox,
+  isOnline,
+  forceAirGap,
+  confirmedNonce,
   onApplyIntent,
   receiptExportEnabled = false,
   appVersion,
@@ -75,6 +84,10 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
         guardrailConfig={guardrailConfig}
         spendingHistory={spendingHistory}
         transactionHistory={transactionHistory}
+        offlineOutbox={offlineOutbox}
+        isOnline={isOnline}
+        forceAirGap={forceAirGap}
+        confirmedNonce={confirmedNonce}
         onApplyIntent={onApplyIntent}
         receiptExportEnabled={receiptExportEnabled}
         appVersion={appVersion}
