@@ -201,8 +201,8 @@ export async function signOfflineTransaction(
       : getNextOfflineNonce(walletAddress, confirmedNonce);
 
   const chainId = robinhoodChain.id;
-  const maxFeePerGas = params.maxFeePerGas ?? 1_000_000_000n; // 1 gwei
-  const maxPriorityFeePerGas = params.maxPriorityFeePerGas ?? 1_000_000_000n;
+  const maxFeePerGas = params.maxFeePerGas ?? 100_000_000n; // 0.1 gwei default (Robinhood Chain average is ~0.055 gwei)
+  const maxPriorityFeePerGas = params.maxPriorityFeePerGas ?? 100_000_000n;
 
   let rawSignedTx: Hex;
   let gasLimitBigInt: bigint;
@@ -311,6 +311,24 @@ export function clearFinishedOfflineTransactions(
   return updated;
 }
 
+export function extractBroadcastError(err: any): string {
+  if (!err) return "Unknown broadcast error.";
+  if (err.details) {
+    return err.details;
+  }
+  if (err.shortMessage && !err.shortMessage.includes("Missing or invalid parameters")) {
+    return err.shortMessage;
+  }
+  if (err.message) {
+    const match = err.message.match(/Details:\s*([^\n]+)/i);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+    return err.message.split("\n")[0];
+  }
+  return String(err);
+}
+
 export async function broadcastSingleOfflineTx(
   client: PublicClient,
   tx: OfflineTransaction
@@ -368,7 +386,7 @@ export async function broadcastAllQueuedOfflineTxs(
       );
       saveOfflineOutbox(walletAddress, currentList);
     } catch (err: any) {
-      const errMsg = err?.shortMessage || err?.message || String(err);
+      const errMsg = extractBroadcastError(err);
       failed.push({
         id: item.id,
         error: errMsg,
