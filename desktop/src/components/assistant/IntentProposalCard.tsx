@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpRight, Shield, ShieldAlert, Link2, Lock, Unlock, ArrowRight, X, Layers, Download } from "lucide-react";
+import { ArrowUpRight, Shield, ShieldAlert, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2 } from "lucide-react";
 import type { ParsedIntent } from "../../lib/assistant/types";
 import type { InferenceReceipt } from "../../lib/assistant/inferenceReceipt";
 import { evaluateTransactionRisk } from "../../lib/riskScore";
@@ -398,6 +398,144 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
             <span className="font-mono text-white/50">{receipt.shortRef}</span>
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (intent.type === "broadcast_outbox") {
+    return (
+      <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs">
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-1.5 font-medium text-amber-400">
+            <Radio className="h-3.5 w-3.5" />
+            <span>Queued Outbox Broadcast</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-amber-300 font-medium border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 rounded">
+              {intent.queuedCount} {intent.queuedCount === 1 ? "transfer" : "transfers"} ready
+            </span>
+            {onDismiss && (
+              <button
+                type="button"
+                onClick={onDismiss}
+                className="p-1 text-white/40 hover:text-white rounded hover:bg-white/5 transition-colors"
+                title="Dismiss proposal"
+                aria-label="Dismiss proposal"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+        <p className="text-white/80 mb-3 leading-relaxed">
+          Broadcasting will sequentially submit your signed offline transactions to Robinhood Chain in strict nonce order.
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onApplyIntent(intent)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-black bg-amber-400 hover:bg-amber-300 transition-colors cursor-pointer"
+          >
+            <span>Broadcast Queued Transfers ({intent.queuedCount})</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="py-2 px-3 rounded-lg font-medium text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+        {receipt && (
+          <div className="flex items-center justify-between text-[10px] pt-2 mt-2 border-t border-white/5">
+            <span className="text-white/40">Inference Proof:</span>
+            <span className="font-mono text-white/50">{receipt.shortRef}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (intent.type === "view_outbox") {
+    return (
+      <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3.5 text-xs">
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-1.5 font-medium text-white">
+            <Inbox className="h-3.5 w-3.5 text-[#f54842]" />
+            <span>Offline Transaction Outbox</span>
+          </div>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="p-1 text-white/40 hover:text-white rounded hover:bg-white/5 transition-colors"
+              title="Dismiss proposal"
+              aria-label="Dismiss proposal"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <p className="text-white/70 mb-3 leading-relaxed">
+          Open your Offline Outbox modal to inspect signed payloads, verify sequential nonces, and manage broadcasts.
+        </p>
+        <button
+          type="button"
+          onClick={() => onApplyIntent(intent)}
+          className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-white bg-[#f54842] hover:bg-[#e03e38] transition-colors cursor-pointer"
+        >
+          <span>Open Offline Outbox</span>
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
+
+  if (intent.type === "clear_outbox_history") {
+    return (
+      <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3.5 text-xs">
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-1.5 font-medium text-white">
+            <Trash2 className="h-3.5 w-3.5 text-zinc-400" />
+            <span>Clear Completed Outbox History</span>
+          </div>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="p-1 text-white/40 hover:text-white rounded hover:bg-white/5 transition-colors"
+              title="Dismiss proposal"
+              aria-label="Dismiss proposal"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <p className="text-white/70 mb-3 leading-relaxed">
+          Purge completed and failed transaction records from local storage. Active queued transfers awaiting broadcast are preserved.
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onApplyIntent(intent)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-white bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
+          >
+            <span>Clear Outbox History</span>
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="py-2 px-3 rounded-lg font-medium text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
     );
   }

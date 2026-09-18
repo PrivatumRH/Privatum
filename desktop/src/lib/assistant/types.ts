@@ -8,6 +8,10 @@ export type AssistantIntentType =
   | "view_contacts"
   | "export_ledger"
   | "explain_tx"
+  | "broadcast_outbox"
+  | "view_outbox"
+  | "clear_outbox_history"
+  | "outbox_query"
   | "general_query";
 
 export interface ParsedTransferIntent {
@@ -59,6 +63,30 @@ export interface ParsedLedgerQueryIntent {
   details?: string[];
 }
 
+export interface ParsedBroadcastOutboxIntent {
+  type: "broadcast_outbox";
+  queuedCount: number;
+}
+
+export interface ParsedViewOutboxIntent {
+  type: "view_outbox";
+}
+
+export interface ParsedClearOutboxHistoryIntent {
+  type: "clear_outbox_history";
+}
+
+export interface ParsedOutboxQueryIntent {
+  type: "outbox_query";
+  queryType?:
+    | "outbox_summary"
+    | "next_nonce"
+    | "failure_diagnostic"
+    | "airgap_status";
+  summary: string;
+  details?: string[];
+}
+
 export type ParsedIntent =
   | ParsedTransferIntent
   | ParsedPaylinkIntent
@@ -67,6 +95,10 @@ export type ParsedIntent =
   | ParsedCheckAddressIntent
   | ParsedMultiIntent
   | ParsedLedgerQueryIntent
+  | ParsedBroadcastOutboxIntent
+  | ParsedViewOutboxIntent
+  | ParsedClearOutboxHistoryIntent
+  | ParsedOutboxQueryIntent
   | { type: "view_guardrails" }
   | { type: "view_contacts" }
   | { type: "export_ledger" }

@@ -219,6 +219,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.34": "Transfer Whitelist & Strict Treasury Allowlist",
   "0.1.35": "Clipboard Hijack & Lookalike Address Sanitizer",
   "0.1.36": "Offline Outbox & Delayed Broadcast Engine",
+  "0.1.37": "Local AI Outbox & Queue Intelligence",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -5350,6 +5351,10 @@ export function App() {
           amount: t.amount,
           asset: t.asset,
         }))}
+        offlineOutbox={offlineOutbox}
+        isOnline={isOnline}
+        forceAirGap={forceAirGap}
+        confirmedNonce={confirmedNonce}
         onApplyIntent={(intent) => {
           if (intent.type === "send_transfer") {
             setSendRecipient(intent.recipient);
@@ -5367,6 +5372,12 @@ export function App() {
             setShowGuardrailsModal(true);
           } else if (intent.type === "export_ledger") {
             setShowExportModal(true);
+          } else if (intent.type === "broadcast_outbox") {
+            handleBroadcastAllOfflineTxs();
+          } else if (intent.type === "view_outbox") {
+            setShowOfflineOutboxModal(true);
+          } else if (intent.type === "clear_outbox_history") {
+            handleClearOfflineHistory();
           }
         }}
       />

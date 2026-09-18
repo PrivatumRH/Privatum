@@ -165,6 +165,29 @@ const KNOWLEDGE_ENTRIES: KnowledgeEntry[] = [
       "Hardware-Backed Shards: Shard A is protected locally, and prompt ingress is sanitized by the Ingress Redaction Gateway to prevent accidental secret leakage.",
     ],
   },
+  {
+    topic: "offline_outbox",
+    patterns: [
+      /offline\s*(signing|mode|outbox|txs?|transfers?)/i,
+      /air-?gap(ped)?(\s*mode)?/i,
+      /delayed\s*broadcast/i,
+      /how\s*does\s*(the\s*)?(offline\s+outbox|air-?gap)\s*work/i,
+      /queue(d)?\s*(transfers?|transactions?)/i,
+    ],
+    summary:
+      "Privatum's Offline Outbox allows you to sign transfers securely in an air-gapped or disconnected environment and queue them for delayed onchain broadcast.",
+    bulletPoints: [
+      "Local Shard A Signing: Transfers are signed locally using your device Shard A without requiring RPC connectivity.",
+      "Strict Sequential Nonces: The engine tracks confirmed base nonces and queues transfers sequentially to prevent nonce gaps or transaction collisions.",
+      "Forced Air-Gap Mode: You can force all transfers to be staged in the outbox even while internet is connected, allowing batch review before relay.",
+      "Delayed One-Click Relay: When you reconnect or exit Air-Gap mode, you can broadcast the entire batch or individual transfers with a single click.",
+      "Automated Diagnostics: If a broadcast fails due to gas or nonce drift, Privatum detects the root cause and provides direct remediation.",
+    ],
+    suggestedActions: [
+      "View Outbox: Type 'Open outbox' or 'What is in my outbox?'",
+      "Broadcast Queue: Type 'Broadcast outbox' to settle all queued transfers",
+    ],
+  },
 ];
 
 /**

@@ -16,6 +16,7 @@ import { generateInferenceReceipt } from "../../lib/assistant/inferenceReceipt";
 import { sanitizePromptIngress } from "../../lib/assistant/redactionGateway";
 import type { Contact } from "../../lib/contacts";
 import type { SpendingGuardrailConfig, SpendingRecord } from "../../lib/spendGuardrails";
+import type { OfflineTransaction } from "../../lib/offlineOutbox";
 
 interface AssistantDrawerProps {
   isOpen: boolean;
@@ -25,6 +26,10 @@ interface AssistantDrawerProps {
   guardrailConfig: SpendingGuardrailConfig;
   spendingHistory: SpendingRecord[];
   transactionHistory: { type: "send" | "receive"; counterparty: string; amount: string; asset: string }[];
+  offlineOutbox?: OfflineTransaction[];
+  isOnline?: boolean;
+  forceAirGap?: boolean;
+  confirmedNonce?: number;
   onApplyIntent: (intent: ParsedIntent) => void;
   /** Feature gate: inference_receipt_export (0.1.20). */
   receiptExportEnabled?: boolean;
@@ -36,10 +41,10 @@ interface AssistantDrawerProps {
 }
 
 const DEFAULT_SUGGESTION_PROMPTS = [
+  "What is in my outbox?",
   "How much have I spent today?",
-  "Who are my top recipients?",
+  "Broadcast my queued transfers",
   "Send 10 USDG to Alice and create a 20 USDG pay link",
-  "Can I send 150 USDG?",
 ];
 
 export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
@@ -50,6 +55,10 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
   guardrailConfig,
   spendingHistory,
   transactionHistory,
+  offlineOutbox = [],
+  isOnline = true,
+  forceAirGap = false,
+  confirmedNonce = 0,
   onApplyIntent,
   receiptExportEnabled = false,
   appVersion = "0.1.20",
@@ -142,6 +151,10 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
         guardrailConfig,
         spendingHistory,
         transactionHistory,
+        offlineOutbox,
+        isOnline,
+        forceAirGap,
+        confirmedNonce,
         preferredEngine: engineMode,
         onToken: (token: string) => {
           if (!hasStreamedToken) {
