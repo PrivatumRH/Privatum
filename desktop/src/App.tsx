@@ -45,6 +45,9 @@ import {
   Tag,
   Database,
   Ban,
+  Radio,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -155,6 +158,27 @@ import {
   type KnownReference,
 } from "./lib/clipboardSanitizer";
 import { ClipboardSanitizerBanner } from "./components/ClipboardSanitizerBanner";
+import {
+  loadOfflineOutbox,
+  saveOfflineOutbox,
+  getNextOfflineNonce,
+  signOfflineTransaction,
+  queueOfflineTransaction,
+  removeOfflineTransaction,
+  cancelOfflineTransaction,
+  clearFinishedOfflineTransactions,
+  broadcastSingleOfflineTx,
+  broadcastAllQueuedOfflineTxs,
+  loadForceAirGap,
+  saveForceAirGap,
+  loadLastKnownNonce,
+  saveLastKnownNonce,
+  type OfflineTransaction,
+} from "./lib/offlineOutbox";
+import { OfflineOutboxModal } from "./components/OfflineOutboxModal";
+import { AirGapQrModal } from "./components/AirGapQrModal";
+import { OfflineQueueBanner } from "./components/OfflineQueueBanner";
+import { OfflineReconnectPrompt } from "./components/OfflineReconnectPrompt";
 
 const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.0": "Genesis 2-of-3 MPC",
@@ -193,6 +217,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.33": "Transfer Blacklist & Malicious Threat Guard",
   "0.1.34": "Transfer Whitelist & Strict Treasury Allowlist",
   "0.1.35": "Clipboard Hijack & Lookalike Address Sanitizer",
+  "0.1.36": "Offline Outbox & Delayed Broadcast Engine",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -672,6 +697,202 @@ export function App() {
       knownReferences,
     });
   }, [sendRecipient, contacts, whitelistEntries, accounts, transactions, appVersion, previewVersion]);
+
+  // Offline Outbox & Air-Gap Engine (v0.1.36)
+  const [isOnline, setIsOnline] = useState<boolean>(() =>
+    typeof window !== "undefined" ? window.navigator.onLine : true
+  );
+  const [forceAirGap, setForceAirGap] = useState<boolean>(() => loadForceAirGap());
+  const [confirmedNonce, setConfirmedNonce] = useState<number>(0);
+  const [offlineOutbox, setOfflineOutbox] = useState<OfflineTransaction[]>([]);
+  const [showOfflineOutboxModal, setShowOfflineOutboxModal] = useState<boolean>(false);
+  const [selectedAirGapTx, setSelectedAirGapTx] = useState<OfflineTransaction | null>(null);
+  const [showReconnectPrompt, setShowReconnectPrompt] = useState<boolean>(false);
+  const [isBroadcastingAll, setIsBroadcastingAll] = useState<boolean>(false);
+  const [broadcastingTxId, setBroadcastingTxId] = useState<string | null>(null);
+
+  const isOfflineActive = Boolean(
+    isFeatureActive("offline_payments", appVersion, previewVersion) && (!isOnline || forceAirGap)
+  );
+
+  const nextOfflineNonce = useMemo(() => {
+    return getNextOfflineNonce(wallet?.address || "", confirmedNonce);
+  }, [wallet?.address, confirmedNonce, offlineOutbox]);
+
+  const queuedOfflineCount = useMemo(() => {
+    return offlineOutbox.filter((t) => t.status === "queued").length;
+  }, [offlineOutbox]);
+
+  useEffect(() => {
+    if (wallet?.address) {
+      setOfflineOutbox(loadOfflineOutbox(wallet.address));
+      setConfirmedNonce(loadLastKnownNonce(wallet.address));
+    } else {
+      setOfflineOutbox([]);
+      setConfirmedNonce(0);
+    }
+  }, [wallet?.address]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      if (wallet?.address) {
+        const currentOutbox = loadOfflineOutbox(wallet.address);
+        const queued = currentOutbox.filter((t) => t.status === "queued");
+        if (queued.length > 0 && isFeatureActive("offline_payments", appVersion, previewVersion)) {
+          setShowReconnectPrompt(true);
+        }
+      }
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [wallet?.address, appVersion, previewVersion]);
+
+  const handleToggleForceAirGap = (enabled: boolean) => {
+    saveForceAirGap(enabled);
+    setForceAirGap(enabled);
+    if (enabled) {
+      addToast("info", "Air-Gap Mode Active", "Transfers will now be signed locally and held in Offline Outbox.");
+    } else {
+      addToast("info", "Air-Gap Mode Disabled", "Standard online transfer routing restored.");
+    }
+  };
+
+  const handleBroadcastSingleOfflineTx = async (tx: OfflineTransaction) => {
+    if (!publicClient || !wallet?.address) return;
+    setBroadcastingTxId(tx.id);
+    try {
+      const bHash = await broadcastSingleOfflineTx(publicClient, tx);
+      const currentList = loadOfflineOutbox(wallet.address);
+      const updated = currentList.map((t) =>
+        t.id === tx.id
+          ? {
+              ...t,
+              status: "broadcasted" as const,
+              broadcastedAt: Date.now(),
+              broadcastHash: bHash,
+            }
+          : t
+      );
+      saveOfflineOutbox(wallet.address, updated);
+      setOfflineOutbox(updated);
+
+      const newRecord: TransactionRecord = {
+        id: `tx-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        hash: bHash,
+        type: "send",
+        counterparty: tx.recipient,
+        amount: tx.amount,
+        asset: tx.asset,
+        timestamp: Date.now(),
+        status: "confirmed",
+        tag: tx.tag as any,
+        note: tx.note,
+      };
+      const updatedList = [newRecord, ...transactions];
+      setTransactions(updatedList);
+      try {
+        localStorage.setItem(`privatum_transactions_${wallet.address.toLowerCase()}`, JSON.stringify(updatedList));
+      } catch {}
+
+      addToast("success", "Settlement Broadcasted", `Transaction ${shortenAddress(bHash)} relayed onchain.`);
+      setTimeout(() => {
+        if (wallet?.address) fetchBalances(wallet.address as Address);
+      }, 2500);
+    } catch (err: any) {
+      const errMsg = err?.shortMessage || err?.message || "Failed to broadcast transaction.";
+      const currentList = loadOfflineOutbox(wallet.address);
+      const updated = currentList.map((t) =>
+        t.id === tx.id
+          ? {
+              ...t,
+              status: "failed" as const,
+              error: errMsg,
+            }
+          : t
+      );
+      saveOfflineOutbox(wallet.address, updated);
+      setOfflineOutbox(updated);
+      addToast("error", "Broadcast Failed", errMsg);
+    } finally {
+      setBroadcastingTxId(null);
+    }
+  };
+
+  const handleBroadcastAllOfflineTxs = async () => {
+    if (!publicClient || !wallet?.address) return;
+    setIsBroadcastingAll(true);
+    setShowReconnectPrompt(false);
+    try {
+      const summary = await broadcastAllQueuedOfflineTxs(publicClient, wallet.address);
+      setOfflineOutbox(summary.updatedOutbox);
+
+      if (summary.successful.length > 0) {
+        const newRecords: TransactionRecord[] = summary.successful.map((s, idx) => {
+          const original = offlineOutbox.find((t) => t.id === s.id);
+          return {
+            id: `tx-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+            hash: s.broadcastHash,
+            type: "send",
+            counterparty: original?.recipient || "0x...",
+            amount: original?.amount || "0",
+            asset: original?.asset || "USDG",
+            timestamp: Date.now(),
+            status: "confirmed",
+            tag: original?.tag as any,
+            note: original?.note,
+          };
+        });
+        const updatedList = [...newRecords, ...transactions];
+        setTransactions(updatedList);
+        try {
+          localStorage.setItem(`privatum_transactions_${wallet.address.toLowerCase()}`, JSON.stringify(updatedList));
+        } catch {}
+
+        addToast(
+          "success",
+          "Outbox Relayed",
+          `Successfully broadcasted ${summary.successful.length} transaction${summary.successful.length === 1 ? "" : "s"} onchain.`
+        );
+        setTimeout(() => {
+          if (wallet?.address) fetchBalances(wallet.address as Address);
+        }, 2500);
+      }
+
+      if (summary.failed.length > 0) {
+        addToast(
+          "error",
+          "Broadcast Halted",
+          `Sequence stopped on transaction: ${summary.failed[0].error}`
+        );
+      }
+    } catch (err: any) {
+      addToast("error", "Batch Broadcast Error", err?.message || "Could not broadcast queued transactions.");
+    } finally {
+      setIsBroadcastingAll(false);
+    }
+  };
+
+  const handleRemoveOfflineTx = (txId: string) => {
+    if (!wallet?.address) return;
+    const updated = removeOfflineTransaction(wallet.address, txId);
+    setOfflineOutbox(updated);
+    addToast("info", "Removed from Outbox", "Transaction removed.");
+  };
+
+  const handleClearOfflineHistory = () => {
+    if (!wallet?.address) return;
+    const updated = clearFinishedOfflineTransactions(wallet.address);
+    setOfflineOutbox(updated);
+    addToast("info", "History Cleared", "Completed transactions cleared from outbox.");
+  };
 
   // Inactivity auto-lock session watcher
   useEffect(() => {
@@ -1317,6 +1538,14 @@ export function App() {
         args: [address],
       });
       setUsdgBalance(Number(formatUnits(rawUsdg, 6)).toFixed(2));
+
+      // 3. Confirmed Onchain Nonce (for offline sequential queuing)
+      try {
+        const count = await publicClient.getTransactionCount({ address });
+        setConfirmedNonce(count);
+        saveLastKnownNonce(address, count);
+      } catch {}
+
       setLastSyncTime(Date.now());
       fetchEthPrice(true);
       fetchGasPrice();
@@ -2125,6 +2354,65 @@ export function App() {
       }
     }
 
+    // Offline Outbox & Air-Gap Engine (v0.1.36)
+    if (isOfflineActive) {
+      setIsSending(true);
+      try {
+        if (!shardAPrivKey) {
+          throw new Error("Device private key (Shard A) is required to sign offline.");
+        }
+        const signedOfflineTx = await signOfflineTransaction({
+          shardAPrivKey: shardAPrivKey as Hex,
+          walletAddress: wallet.address,
+          recipient: trimmedRecipient,
+          recipientLabel: findContactByAddress(contacts, trimmedRecipient)?.name || undefined,
+          amount: sendAmount,
+          asset: sendAssetType,
+          confirmedNonce,
+          tag: sendTag,
+          note: sendNote.trim() || undefined,
+        });
+
+        const updatedOutbox = queueOfflineTransaction(wallet.address, signedOfflineTx);
+        setOfflineOutbox(updatedOutbox);
+
+        recordContactUsage(wallet.address, trimmedRecipient);
+        setContacts(loadContacts(wallet.address));
+
+        if (isFeatureActive("spending_guardrails", appVersion, previewVersion)) {
+          const amountUsd = estimateUsdValue(sendAmount, sendAssetType);
+          recordSpend(wallet.address, {
+            txHash: signedOfflineTx.txHash,
+            amount: parseFloat(sendAmount) || 0,
+            symbol: sendAssetType,
+            amountUsd,
+            recipient: trimmedRecipient,
+          });
+          setGuardrailHistory(loadSpendingHistory(wallet.address));
+        }
+
+        addToast(
+          "success",
+          "Transfer Signed & Queued Offline",
+          `Assigned Nonce #${signedOfflineTx.nonce}. Staged in your Offline Outbox.`
+        );
+
+        setSendAmount("");
+        setSendRecipient("");
+        setSimulationData(null);
+        setAddressVerdict(null);
+        setGuardAcknowledged(false);
+        setSendStep("form");
+        setShowSendModal(false);
+        setSelectedAirGapTx(signedOfflineTx);
+      } catch (err: any) {
+        addToast("error", "Offline Signing Failed", err?.message || "Could not sign offline transaction.");
+      } finally {
+        setIsSending(false);
+      }
+      return;
+    }
+
     setIsSending(true);
     setTxSuccessHash(null);
     setCeremony(createCeremony(isStealthSend && isMeta ? "batch" : "standard"));
@@ -2925,6 +3213,38 @@ export function App() {
                   <Clock className="w-3.5 h-3.5" />
                 </button>
               </div>
+            )}
+
+            {/* Offline Outbox & Air-Gap Engine (v0.1.36) */}
+            {isFeatureActive("offline_payments", appVersion, previewVersion) && wallet && (
+              <button
+                type="button"
+                onClick={() => setShowOfflineOutboxModal(true)}
+                className={`h-8 px-2.5 rounded-[10px] text-xs font-mono border transition flex items-center gap-1.5 cursor-pointer ${
+                  forceAirGap
+                    ? "bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30"
+                    : !isOnline
+                    ? "bg-rose-500/20 text-rose-300 border-rose-500/40 hover:bg-rose-500/30"
+                    : "bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-white border-white/[0.06]"
+                }`}
+                title="Offline Outbox & Air-Gap Engine"
+              >
+                {forceAirGap ? (
+                  <Radio className="w-3.5 h-3.5 text-amber-400" />
+                ) : !isOnline ? (
+                  <WifiOff className="w-3.5 h-3.5 text-rose-400" />
+                ) : (
+                  <Radio className="w-3.5 h-3.5 text-slate-400" />
+                )}
+                <span className="hidden md:inline font-sans text-[11px]">
+                  {forceAirGap ? "Air-Gap" : "Outbox"}
+                </span>
+                {queuedOfflineCount > 0 && (
+                  <span className="px-1.5 py-0.2 text-[10px] bg-amber-500 text-zinc-950 font-bold rounded-full font-mono">
+                    {queuedOfflineCount}
+                  </span>
+                )}
+              </button>
             )}
 
             {/* Account Switcher (v0.1.5) */}
@@ -3797,6 +4117,9 @@ export function App() {
                 </div>
 
                 <form onSubmit={handlePreviewTransfer} className="space-y-4 overflow-y-auto flex-1 min-h-0 pr-1">
+                  {isOfflineActive && (
+                    <OfflineQueueBanner isForceAirGap={forceAirGap} nextNonce={nextOfflineNonce} />
+                  )}
                   <div>
                     <label className="text-xs text-slate-400 block mb-1.5">Asset</label>
                     <div className="grid grid-cols-2 gap-2">
@@ -4425,6 +4748,10 @@ export function App() {
                   </div>
                 )}
 
+                {isOfflineActive && (
+                  <OfflineQueueBanner isForceAirGap={forceAirGap} nextNonce={nextOfflineNonce} />
+                )}
+
                 {/* Simulation status */}
                 {isSimulating ? (
                   <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center gap-3">
@@ -4564,10 +4891,10 @@ export function App() {
                       {isSending ? (
                         <>
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>Signing & Sending...</span>
+                          <span>{isOfflineActive ? "Signing & Staging..." : "Signing & Sending..."}</span>
                         </>
                       ) : (
-                        <span>Confirm & Send</span>
+                        <span>{isOfflineActive ? "Sign & Queue Offline" : "Confirm & Send"}</span>
                       )}
                     </button>
                   </div>
@@ -5107,6 +5434,46 @@ export function App() {
           setIsLocked(true);
         }}
         onNotify={addToast}
+      />
+
+      {/* Modal: Offline Outbox & Air-Gap Engine (v0.1.36) */}
+      <OfflineOutboxModal
+        isOpen={showOfflineOutboxModal}
+        onClose={() => setShowOfflineOutboxModal(false)}
+        walletAddress={wallet?.address || walletAddress || accounts[0]?.address || ""}
+        outbox={offlineOutbox}
+        isOnline={isOnline}
+        forceAirGap={forceAirGap}
+        onToggleForceAirGap={handleToggleForceAirGap}
+        onBroadcastTx={handleBroadcastSingleOfflineTx}
+        onBroadcastAll={handleBroadcastAllOfflineTxs}
+        onRemoveTx={handleRemoveOfflineTx}
+        onClearHistory={handleClearOfflineHistory}
+        onOpenAirGapQr={(tx) => setSelectedAirGapTx(tx)}
+        onNotify={addToast}
+        isBroadcastingAll={isBroadcastingAll}
+        broadcastingTxId={broadcastingTxId}
+      />
+
+      {/* Modal: Air-Gap Signed QR & Raw Hex (v0.1.36) */}
+      <AirGapQrModal
+        isOpen={Boolean(selectedAirGapTx)}
+        tx={selectedAirGapTx}
+        onClose={() => setSelectedAirGapTx(null)}
+        onNotify={addToast}
+      />
+
+      {/* Offline Reconnect Prompt (v0.1.36) */}
+      <OfflineReconnectPrompt
+        isOpen={showReconnectPrompt}
+        queuedCount={queuedOfflineCount}
+        onBroadcastAll={handleBroadcastAllOfflineTxs}
+        onReviewOutbox={() => {
+          setShowReconnectPrompt(false);
+          setShowOfflineOutboxModal(true);
+        }}
+        onDismiss={() => setShowReconnectPrompt(false)}
+        isBroadcasting={isBroadcastingAll}
       />
     </div>
   );
