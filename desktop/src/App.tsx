@@ -173,6 +173,7 @@ import {
   saveForceAirGap,
   loadLastKnownNonce,
   saveLastKnownNonce,
+  extractBroadcastError,
   type OfflineTransaction,
 } from "./lib/offlineOutbox";
 import { OfflineOutboxModal } from "./components/OfflineOutboxModal";
@@ -807,7 +808,7 @@ export function App() {
         if (wallet?.address) fetchBalances(wallet.address as Address);
       }, 2500);
     } catch (err: any) {
-      const errMsg = err?.shortMessage || err?.message || "Failed to broadcast transaction.";
+      const errMsg = extractBroadcastError(err);
       const currentList = loadOfflineOutbox(wallet.address);
       const updated = currentList.map((t) =>
         t.id === tx.id
@@ -874,7 +875,7 @@ export function App() {
         );
       }
     } catch (err: any) {
-      addToast("error", "Batch Broadcast Error", err?.message || "Could not broadcast queued transactions.");
+      addToast("error", "Batch Broadcast Error", extractBroadcastError(err));
     } finally {
       setIsBroadcastingAll(false);
     }
@@ -2361,6 +2362,8 @@ export function App() {
         if (!shardAPrivKey) {
           throw new Error("Device private key (Shard A) is required to sign offline.");
         }
+        const gweiPrice = parseFloat(gasPriceGwei) || 0.08;
+        const calculatedFeePerGas = parseUnits(Math.max(gweiPrice * 1.3, 0.08).toFixed(6), 9);
         const signedOfflineTx = await signOfflineTransaction({
           shardAPrivKey: shardAPrivKey as Hex,
           walletAddress: wallet.address,
@@ -2369,6 +2372,8 @@ export function App() {
           amount: sendAmount,
           asset: sendAssetType,
           confirmedNonce,
+          maxFeePerGas: calculatedFeePerGas,
+          maxPriorityFeePerGas: calculatedFeePerGas,
           tag: sendTag,
           note: sendNote.trim() || undefined,
         });

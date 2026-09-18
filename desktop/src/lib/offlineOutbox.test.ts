@@ -15,6 +15,7 @@ import {
   broadcastSingleOfflineTx,
   broadcastAllQueuedOfflineTxs,
   exportTransactionJson,
+  extractBroadcastError,
   OfflineTransaction,
 } from "./offlineOutbox";
 import { parseTransaction } from "viem";
@@ -422,6 +423,30 @@ describe("offlineOutbox engine", () => {
       expect(parsed.id).toBe(tx.id);
       expect(parsed.rawSignedTx).toBe(tx.rawSignedTx);
       expect(parsed.amount).toBe("0.5");
+    });
+  });
+
+  describe("extractBroadcastError", () => {
+    it("extracts exact error details when node returns insufficient funds", () => {
+      const rpcErr = {
+        name: "InvalidInputRpcError",
+        shortMessage: "Missing or invalid parameters.\nDouble check you have provided the correct parameters.",
+        details: "insufficient funds for gas * price + value: address 0xB2fF1315Cdca3bFd675aA653EcdE0E0bcc982967 have 75826476278000 want 91000000000000",
+        message: "Full viem message here",
+      };
+      expect(extractBroadcastError(rpcErr)).toBe(rpcErr.details);
+    });
+
+    it("extracts details line from error message if details field is omitted", () => {
+      const err = {
+        message: "RPC Error\nDetails: nonce too low: address 0x123 next nonce 5, tx nonce 4\nVersion: 1.0",
+      };
+      expect(extractBroadcastError(err)).toBe("nonce too low: address 0x123 next nonce 5, tx nonce 4");
+    });
+
+    it("falls back to message or string", () => {
+      expect(extractBroadcastError(new Error("Network timeout"))).toBe("Network timeout");
+      expect(extractBroadcastError("Custom error")).toBe("Custom error");
     });
   });
 });
