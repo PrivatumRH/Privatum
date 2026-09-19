@@ -188,6 +188,49 @@ const KNOWLEDGE_ENTRIES: KnowledgeEntry[] = [
       "Broadcast Queue: Type 'Broadcast outbox' to settle all queued transfers",
     ],
   },
+  {
+    topic: "transfer_whitelist",
+    patterns: [
+      /whitelist/i,
+      /approved\s*(counterpart(?:y|ies)|addresses?)/i,
+      /strict\s*treasury\s*mode/i,
+      /how\s*does\s*(the\s*)?whitelist\s*work/i,
+    ],
+    summary:
+      "Privatum's Counterparty Whitelist enforces strict or advisory destination access controls to safeguard treasury and personal funds.",
+    bulletPoints: [
+      "Strict Treasury Mode: When active, transfers to unapproved addresses are blocked outright before transaction simulation or shard signing.",
+      "Counterparty Book: Stores addresses with associated organizational labels and notes directly in encrypted local storage.",
+      "Portable JSON Auditing: Whitelists can be exported or imported as cryptographically stamped audit JSON files.",
+      "Zero External Telemetry: Whitelist verification occurs 100% locally in client device memory.",
+    ],
+    suggestedActions: [
+      "Check Whitelist: Type 'Show my whitelist' or 'Is 0x... whitelisted?'",
+      "Add Counterparty: Type 'Add 0x... to whitelist'",
+    ],
+  },
+  {
+    topic: "transfer_blacklist",
+    patterns: [
+      /blacklist/i,
+      /threat\s*guard/i,
+      /blocked\s*addresses?/i,
+      /curated\s*threat\s*feed/i,
+      /how\s*does\s*(the\s*)?blacklist\s*work/i,
+    ],
+    summary:
+      "Privatum's Transfer Blacklist provides deterministic blocking against known phishing drainers, sanctioned mixers, and custom blocked addresses.",
+    bulletPoints: [
+      "Curated Threat Feed: Built-in immutable feeds tracking high-risk phishing drainers (e.g. Pink Drainer), OFAC sanctioned mixer routers, and burn sinks.",
+      "Custom User Overrides: Block suspicious counterparties manually with user-defined categories (Phishing, Malicious, Sanctioned, Compromised).",
+      "Pre-Flight Enforcement: Outgoing transfers are screened against all blacklist rules before MPC shard signing.",
+      "Automated Root-Cause Explanation: Asking the assistant 'Why is 0x... blocked?' reveals the exact threat classification and historical exploit.",
+    ],
+    suggestedActions: [
+      "Check Blacklist: Type 'Is 0x... blacklisted?' or 'Why is 0x... blocked?'",
+      "Block Threat: Type 'Blacklist 0x... as phishing'",
+    ],
+  },
 ];
 
 /**

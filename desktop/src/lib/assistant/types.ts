@@ -12,6 +12,11 @@ export type AssistantIntentType =
   | "view_outbox"
   | "clear_outbox_history"
   | "outbox_query"
+  | "add_whitelist"
+  | "remove_whitelist"
+  | "add_blacklist"
+  | "remove_blacklist"
+  | "security_query"
   | "general_query";
 
 export interface ParsedTransferIntent {
@@ -87,6 +92,45 @@ export interface ParsedOutboxQueryIntent {
   details?: string[];
 }
 
+export interface ParsedAddWhitelistIntent {
+  type: "add_whitelist";
+  address: string;
+  label: string;
+}
+
+export interface ParsedRemoveWhitelistIntent {
+  type: "remove_whitelist";
+  address: string;
+  label?: string;
+}
+
+export interface ParsedAddBlacklistIntent {
+  type: "add_blacklist";
+  address: string;
+  name?: string;
+  reason?: string;
+  category: "Phishing" | "Malicious" | "Sanctioned" | "Compromised" | "Custom";
+}
+
+export interface ParsedRemoveBlacklistIntent {
+  type: "remove_blacklist";
+  address: string;
+  name?: string;
+}
+
+export interface ParsedSecurityQueryIntent {
+  type: "security_query";
+  queryType?:
+    | "whitelist_status"
+    | "blacklist_status"
+    | "threat_diagnostic"
+    | "poisoning_diagnostic"
+    | "policy_overview";
+  summary: string;
+  details?: string[];
+  address?: string;
+}
+
 export type ParsedIntent =
   | ParsedTransferIntent
   | ParsedPaylinkIntent
@@ -99,6 +143,11 @@ export type ParsedIntent =
   | ParsedViewOutboxIntent
   | ParsedClearOutboxHistoryIntent
   | ParsedOutboxQueryIntent
+  | ParsedAddWhitelistIntent
+  | ParsedRemoveWhitelistIntent
+  | ParsedAddBlacklistIntent
+  | ParsedRemoveBlacklistIntent
+  | ParsedSecurityQueryIntent
   | { type: "view_guardrails" }
   | { type: "view_contacts" }
   | { type: "export_ledger" }

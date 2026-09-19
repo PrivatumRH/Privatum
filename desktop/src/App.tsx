@@ -83,9 +83,18 @@ import { WhitelistModal } from "./components/WhitelistModal";
 import {
   getAllBlacklistEntries,
   checkAddressBlacklist,
+  addCustomBlacklistEntry,
+  removeCustomBlacklistEntry,
   type BlacklistEntry,
 } from "./lib/transferBlacklist";
-import { isWhitelisted, loadWhitelist, loadWhitelistConfig, type WhitelistEntry } from "./lib/transferWhitelist";
+import {
+  isWhitelisted,
+  loadWhitelist,
+  loadWhitelistConfig,
+  addWhitelistEntry,
+  removeWhitelistEntry,
+  type WhitelistEntry,
+} from "./lib/transferWhitelist";
 import {
   loadLockConfig,
   isSessionExpired,
@@ -220,6 +229,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.35": "Clipboard Hijack & Lookalike Address Sanitizer",
   "0.1.36": "Offline Outbox & Delayed Broadcast Engine",
   "0.1.37": "Local AI Outbox & Queue Intelligence",
+  "0.1.38": "Security Policy NLP & Threat Intelligence",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -5355,6 +5365,9 @@ export function App() {
         isOnline={isOnline}
         forceAirGap={forceAirGap}
         confirmedNonce={confirmedNonce}
+        whitelistEntries={whitelistEntries}
+        whitelistConfig={{ strictMode: whitelistStrictMode }}
+        blacklistEntries={blacklistEntries}
         onApplyIntent={(intent) => {
           if (intent.type === "send_transfer") {
             setSendRecipient(intent.recipient);
@@ -5378,6 +5391,47 @@ export function App() {
             setShowOfflineOutboxModal(true);
           } else if (intent.type === "clear_outbox_history") {
             handleClearOfflineHistory();
+          } else if (intent.type === "add_whitelist") {
+            try {
+              addWhitelistEntry({ address: intent.address, label: intent.label });
+              setWhitelistEntries(loadWhitelist());
+              addToast("success", "Whitelist Updated", `Approved ${intent.label} (${intent.address.slice(0, 8)}...).`);
+            } catch (err: any) {
+              addToast("error", "Whitelist Error", err?.message || "Failed to add to whitelist.");
+            }
+          } else if (intent.type === "remove_whitelist") {
+            try {
+              removeWhitelistEntry(intent.address);
+              setWhitelistEntries(loadWhitelist());
+              addToast("info", "Removed from Whitelist", `Address ${intent.address.slice(0, 8)}... was removed from the whitelist.`);
+            } catch (err: any) {
+              addToast("error", "Whitelist Error", err?.message || "Failed to remove from whitelist.");
+            }
+          } else if (intent.type === "add_blacklist") {
+            try {
+              const res = addCustomBlacklistEntry({
+                address: intent.address,
+                name: intent.name,
+                reason: intent.reason || "Blocked by user via assistant",
+                category: intent.category,
+              });
+              if (res.success) {
+                setBlacklistEntries(getAllBlacklistEntries());
+                addToast("info", "Threat Guard Blocklist", `Blocked ${intent.name || intent.address.slice(0, 8)}... (${intent.category}).`);
+              } else {
+                addToast("error", "Blacklist Error", res.error || "Failed to blacklist address.");
+              }
+            } catch (err: any) {
+              addToast("error", "Blacklist Error", err?.message || "Failed to blacklist address.");
+            }
+          } else if (intent.type === "remove_blacklist") {
+            try {
+              removeCustomBlacklistEntry(intent.address);
+              setBlacklistEntries(getAllBlacklistEntries());
+              addToast("info", "Blacklist Updated", `Address ${intent.address.slice(0, 8)}... unblocked.`);
+            } catch (err: any) {
+              addToast("error", "Blacklist Error", err?.message || "Failed to remove from blacklist.");
+            }
           }
         }}
       />
