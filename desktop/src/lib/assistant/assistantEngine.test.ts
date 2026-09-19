@@ -153,5 +153,27 @@ describe("Assistant Engine Pipeline", () => {
     expect(res.content).toContain("Local Shard A Signing");
     expect(res.content).toContain("Strict Sequential Nonces");
   });
+
+  it("processes security policy queries and yields add_whitelist intent through pipeline", async () => {
+    const res = await processAssistantQuery({
+      input: "whitelist 0x3f8a0000000000000000000000000000000091b2",
+      whitelistEntries: [],
+      whitelistConfig: { strictMode: true },
+    });
+    expect(res.intent?.type).toBe("add_whitelist");
+    expect(res.content).toContain("Ready to approve");
+    expect(res.safetyEvidence?.intentSummary).toContain("Security Policy");
+  });
+
+  it("answers conceptual security queries via domain knowledge base", async () => {
+    const res = await processAssistantQuery({
+      input: "How does the transfer blacklist work?",
+      preferredEngine: "deterministic",
+    });
+    expect(res.content).toContain("Transfer Blacklist provides deterministic blocking");
+    expect(res.content).toContain("Curated Threat Feed");
+    expect(res.content).toContain("Pre-Flight Enforcement");
+  });
 });
+
 

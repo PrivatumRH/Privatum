@@ -4,6 +4,8 @@ import type { ParsedIntent } from "../../lib/assistant/types";
 import type { Contact } from "../../lib/contacts";
 import type { SpendingGuardrailConfig, SpendingRecord } from "../../lib/spendGuardrails";
 import type { OfflineTransaction } from "../../lib/offlineOutbox";
+import type { WhitelistEntry, WhitelistConfig } from "../../lib/transferWhitelist";
+import type { BlacklistEntry } from "../../lib/transferBlacklist";
 
 interface AssistantWidgetProps {
   walletAddress?: string;
@@ -15,6 +17,9 @@ interface AssistantWidgetProps {
   isOnline?: boolean;
   forceAirGap?: boolean;
   confirmedNonce?: number;
+  whitelistEntries?: WhitelistEntry[];
+  whitelistConfig?: WhitelistConfig;
+  blacklistEntries?: BlacklistEntry[];
   onApplyIntent: (intent: ParsedIntent) => void;
   /** Feature gate: inference_receipt_export (0.1.20). */
   receiptExportEnabled?: boolean;
@@ -34,6 +39,9 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
   isOnline,
   forceAirGap,
   confirmedNonce,
+  whitelistEntries,
+  whitelistConfig,
+  blacklistEntries,
   onApplyIntent,
   receiptExportEnabled = false,
   appVersion,
@@ -88,6 +96,9 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
         isOnline={isOnline}
         forceAirGap={forceAirGap}
         confirmedNonce={confirmedNonce}
+        whitelistEntries={whitelistEntries}
+        whitelistConfig={whitelistConfig}
+        blacklistEntries={blacklistEntries}
         onApplyIntent={onApplyIntent}
         receiptExportEnabled={receiptExportEnabled}
         appVersion={appVersion}

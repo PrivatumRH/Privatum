@@ -20,6 +20,11 @@ import type { AssistantMessage, EngineMode, ParsedIntent } from "./types";
 import { generateInferenceReceipt } from "./inferenceReceipt";
 import type { OfflineTransaction } from "../offlineOutbox";
 import { evaluateOutboxQuery } from "./outboxQueries";
+import type { WhitelistEntry, WhitelistConfig } from "../transferWhitelist";
+import { isWhitelisted } from "../transferWhitelist";
+import type { BlacklistEntry } from "../transferBlacklist";
+import { checkAddressBlacklist } from "../transferBlacklist";
+import { evaluateSecurityQuery } from "./securityQueries";
 import { evaluateLedgerQuery } from "./ledgerQueries";
 import { parseMultiIntent } from "./multiIntent";
 import { queryKnowledgeBase } from "./knowledgeBase";
@@ -35,6 +40,9 @@ export interface ProcessAssistantInputParams {
   isOnline?: boolean;
   forceAirGap?: boolean;
   confirmedNonce?: number;
+  whitelistEntries?: WhitelistEntry[];
+  whitelistConfig?: WhitelistConfig;
+  blacklistEntries?: BlacklistEntry[];
   preferredEngine?: EngineMode;
   onToken?: (token: string) => void;
 }
@@ -61,6 +69,9 @@ export async function processAssistantQuery(
     isOnline = true,
     forceAirGap = false,
     confirmedNonce = 0,
+    whitelistEntries = [],
+    whitelistConfig = { strictMode: false },
+    blacklistEntries = [],
     preferredEngine = "deterministic",
   } = params;
 
@@ -172,7 +183,41 @@ export async function processAssistantQuery(
     });
   }
 
-  // STEP 4: Local Natural Language Ledger Queries
+  // STEP 4: Local Natural Language Security Policy Intelligence
+  const historyEntries: AddressGuardHistoryEntry[] = transactionHistory.map((t) => ({
+    type: t.type,
+    counterparty: t.counterparty,
+    amount: t.amount,
+    asset: t.asset,
+  }));
+
+  const securityRes = evaluateSecurityQuery(cleanText, {
+    walletAddress,
+    contacts,
+    whitelistEntries,
+    whitelistConfig,
+    blacklistEntries,
+    transactionHistory: historyEntries,
+  });
+
+  if (securityRes && securityRes.handled) {
+    const lines = [securityRes.summary];
+    if (securityRes.details && securityRes.details.length > 0) {
+      lines.push("");
+      for (const d of securityRes.details) {
+        lines.push(`* ${d}`);
+      }
+    }
+
+    return await createResponse(lines.join("\n"), {
+      intent: securityRes.intent,
+      safetyEvidence: {
+        intentSummary: `Security Policy: ${securityRes.queryType || (securityRes.intent ? securityRes.intent.type : "inquiry")}`,
+      },
+    });
+  }
+
+  // STEP 5: Local Natural Language Ledger Queries
   const ledgerRes = evaluateLedgerQuery(cleanText, {
     walletAddress,
     contacts,
@@ -203,7 +248,7 @@ export async function processAssistantQuery(
     });
   }
 
-  // STEP 5: Deterministic NLP Parsing
+  // STEP 6: Deterministic NLP Parsing
   const parsed = parseDeterministicIntent(cleanText, contacts);
 
   if (parsed) {
@@ -315,12 +360,6 @@ export async function processAssistantQuery(
 
     // 2E: Check Address
     if (parsed.type === "check_address") {
-      const historyEntries: AddressGuardHistoryEntry[] = transactionHistory.map((t) => ({
-        type: t.type,
-        counterparty: t.counterparty,
-        amount: t.amount,
-        asset: t.asset,
-      }));
       const ownAddrs = [walletAddress, ...contacts.map((c) => c.address)].filter(Boolean);
       const verdict = checkAddressPoisoning({
         recipient: parsed.address,
@@ -332,24 +371,37 @@ export async function processAssistantQuery(
         (c) => c.address.toLowerCase() === parsed.address.toLowerCase()
       );
 
-      const status = verdict.level === "danger" ? "Danger" : verdict.level === "warning" ? "Warning" : "Clean";
+      const blacklistCheck = checkAddressBlacklist(parsed.address, blacklistEntries);
+      const isApproved = isWhitelisted(parsed.address, whitelistEntries);
 
-      return await createResponse(
-        [
-          `Address Inspection: ${parsed.address}`,
-          `Status: ${status}`,
-          `Verdict: ${verdict.detail}`,
-          matchedContact ? `Known Contact: ${matchedContact.name} (${matchedContact.category})` : "Not present in local address book.",
-        ].join("\n"),
-        {
-          intent: parsed,
-          safetyEvidence: {
-            poisonVerdict: verdict.level === "danger" ? "danger" : verdict.level === "warning" ? "warning" : "safe",
-            poisonMessage: verdict.detail,
-            contactMatch: matchedContact?.name,
-          },
-        }
-      );
+      const isDanger = verdict.level === "danger" || Boolean(blacklistCheck?.isBlacklisted);
+      const isWarning = verdict.level === "warning" || (!isApproved && whitelistConfig.strictMode);
+      const status = isDanger ? "Danger" : isWarning ? "Warning" : "Clean";
+
+      const lines = [
+        `Address Inspection: ${parsed.address}`,
+        `Status: ${status}`,
+        `Poisoning Verdict: ${verdict.detail}`,
+        matchedContact ? `Known Contact: ${matchedContact.name} (${matchedContact.category})` : "Not present in local address book.",
+        isApproved
+          ? "Whitelist Status: Approved counterparty"
+          : `Whitelist Status: Not whitelisted${whitelistConfig.strictMode ? " (Strict Treasury Mode active)" : ""}`,
+      ];
+
+      if (blacklistCheck?.isBlacklisted && blacklistCheck.entry) {
+        lines.push(`Threat Blacklist: MATCHED (${blacklistCheck.entry.category}: ${blacklistCheck.entry.reason})`);
+      } else {
+        lines.push("Threat Blacklist: Clean (no active threat indicators)");
+      }
+
+      return await createResponse(lines.join("\n"), {
+        intent: parsed,
+        safetyEvidence: {
+          poisonVerdict: isDanger ? "danger" : isWarning ? "warning" : "safe",
+          poisonMessage: blacklistCheck?.isBlacklisted ? blacklistCheck.entry?.reason : verdict.detail,
+          contactMatch: matchedContact?.name,
+        },
+      });
     }
 
     // 2F: View Guardrails

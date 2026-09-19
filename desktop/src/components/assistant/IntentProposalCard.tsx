@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpRight, Shield, ShieldAlert, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2 } from "lucide-react";
+import { ArrowUpRight, Shield, ShieldAlert, ShieldCheck, Ban, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2 } from "lucide-react";
 import type { ParsedIntent } from "../../lib/assistant/types";
 import type { InferenceReceipt } from "../../lib/assistant/inferenceReceipt";
 import { evaluateTransactionRisk } from "../../lib/riskScore";
@@ -525,6 +525,252 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
           >
             <span>Clear Outbox History</span>
             <Trash2 className="h-3.5 w-3.5" />
+          </button>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="py-2 px-3 rounded-lg font-medium text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (intent.type === "add_whitelist") {
+    return (
+      <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs">
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-1.5 font-medium text-emerald-400">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span>Approve Whitelist Counterparty</span>
+          </div>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="p-1 text-white/40 hover:text-white rounded hover:bg-white/5 transition-colors"
+              title="Dismiss proposal"
+              aria-label="Dismiss proposal"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="space-y-1.5 mb-3 text-white/80">
+          <div className="flex justify-between">
+            <span className="text-white/40">Address:</span>
+            <span className="font-mono text-white text-[11px]">{intent.address}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-white/40">Label:</span>
+            <span className="font-medium text-white">{intent.label}</span>
+          </div>
+        </div>
+        <p className="text-white/70 mb-3 leading-relaxed">
+          Adding this address to your approved whitelist permits direct transfers even when Strict Treasury Mode is enforced.
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onApplyIntent(intent)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-black bg-emerald-400 hover:bg-emerald-300 transition-colors cursor-pointer"
+          >
+            <span>Add to Approved Whitelist</span>
+            <ShieldCheck className="h-3.5 w-3.5" />
+          </button>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="py-2 px-3 rounded-lg font-medium text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+        {receipt && (
+          <div className="flex items-center justify-between text-[10px] pt-2 mt-2 border-t border-white/5">
+            <span className="text-white/40">Inference Proof:</span>
+            <span className="font-mono text-white/50">{receipt.shortRef}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (intent.type === "remove_whitelist") {
+    return (
+      <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs">
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-1.5 font-medium text-amber-400">
+            <ShieldAlert className="h-3.5 w-3.5" />
+            <span>Revoke Whitelist Approval</span>
+          </div>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="p-1 text-white/40 hover:text-white rounded hover:bg-white/5 transition-colors"
+              title="Dismiss proposal"
+              aria-label="Dismiss proposal"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="space-y-1.5 mb-3 text-white/80">
+          <div className="flex justify-between">
+            <span className="text-white/40">Address:</span>
+            <span className="font-mono text-white text-[11px]">{intent.address}</span>
+          </div>
+          {intent.label && (
+            <div className="flex justify-between">
+              <span className="text-white/40">Label:</span>
+              <span className="font-medium text-white">{intent.label}</span>
+            </div>
+          )}
+        </div>
+        <p className="text-white/70 mb-3 leading-relaxed">
+          Revoking approval will remove this address from your trusted list. If Strict Treasury Mode is active, future transfers to it will be blocked.
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onApplyIntent(intent)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-white bg-amber-600 hover:bg-amber-500 transition-colors cursor-pointer"
+          >
+            <span>Revoke Whitelist Approval</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="py-2 px-3 rounded-lg font-medium text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (intent.type === "add_blacklist") {
+    return (
+      <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs">
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-1.5 font-medium text-rose-400">
+            <Ban className="h-3.5 w-3.5" />
+            <span>Block Threat Counterparty</span>
+          </div>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="p-1 text-white/40 hover:text-white rounded hover:bg-white/5 transition-colors"
+              title="Dismiss proposal"
+              aria-label="Dismiss proposal"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="space-y-1.5 mb-3 text-white/80">
+          <div className="flex justify-between">
+            <span className="text-white/40">Address:</span>
+            <span className="font-mono text-white text-[11px]">{intent.address}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-white/40">Category:</span>
+            <span className="font-semibold text-rose-300">{intent.category}</span>
+          </div>
+          {intent.reason && (
+            <div className="flex justify-between">
+              <span className="text-white/40">Reason:</span>
+              <span className="text-white/80">{intent.reason}</span>
+            </div>
+          )}
+        </div>
+        <p className="text-white/70 mb-3 leading-relaxed">
+          Adding this address to your threat blacklist will strictly block any outgoing transfers to it during pre-flight checks.
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onApplyIntent(intent)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-white bg-rose-600 hover:bg-rose-500 transition-colors cursor-pointer"
+          >
+            <span>Block Address & Enforce Blacklist</span>
+            <Ban className="h-3.5 w-3.5" />
+          </button>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="py-2 px-3 rounded-lg font-medium text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
+        {receipt && (
+          <div className="flex items-center justify-between text-[10px] pt-2 mt-2 border-t border-white/5">
+            <span className="text-white/40">Inference Proof:</span>
+            <span className="font-mono text-white/50">{receipt.shortRef}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (intent.type === "remove_blacklist") {
+    return (
+      <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3.5 text-xs">
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-1.5 font-medium text-white">
+            <Unlock className="h-3.5 w-3.5 text-emerald-400" />
+            <span>Unblock Blacklisted Address</span>
+          </div>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="p-1 text-white/40 hover:text-white rounded hover:bg-white/5 transition-colors"
+              title="Dismiss proposal"
+              aria-label="Dismiss proposal"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="space-y-1.5 mb-3 text-white/80">
+          <div className="flex justify-between">
+            <span className="text-white/40">Address:</span>
+            <span className="font-mono text-white text-[11px]">{intent.address}</span>
+          </div>
+          {intent.name && (
+            <div className="flex justify-between">
+              <span className="text-white/40">Label:</span>
+              <span className="font-medium text-white">{intent.name}</span>
+            </div>
+          )}
+        </div>
+        <p className="text-white/70 mb-3 leading-relaxed">
+          Unblocking will restore standard transaction routing for this address in the Send flow.
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onApplyIntent(intent)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-black bg-white hover:bg-white/90 transition-colors cursor-pointer"
+          >
+            <span>Unblock Address</span>
+            <ArrowRight className="h-3.5 w-3.5" />
           </button>
           {onDismiss && (
             <button

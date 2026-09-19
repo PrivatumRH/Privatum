@@ -17,6 +17,8 @@ import { sanitizePromptIngress } from "../../lib/assistant/redactionGateway";
 import type { Contact } from "../../lib/contacts";
 import type { SpendingGuardrailConfig, SpendingRecord } from "../../lib/spendGuardrails";
 import type { OfflineTransaction } from "../../lib/offlineOutbox";
+import type { WhitelistEntry, WhitelistConfig } from "../../lib/transferWhitelist";
+import type { BlacklistEntry } from "../../lib/transferBlacklist";
 
 interface AssistantDrawerProps {
   isOpen: boolean;
@@ -30,6 +32,9 @@ interface AssistantDrawerProps {
   isOnline?: boolean;
   forceAirGap?: boolean;
   confirmedNonce?: number;
+  whitelistEntries?: WhitelistEntry[];
+  whitelistConfig?: WhitelistConfig;
+  blacklistEntries?: BlacklistEntry[];
   onApplyIntent: (intent: ParsedIntent) => void;
   /** Feature gate: inference_receipt_export (0.1.20). */
   receiptExportEnabled?: boolean;
@@ -42,9 +47,9 @@ interface AssistantDrawerProps {
 
 const DEFAULT_SUGGESTION_PROMPTS = [
   "What is in my outbox?",
+  "Show my security policies",
   "How much have I spent today?",
   "Broadcast my queued transfers",
-  "Send 10 USDG to Alice and create a 20 USDG pay link",
 ];
 
 export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
@@ -59,6 +64,9 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
   isOnline = true,
   forceAirGap = false,
   confirmedNonce = 0,
+  whitelistEntries = [],
+  whitelistConfig = { strictMode: false },
+  blacklistEntries = [],
   onApplyIntent,
   receiptExportEnabled = false,
   appVersion = "0.1.20",
@@ -155,6 +163,9 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
         isOnline,
         forceAirGap,
         confirmedNonce,
+        whitelistEntries,
+        whitelistConfig,
+        blacklistEntries,
         preferredEngine: engineMode,
         onToken: (token: string) => {
           if (!hasStreamedToken) {
