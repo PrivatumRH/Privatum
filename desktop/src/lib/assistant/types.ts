@@ -17,6 +17,7 @@ export type AssistantIntentType =
   | "add_blacklist"
   | "remove_blacklist"
   | "security_query"
+  | "spending_analytics"
   | "general_query";
 
 export interface ParsedTransferIntent {
@@ -131,6 +132,21 @@ export interface ParsedSecurityQueryIntent {
   address?: string;
 }
 
+export interface ParsedSpendingAnalyticsIntent {
+  type: "spending_analytics";
+  subtype:
+    | "top_counterparties"
+    | "tag_breakdown"
+    | "velocity"
+    | "counterparty_detail";
+  timeframe?: "week" | "month";
+  tag?: string;
+  counterparty?: string;
+  summary: string;
+  details?: string[];
+  chartData?: { label: string; value: number; color?: string }[];
+}
+
 export type ParsedIntent =
   | ParsedTransferIntent
   | ParsedPaylinkIntent
@@ -148,6 +164,7 @@ export type ParsedIntent =
   | ParsedAddBlacklistIntent
   | ParsedRemoveBlacklistIntent
   | ParsedSecurityQueryIntent
+  | ParsedSpendingAnalyticsIntent
   | { type: "view_guardrails" }
   | { type: "view_contacts" }
   | { type: "export_ledger" }

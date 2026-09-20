@@ -26,6 +26,7 @@ import type { BlacklistEntry } from "../transferBlacklist";
 import { checkAddressBlacklist } from "../transferBlacklist";
 import { evaluateSecurityQuery } from "./securityQueries";
 import { evaluateLedgerQuery } from "./ledgerQueries";
+import { evaluateSpendingAnalytics } from "./spendingAnalyticsQueries";
 import { parseMultiIntent } from "./multiIntent";
 import { queryKnowledgeBase } from "./knowledgeBase";
 
@@ -35,7 +36,7 @@ export interface ProcessAssistantInputParams {
   contacts?: Contact[];
   guardrailConfig?: SpendingGuardrailConfig;
   spendingHistory?: SpendingRecord[];
-  transactionHistory?: { type: "send" | "receive"; counterparty: string; amount: string; asset: string; timestamp?: number; hash?: string }[];
+  transactionHistory?: { type: "send" | "receive"; counterparty: string; amount: string; asset: string; timestamp?: number; hash?: string; tag?: string }[];
   offlineOutbox?: OfflineTransaction[];
   isOnline?: boolean;
   forceAirGap?: boolean;
@@ -213,6 +214,28 @@ export async function processAssistantQuery(
       intent: securityRes.intent,
       safetyEvidence: {
         intentSummary: `Security Policy: ${securityRes.queryType || (securityRes.intent ? securityRes.intent.type : "inquiry")}`,
+      },
+    });
+  }
+
+  // STEP 4b: Local Natural Language Spending Analytics Intelligence
+  const analyticsRes = evaluateSpendingAnalytics(cleanText, {
+    transactionHistory,
+  });
+
+  if (analyticsRes && analyticsRes.handled) {
+    const lines = [analyticsRes.summary];
+    if (analyticsRes.details && analyticsRes.details.length > 0) {
+      lines.push("");
+      for (const d of analyticsRes.details) {
+        lines.push(`* ${d}`);
+      }
+    }
+
+    return await createResponse(lines.join("\n"), {
+      intent: analyticsRes.intent,
+      safetyEvidence: {
+        intentSummary: `Spending Analytics: ${analyticsRes.intent?.subtype || "query"}`,
       },
     });
   }
