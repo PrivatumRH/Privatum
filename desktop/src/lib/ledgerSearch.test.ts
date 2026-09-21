@@ -207,4 +207,24 @@ describe("evaluateLedgerSearchQuery NLP Evaluator", () => {
     });
     expect(res2).toBeNull();
   });
+
+  it("evaluates 'What did I send in September?' - regression", () => {
+    const res = evaluateLedgerSearchQuery(
+      "What did I send in September?",
+      { transactionHistory: TRANSACTIONS, contacts: CONTACTS }
+    );
+    expect(res).not.toBeNull();
+    expect(res?.intent.type).toBe("ledger_search");
+    expect((res?.intent as { filters?: { direction?: string } }).filters?.direction).toBe("send");
+  });
+
+  it("evaluates 'Find outgoing transfers to Alice' - regression", () => {
+    const res = evaluateLedgerSearchQuery(
+      "Find outgoing transfers to Alice",
+      { transactionHistory: TRANSACTIONS, contacts: CONTACTS }
+    );
+    expect(res).not.toBeNull();
+    expect(res?.intent.type).toBe("ledger_search");
+    expect((res?.intent as { filters?: { direction?: string } }).filters?.direction).toBe("send");
+  });
 });

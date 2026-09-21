@@ -187,9 +187,9 @@ export function parseLedgerSearchFilters(
   }
 
   // 3. Direction extraction
-  if (/\b(?:sent|outgoing|paid|transfers? to|send)\b/i.test(lower)) {
+  if (/\b(?:sent?|outgoing|paid?|transfers?\s+to|i\s+send|i\s+sent|i\s+paid?|did\s+i\s+send|did\s+i\s+pay)\b/i.test(lower)) {
     filters.direction = "send";
-  } else if (/\b(?:received|incoming|deposits?|receive|from)\b/i.test(lower) && !lower.includes("sent from")) {
+  } else if (/\b(?:received?|incoming|deposits?|i\s+received?|did\s+i\s+receive)\b/i.test(lower) && !lower.includes("sent from")) {
     filters.direction = "receive";
   } else {
     filters.direction = "all";
