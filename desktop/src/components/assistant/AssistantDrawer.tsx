@@ -46,6 +46,7 @@ interface AssistantDrawerProps {
 }
 
 const DEFAULT_SUGGESTION_PROMPTS = [
+  "Wallet health report",
   "What is in my outbox?",
   "Show my security policies",
   "How much have I spent today?",

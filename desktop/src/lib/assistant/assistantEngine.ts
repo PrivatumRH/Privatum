@@ -27,6 +27,7 @@ import { checkAddressBlacklist } from "../transferBlacklist";
 import { evaluateSecurityQuery } from "./securityQueries";
 import { evaluateLedgerQuery } from "./ledgerQueries";
 import { evaluateSpendingAnalytics } from "./spendingAnalyticsQueries";
+import { evaluateWalletHealthQuery } from "./walletHealthQueries";
 import { parseMultiIntent } from "./multiIntent";
 import { queryKnowledgeBase } from "./knowledgeBase";
 
@@ -236,6 +237,39 @@ export async function processAssistantQuery(
       intent: analyticsRes.intent,
       safetyEvidence: {
         intentSummary: `Spending Analytics: ${analyticsRes.intent?.subtype || "query"}`,
+      },
+    });
+  }
+
+  // STEP 4c: Local Natural Language Wallet Health & Audit Intelligence
+  const healthRes = evaluateWalletHealthQuery(cleanText, {
+    walletAddress,
+    contacts,
+    guardrailConfig,
+    spendingHistory,
+    transactionHistory,
+    offlineOutbox,
+    isOnline,
+    forceAirGap,
+    confirmedNonce,
+    whitelistEntries,
+    whitelistConfig,
+    blacklistEntries,
+  });
+
+  if (healthRes && healthRes.handled) {
+    const lines = [healthRes.summary];
+    if (healthRes.details && healthRes.details.length > 0) {
+      lines.push("");
+      for (const d of healthRes.details) {
+        lines.push(d);
+      }
+    }
+
+    return await createResponse(lines.join("\n"), {
+      intent: healthRes.intent,
+      safetyEvidence: {
+        intentSummary: `Wallet Health Audit: Grade ${healthRes.report?.grade || "A"} (${healthRes.report?.score || 100}/100)`,
       },
     });
   }

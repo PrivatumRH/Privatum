@@ -18,6 +18,7 @@ export type AssistantIntentType =
   | "remove_blacklist"
   | "security_query"
   | "spending_analytics"
+  | "wallet_health_report"
   | "general_query";
 
 export interface ParsedTransferIntent {
@@ -147,6 +148,39 @@ export interface ParsedSpendingAnalyticsIntent {
   chartData?: { label: string; value: number; color?: string }[];
 }
 
+export interface ParsedWalletHealthReportIntent {
+  type: "wallet_health_report";
+  summary: string;
+  score: number;
+  grade: "A+" | "A" | "B" | "C" | "Warning";
+  pillars: {
+    guardrails: {
+      status: "healthy" | "warning" | "disabled";
+      usagePercent: number;
+      detail: string;
+    };
+    security: {
+      status: "healthy" | "warning" | "danger";
+      whitelistCount: number;
+      blacklistCount: number;
+      detail: string;
+    };
+    velocity: {
+      status: "healthy" | "elevated" | "low";
+      sevenDayTotalUsd: number;
+      dailyAverageUsd: number;
+      detail: string;
+    };
+    hygiene: {
+      status: "healthy" | "needs_attention";
+      untaggedCount: number;
+      outboxPending: number;
+      detail: string;
+    };
+  };
+  recommendations: string[];
+}
+
 export type ParsedIntent =
   | ParsedTransferIntent
   | ParsedPaylinkIntent
@@ -165,6 +199,7 @@ export type ParsedIntent =
   | ParsedRemoveBlacklistIntent
   | ParsedSecurityQueryIntent
   | ParsedSpendingAnalyticsIntent
+  | ParsedWalletHealthReportIntent
   | { type: "view_guardrails" }
   | { type: "view_contacts" }
   | { type: "export_ledger" }
