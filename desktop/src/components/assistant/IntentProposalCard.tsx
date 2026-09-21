@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpRight, Shield, ShieldAlert, ShieldCheck, Ban, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2 } from "lucide-react";
+import { ArrowUpRight, Shield, ShieldAlert, ShieldCheck, Ban, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2, Activity, HeartPulse, CheckCircle2, AlertTriangle } from "lucide-react";
 import type { ParsedIntent } from "../../lib/assistant/types";
 import type { InferenceReceipt } from "../../lib/assistant/inferenceReceipt";
 import { evaluateTransactionRisk } from "../../lib/riskScore";
@@ -779,6 +779,162 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
               className="py-2 px-3 rounded-lg font-medium text-xs text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
             >
               Cancel
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (intent.type === "wallet_health_report") {
+    const isGood = intent.grade === "A+" || intent.grade === "A";
+    const isFair = intent.grade === "B";
+    const isWarn = intent.grade === "C" || intent.grade === "Warning";
+
+    const badgeColor = isGood
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+      : isFair
+      ? "border-sky-500/30 bg-sky-500/10 text-sky-400"
+      : "border-rose-500/30 bg-rose-500/10 text-rose-400";
+
+    return (
+      <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3.5 text-xs">
+        <div className="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-white/5">
+          <div className="flex items-center gap-1.5 font-medium text-white">
+            <HeartPulse className="h-3.5 w-3.5 text-rose-400" />
+            <span>Wallet Health & Security Audit</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${badgeColor}`}>
+              Score: {intent.score}/100 [Grade {intent.grade}]
+            </span>
+            {onDismiss && (
+              <button
+                type="button"
+                onClick={onDismiss}
+                className="p-1 text-white/40 hover:text-white rounded hover:bg-white/5 transition-colors"
+                title="Dismiss report"
+                aria-label="Dismiss report"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 4 Pillars Grid */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {/* Pillar 1: Guardrails */}
+          <div className="p-2 rounded-lg bg-white/[0.02] border border-white/5 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-white/50 text-[10px] uppercase tracking-wider">Guardrails</span>
+              <span className={`text-[10px] font-medium ${
+                intent.pillars.guardrails.status === "healthy" ? "text-emerald-400" : "text-amber-400"
+              }`}>
+                {intent.pillars.guardrails.status.toUpperCase()}
+              </span>
+            </div>
+            <div className="text-white/80 text-[11px] font-medium">
+              {intent.pillars.guardrails.usagePercent}% Used
+            </div>
+            <p className="text-[10px] text-white/50 truncate" title={intent.pillars.guardrails.detail}>
+              {intent.pillars.guardrails.detail}
+            </p>
+          </div>
+
+          {/* Pillar 2: Security & Whitelist */}
+          <div className="p-2 rounded-lg bg-white/[0.02] border border-white/5 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-white/50 text-[10px] uppercase tracking-wider">Defense</span>
+              <span className={`text-[10px] font-medium ${
+                intent.pillars.security.status === "healthy" ? "text-emerald-400" : "text-rose-400"
+              }`}>
+                {intent.pillars.security.status.toUpperCase()}
+              </span>
+            </div>
+            <div className="text-white/80 text-[11px] font-medium">
+              {intent.pillars.security.whitelistCount} Whitelisted
+            </div>
+            <p className="text-[10px] text-white/50 truncate" title={intent.pillars.security.detail}>
+              {intent.pillars.security.detail}
+            </p>
+          </div>
+
+          {/* Pillar 3: 7-Day Velocity */}
+          <div className="p-2 rounded-lg bg-white/[0.02] border border-white/5 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-white/50 text-[10px] uppercase tracking-wider">Velocity (7d)</span>
+              <span className={`text-[10px] font-medium ${
+                intent.pillars.velocity.status === "healthy" ? "text-emerald-400" : "text-amber-400"
+              }`}>
+                {intent.pillars.velocity.status.toUpperCase()}
+              </span>
+            </div>
+            <div className="text-white/80 text-[11px] font-medium">
+              ${intent.pillars.velocity.sevenDayTotalUsd.toFixed(2)} USD
+            </div>
+            <p className="text-[10px] text-white/50 truncate" title={intent.pillars.velocity.detail}>
+              ${intent.pillars.velocity.dailyAverageUsd.toFixed(2)}/day
+            </p>
+          </div>
+
+          {/* Pillar 4: Hygiene & Outbox */}
+          <div className="p-2 rounded-lg bg-white/[0.02] border border-white/5 space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-white/50 text-[10px] uppercase tracking-wider">Hygiene</span>
+              <span className={`text-[10px] font-medium ${
+                intent.pillars.hygiene.status === "healthy" ? "text-emerald-400" : "text-amber-400"
+              }`}>
+                {intent.pillars.hygiene.status === "healthy" ? "HEALTHY" : "ATTN"}
+              </span>
+            </div>
+            <div className="text-white/80 text-[11px] font-medium">
+              {intent.pillars.hygiene.untaggedCount} Untagged
+            </div>
+            <p className="text-[10px] text-white/50 truncate" title={intent.pillars.hygiene.detail}>
+              {intent.pillars.hygiene.outboxPending} outbox pending
+            </p>
+          </div>
+        </div>
+
+        {/* Actionable Recommendations */}
+        {intent.recommendations && intent.recommendations.length > 0 && (
+          <div className="mb-3 p-2.5 rounded-lg bg-white/[0.02] border border-white/5 space-y-1">
+            <div className="text-white/50 text-[10px] uppercase tracking-wider font-semibold">Recommendations</div>
+            <ul className="space-y-1 text-white/70 text-[11px]">
+              {intent.recommendations.slice(0, 3).map((rec, idx) => (
+                <li key={idx} className="flex items-start gap-1.5">
+                  <span className="text-white/30 shrink-0">•</span>
+                  <span>{rec}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Quick Action Navigation Buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onApplyIntent({ type: "view_guardrails" })}
+            className="flex-1 py-1.5 px-2.5 rounded-lg font-medium text-[11px] text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer text-center"
+          >
+            Inspect Guardrails
+          </button>
+          <button
+            type="button"
+            onClick={() => onApplyIntent({ type: "export_ledger" })}
+            className="flex-1 py-1.5 px-2.5 rounded-lg font-medium text-[11px] text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer text-center"
+          >
+            Export Audit
+          </button>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="py-1.5 px-2.5 rounded-lg font-medium text-[11px] text-white/50 hover:text-white bg-white/[0.02] hover:bg-white/5 border border-white/5 transition-colors cursor-pointer"
+            >
+              Close
             </button>
           )}
         </div>

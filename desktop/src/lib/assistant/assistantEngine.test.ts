@@ -174,6 +174,39 @@ describe("Assistant Engine Pipeline", () => {
     expect(res.content).toContain("Curated Threat Feed");
     expect(res.content).toContain("Pre-Flight Enforcement");
   });
+
+  it("processes spending analytics queries through pipeline", async () => {
+    const res = await processAssistantQuery({
+      input: "What is my spending breakdown by tag?",
+      transactionHistory: [
+        {
+          type: "send",
+          counterparty: "0x1111111111111111111111111111111111111111",
+          amount: "100",
+          asset: "USDG",
+          tag: "Payroll",
+        },
+      ],
+    });
+    expect(res.intent?.type).toBe("spending_analytics");
+    expect(res.content).toContain("Payroll");
+    expect(res.safetyEvidence?.intentSummary).toContain("Spending Analytics");
+  });
+
+  it("processes wallet health report query through pipeline", async () => {
+    const res = await processAssistantQuery({
+      input: "Give me a full wallet health report",
+      guardrailConfig: {
+        enabled: true,
+        dailyLimitUsd: 1000,
+        singleTxLimitUsd: 500,
+        strictMode: true,
+      },
+    });
+    expect(res.intent?.type).toBe("wallet_health_report");
+    expect(res.content).toContain("Wallet Health Audit:");
+    expect(res.safetyEvidence?.intentSummary).toContain("Wallet Health Audit");
+  });
 });
 
 

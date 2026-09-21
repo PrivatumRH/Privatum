@@ -230,6 +230,8 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.36": "Offline Outbox & Delayed Broadcast Engine",
   "0.1.37": "Local AI Outbox & Queue Intelligence",
   "0.1.38": "Security Policy NLP & Threat Intelligence",
+  "0.1.39": "Counterparty Velocity & Tag Analytics NLP",
+  "0.1.40": "Wallet Health & Security Audit NLP",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
