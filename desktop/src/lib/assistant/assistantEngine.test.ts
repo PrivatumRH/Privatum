@@ -207,6 +207,24 @@ describe("Assistant Engine Pipeline", () => {
     expect(res.content).toContain("Wallet Health Audit:");
     expect(res.safetyEvidence?.intentSummary).toContain("Wallet Health Audit");
   });
+
+  it("processes ledger search queries through pipeline", async () => {
+    const res = await processAssistantQuery({
+      input: "Show me all Payroll transactions",
+      transactionHistory: [
+        {
+          type: "send",
+          counterparty: "0x1111111111111111111111111111111111111111",
+          amount: "150",
+          asset: "USDG",
+          tag: "Payroll",
+        },
+      ],
+    });
+    expect(res.intent?.type).toBe("ledger_search");
+    expect(res.content).toContain("Ledger Search: Found 1 transaction(s)");
+    expect(res.safetyEvidence?.intentSummary).toContain("Ledger Search: 1 result(s) matched");
+  });
 });
 
 

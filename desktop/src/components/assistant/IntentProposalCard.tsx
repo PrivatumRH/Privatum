@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpRight, Shield, ShieldAlert, ShieldCheck, Ban, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2, Activity, HeartPulse, CheckCircle2, AlertTriangle } from "lucide-react";
+import { ArrowUpRight, Shield, ShieldAlert, ShieldCheck, Ban, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2, Activity, HeartPulse, CheckCircle2, AlertTriangle, Search } from "lucide-react";
 import type { ParsedIntent } from "../../lib/assistant/types";
 import type { InferenceReceipt } from "../../lib/assistant/inferenceReceipt";
 import { evaluateTransactionRisk } from "../../lib/riskScore";
@@ -927,6 +927,153 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
             className="flex-1 py-1.5 px-2.5 rounded-lg font-medium text-[11px] text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer text-center"
           >
             Export Audit
+          </button>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="py-1.5 px-2.5 rounded-lg font-medium text-[11px] text-white/50 hover:text-white bg-white/[0.02] hover:bg-white/5 border border-white/5 transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (intent.type === "ledger_search") {
+    const filterTags: string[] = [];
+    if (intent.filters.tag) filterTags.push(`Tag: ${intent.filters.tag}`);
+    if (intent.filters.counterpartyName) {
+      filterTags.push(`Counterparty: ${intent.filters.counterpartyName}`);
+    } else if (intent.filters.counterparty) {
+      filterTags.push(`Counterparty: ${intent.filters.counterparty.slice(0, 6)}...${intent.filters.counterparty.slice(-4)}`);
+    }
+    if (intent.filters.direction && intent.filters.direction !== "all") {
+      filterTags.push(`Type: ${intent.filters.direction.toUpperCase()}`);
+    }
+    if (intent.filters.asset) filterTags.push(`Asset: ${intent.filters.asset}`);
+    if (intent.filters.minAmount !== undefined && intent.filters.maxAmount !== undefined) {
+      filterTags.push(`Amount: ${intent.filters.minAmount}-${intent.filters.maxAmount}`);
+    } else if (intent.filters.minAmount !== undefined) {
+      filterTags.push(`Amount: >${intent.filters.minAmount}`);
+    } else if (intent.filters.maxAmount !== undefined) {
+      filterTags.push(`Amount: <${intent.filters.maxAmount}`);
+    }
+    if (intent.filters.timeframe) filterTags.push(`Time: ${intent.filters.timeframe}`);
+
+    const volumeParts = Object.entries(intent.totalVolumeByAsset).map(
+      ([asset, sum]) => `${sum.toFixed(2)} ${asset}`
+    );
+
+    return (
+      <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3.5 text-xs">
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-1.5 font-medium text-white">
+            <Search className="h-3.5 w-3.5 text-sky-400" />
+            <span>Ledger Search & Recall</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded text-[10px] font-semibold border border-sky-500/30 bg-sky-500/10 text-sky-400">
+              {intent.matchCount} matched
+            </span>
+            {onDismiss && (
+              <button
+                type="button"
+                onClick={onDismiss}
+                className="p-1 text-white/40 hover:text-white rounded hover:bg-white/5 transition-colors"
+                title="Dismiss search results"
+                aria-label="Dismiss search results"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Filter Badges */}
+        {filterTags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1 mb-2.5">
+            {filterTags.map((f, idx) => (
+              <span
+                key={idx}
+                className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-white/[0.04] border border-white/10 text-white/70"
+              >
+                {f}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Results Slice */}
+        {intent.matches.length === 0 ? (
+          <p className="text-white/50 text-[11px] py-2">
+            No transactions matched the specified criteria in local storage.
+          </p>
+        ) : (
+          <div className="space-y-1.5 mb-3">
+            {intent.matches.slice(0, 5).map((tx, idx) => {
+              const dateStr = tx.timestamp ? new Date(tx.timestamp).toLocaleDateString() : "";
+              const cpStr = tx.counterpartyName || `${tx.counterparty.slice(0, 6)}...${tx.counterparty.slice(-4)}`;
+              const isSend = tx.type === "send";
+
+              return (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-2 rounded-lg bg-white/[0.02] border border-white/5 text-[11px]"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`text-[9px] font-bold px-1 py-0.5 rounded uppercase ${
+                        isSend ? "bg-[#f54842]/10 text-[#f54842]" : "bg-emerald-500/10 text-emerald-400"
+                      }`}
+                    >
+                      {tx.type}
+                    </span>
+                    <span className="text-white/80 font-medium truncate" title={tx.counterparty}>
+                      {cpStr}
+                    </span>
+                    {tx.tag && (
+                      <span className="text-[10px] text-white/40 border border-white/10 px-1 py-0.2 rounded shrink-0">
+                        {tx.tag}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0 ml-2">
+                    <span className="font-semibold text-white">
+                      {isSend ? "-" : "+"}{tx.amount} {tx.asset}
+                    </span>
+                    {dateStr && <div className="text-[9px] text-white/40">{dateStr}</div>}
+                  </div>
+                </div>
+              );
+            })}
+
+            {intent.matches.length > 5 && (
+              <div className="text-center text-[10px] text-white/40 pt-1">
+                +{intent.matches.length - 5} more matching record(s)
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Volume Summary */}
+        {volumeParts.length > 0 && (
+          <div className="flex items-center justify-between text-[11px] mb-3 pt-2 border-t border-white/5 text-white/70">
+            <span className="text-white/40">Total Matched Volume:</span>
+            <span className="font-semibold text-white">{volumeParts.join(" + ")}</span>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onApplyIntent({ type: "export_ledger" })}
+            className="flex-1 py-1.5 px-2.5 rounded-lg font-medium text-[11px] text-white bg-white/10 hover:bg-white/20 border border-white/10 transition-colors cursor-pointer text-center"
+          >
+            Export Filtered Ledger
           </button>
           {onDismiss && (
             <button

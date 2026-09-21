@@ -232,6 +232,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.38": "Security Policy NLP & Threat Intelligence",
   "0.1.39": "Counterparty Velocity & Tag Analytics NLP",
   "0.1.40": "Wallet Health & Security Audit NLP",
+  "0.1.41": "Ledger Search & Recall NLP",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
