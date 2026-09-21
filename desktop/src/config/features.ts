@@ -38,7 +38,8 @@ export type FeatureKey =
   | "ai_outbox_intelligence"
   | "security_nlp"
   | "spending_analytics"
-  | "wallet_health_nlp";
+  | "wallet_health_nlp"
+  | "ledger_search_nlp";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -81,6 +82,7 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   security_nlp: "0.1.38",
   spending_analytics: "0.1.39",
   wallet_health_nlp: "0.1.40",
+  ledger_search_nlp: "0.1.41",
 };
 
 export const RELEASE_VERSIONS = [
@@ -125,6 +127,7 @@ export const RELEASE_VERSIONS = [
   "0.1.38",
   "0.1.39",
   "0.1.40",
+  "0.1.41",
 ] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 

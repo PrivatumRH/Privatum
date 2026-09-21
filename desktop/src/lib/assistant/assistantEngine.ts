@@ -28,6 +28,7 @@ import { evaluateSecurityQuery } from "./securityQueries";
 import { evaluateLedgerQuery } from "./ledgerQueries";
 import { evaluateSpendingAnalytics } from "./spendingAnalyticsQueries";
 import { evaluateWalletHealthQuery } from "./walletHealthQueries";
+import { evaluateLedgerSearchQuery } from "./ledgerSearchQueries";
 import { parseMultiIntent } from "./multiIntent";
 import { queryKnowledgeBase } from "./knowledgeBase";
 
@@ -270,6 +271,29 @@ export async function processAssistantQuery(
       intent: healthRes.intent,
       safetyEvidence: {
         intentSummary: `Wallet Health Audit: Grade ${healthRes.report?.grade || "A"} (${healthRes.report?.score || 100}/100)`,
+      },
+    });
+  }
+
+  // STEP 4d: Local Natural Language Ledger Search & Recall Intelligence
+  const searchRes = evaluateLedgerSearchQuery(cleanText, {
+    transactionHistory,
+    contacts,
+  });
+
+  if (searchRes && searchRes.handled) {
+    const lines = [searchRes.summary];
+    if (searchRes.details && searchRes.details.length > 0) {
+      lines.push("");
+      for (const d of searchRes.details) {
+        lines.push(`* ${d}`);
+      }
+    }
+
+    return await createResponse(lines.join("\n"), {
+      intent: searchRes.intent,
+      safetyEvidence: {
+        intentSummary: `Ledger Search: ${searchRes.matchCount} result(s) matched`,
       },
     });
   }

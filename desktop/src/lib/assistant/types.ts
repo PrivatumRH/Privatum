@@ -19,6 +19,7 @@ export type AssistantIntentType =
   | "security_query"
   | "spending_analytics"
   | "wallet_health_report"
+  | "ledger_search"
   | "general_query";
 
 export interface ParsedTransferIntent {
@@ -181,6 +182,33 @@ export interface ParsedWalletHealthReportIntent {
   recommendations: string[];
 }
 
+export interface ParsedLedgerSearchIntent {
+  type: "ledger_search";
+  summary: string;
+  filters: {
+    tag?: string;
+    counterparty?: string;
+    counterpartyName?: string;
+    direction?: "send" | "receive" | "all";
+    minAmount?: number;
+    maxAmount?: number;
+    asset?: string;
+    timeframe?: string;
+  };
+  matchCount: number;
+  totalVolumeByAsset: Record<string, number>;
+  matches: {
+    type: "send" | "receive";
+    counterparty: string;
+    counterpartyName?: string;
+    amount: string;
+    asset: string;
+    timestamp?: number;
+    tag?: string;
+    hash?: string;
+  }[];
+}
+
 export type ParsedIntent =
   | ParsedTransferIntent
   | ParsedPaylinkIntent
@@ -200,6 +228,7 @@ export type ParsedIntent =
   | ParsedSecurityQueryIntent
   | ParsedSpendingAnalyticsIntent
   | ParsedWalletHealthReportIntent
+  | ParsedLedgerSearchIntent
   | { type: "view_guardrails" }
   | { type: "view_contacts" }
   | { type: "export_ledger" }
