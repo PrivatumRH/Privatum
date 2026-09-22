@@ -146,6 +146,8 @@ import { isFeatureActive, RELEASE_VERSIONS, type ReleaseVersion } from "./config
 import { PortfolioSparklineCard } from "./components/PortfolioSparklineCard";
 import { evaluateTransactionRisk } from "./lib/riskScore";
 import { TransactionRiskScoreRow } from "./components/TransactionRiskScoreRow";
+import { PrivacyAuditCard } from "./components/PrivacyAuditCard";
+import { auditPrivacy } from "./lib/privacyAuditor";
 import { RecipientAutocomplete } from "./components/RecipientAutocomplete";
 import { useGlobalHotkeys } from "./lib/hotkeys";
 import { KeyboardShortcutsModal } from "./components/KeyboardShortcutsModal";
@@ -235,6 +237,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.41": "Ledger Search & Recall NLP",
   "0.1.42": "Pre-Flight Batch & Multi-Pay Scheduling NLP",
   "0.1.43": "Threshold MPC Ceremony & Shard Health Diagnostics NLP",
+  "0.1.44": "Stealth Address Leakage & Unlinkability Auditor NLP",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -1000,6 +1003,14 @@ export function App() {
       isStealth: isStealthSend,
     });
   }, [sendRecipient, addressVerdict, guardrailVerdict, sendBlacklistVerdict, clipboardSanitizerVerdict, clipboardDismissed, contacts, transactions, simulationData, isStealthSend]);
+
+  const privacyAudit = useMemo(() => auditPrivacy({
+    recipient: sendRecipient,
+    amount: sendAmount,
+    asset: sendAssetType,
+    isStealthSend,
+    transactions,
+  }), [sendRecipient, sendAmount, sendAssetType, isStealthSend, transactions]);
 
   // Pre-Flight Asset & Balance Diff Preview (v0.1.29)
   const preFlightDiff = useMemo(() => {
@@ -4872,6 +4883,9 @@ export function App() {
 
                   {isFeatureActive("transaction_risk_score", appVersion, previewVersion) && (
                     <TransactionRiskScoreRow assessment={riskAssessment} />
+                  )}
+                  {isFeatureActive("privacy_auditor_nlp", appVersion, previewVersion) && (
+                    <PrivacyAuditCard audit={privacyAudit} />
                   )}
                 </div>
 

@@ -41,7 +41,8 @@ export type FeatureKey =
   | "wallet_health_nlp"
   | "ledger_search_nlp"
   | "batch_payment_nlp"
-  | "shard_health_nlp";
+  | "shard_health_nlp"
+  | "privacy_auditor_nlp";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -87,6 +88,7 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   ledger_search_nlp: "0.1.41",
   batch_payment_nlp: "0.1.42",
   shard_health_nlp: "0.1.43",
+  privacy_auditor_nlp: "0.1.44",
 };
 
 export const RELEASE_VERSIONS = [
@@ -134,6 +136,7 @@ export const RELEASE_VERSIONS = [
   "0.1.41",
   "0.1.42",
   "0.1.43",
+  "0.1.44",
 ] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 
