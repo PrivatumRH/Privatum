@@ -8,9 +8,9 @@ export default {
     extend: {
       colors: {
         brand: {
-          DEFAULT: "#f64b43",
-          coral: "#f64b43",
-          hover: "#e53e36",
+          DEFAULT: "#B91C3B",
+          ruby: "#B91C3B",
+          hover: "#9D1632",
           dark: "#0b0e14",
           surface: "#111520",
           border: "rgba(255, 255, 255, 0.08)",

@@ -90,7 +90,7 @@ export const ExportLedgerModal: React.FC<ExportLedgerModalProps> = ({
         <div className="flex items-start justify-between pb-4 border-b border-white/[0.08]">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <Download className="w-4 h-4 text-[#f54842]" />
+              <Download className="w-4 h-4 text-[#B91C3B]" />
               <h3 className="text-base font-semibold text-white">Export Transaction History</h3>
             </div>
             <p className="text-xs text-slate-400">
@@ -118,11 +118,11 @@ export const ExportLedgerModal: React.FC<ExportLedgerModalProps> = ({
                 onClick={() => setFormat("csv")}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border text-xs font-medium transition ${
                   format === "csv"
-                    ? "bg-[#f54842]/10 border-[#f54842] text-white"
+                    ? "bg-[#B91C3B]/10 border-[#B91C3B] text-white"
                     : "bg-[#181a23] border-white/10 text-slate-400 hover:border-white/20 hover:text-white"
                 }`}
               >
-                <FileSpreadsheet className="w-4 h-4 text-[#f54842]" />
+                <FileSpreadsheet className="w-4 h-4 text-[#B91C3B]" />
                 <div className="text-left">
                   <div className="font-semibold text-white">CSV Spreadsheet</div>
                   <div className="text-[10px] text-slate-400">RFC-4180 (Excel, Sheets)</div>
@@ -134,11 +134,11 @@ export const ExportLedgerModal: React.FC<ExportLedgerModalProps> = ({
                 onClick={() => setFormat("json")}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border text-xs font-medium transition ${
                   format === "json"
-                    ? "bg-[#f54842]/10 border-[#f54842] text-white"
+                    ? "bg-[#B91C3B]/10 border-[#B91C3B] text-white"
                     : "bg-[#181a23] border-white/10 text-slate-400 hover:border-white/20 hover:text-white"
                 }`}
               >
-                <FileCode className="w-4 h-4 text-[#f54842]" />
+                <FileCode className="w-4 h-4 text-[#B91C3B]" />
                 <div className="text-left">
                   <div className="font-semibold text-white">JSON Bundle</div>
                   <div className="text-[10px] text-slate-400">Structured audit metadata</div>
@@ -225,7 +225,7 @@ export const ExportLedgerModal: React.FC<ExportLedgerModalProps> = ({
             </div>
             <div className="flex justify-between items-center text-slate-400">
               <span>Target File:</span>
-              <span className="font-mono text-[#f54842] text-[11px]">
+              <span className="font-mono text-[#B91C3B] text-[11px]">
                 {getExportFilename(format)}
               </span>
             </div>
@@ -254,7 +254,7 @@ export const ExportLedgerModal: React.FC<ExportLedgerModalProps> = ({
             type="button"
             onClick={handleDownload}
             disabled={filteredTransactions.length === 0}
-            className="flex items-center gap-2 bg-[#f54842] hover:bg-[#e03e38] disabled:opacity-40 disabled:hover:bg-[#f54842] text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-lg transition"
+            className="flex items-center gap-2 bg-[#B91C3B] hover:bg-[#9D1632] disabled:opacity-40 disabled:hover:bg-[#B91C3B] text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-lg transition"
           >
             {isExported ? (
               <>

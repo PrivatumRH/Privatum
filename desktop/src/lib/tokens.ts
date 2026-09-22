@@ -21,7 +21,7 @@ export const TOKENS: TokenInfo[] = [
     name: "Privatum",
     address: PRIV_TOKEN_ADDRESS,
     decimals: 18,
-    color: "#f64b43",
+    color: "#B91C3B",
     icon: "/logo.png",
   },
   {

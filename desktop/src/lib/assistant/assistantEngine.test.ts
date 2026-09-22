@@ -248,6 +248,27 @@ describe("Assistant Engine Pipeline", () => {
     expect(res.content).toContain("Pre-Flight Batch Payment Proposal: 2 transfers totalling 350.00 USDG");
     expect(res.safetyEvidence?.intentSummary).toContain("Batch Payment Proposal (2 recipients)");
   });
+
+  it("processes threshold shard health queries through pipeline", async () => {
+    const res = await processAssistantQuery({
+      input: "Check cosigner health",
+      shardAPrivKey: "0x1111111111111111111111111111111111111111111111111111111111111111",
+      shardBAddress: "0x2222222222222222222222222222222222222222",
+      cosignerApiUrl: "https://cosigner.privatum.io",
+      isOnline: true,
+      forceAirGap: false,
+      recentCeremony: [
+        { id: "nonce", status: "done", ms: 50, actor: "network" },
+        { id: "shard_a", status: "done", ms: 10, actor: "device" },
+        { id: "shard_b", status: "done", ms: 120, actor: "cosigner" },
+        { id: "combine", status: "done", ms: 1, actor: "device" },
+        { id: "submit", status: "done", ms: 100, actor: "network" },
+      ],
+    });
+    expect(res.intent?.type).toBe("shard_health");
+    expect(res.content).toContain("Threshold MPC Shard Health");
+    expect(res.safetyEvidence?.intentSummary).toContain("Threshold Shard Health");
+  });
 });
 
 

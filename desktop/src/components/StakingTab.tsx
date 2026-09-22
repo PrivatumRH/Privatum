@@ -439,7 +439,7 @@ export function StakingTab({
                 <button
                   onClick={handleStake}
                   disabled={isStaking || previewAmount < 10000}
-                  className="w-full py-3.5 rounded-xl bg-[#f64b43] hover:bg-[#ff574f] disabled:bg-white/10 disabled:text-slate-500 text-white font-bold text-sm transition-all shadow-lg shadow-rose-500/20 flex items-center justify-center gap-2"
+                  className="w-full py-3.5 rounded-xl bg-[#B91C3B] hover:bg-[#ff574f] disabled:bg-white/10 disabled:text-slate-500 text-white font-bold text-sm transition-all shadow-lg shadow-rose-500/20 flex items-center justify-center gap-2"
                 >
                   <Lock className="w-4 h-4" />
                   {isStaking ? "Staking $PRIV..." : "Stake $PRIV & Activate Gasless"}

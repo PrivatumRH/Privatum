@@ -187,7 +187,7 @@ export const VaultBackupModal: React.FC<VaultBackupModalProps> = ({
         <div className="flex items-start justify-between p-6 pb-4 border-b border-white/[0.08] flex-shrink-0">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <Database className="w-5 h-5 text-[#f54842]" />
+              <Database className="w-5 h-5 text-[#B91C3B]" />
               <h3 className="text-base font-semibold text-white">Full-State Encrypted Vault</h3>
             </div>
             <p className="text-xs text-slate-400">
@@ -208,7 +208,7 @@ export const VaultBackupModal: React.FC<VaultBackupModalProps> = ({
             onClick={() => setActiveTab("export")}
             className={`flex items-center gap-2 py-3 px-3 text-xs font-semibold border-b-2 transition-all ${
               activeTab === "export"
-                ? "border-[#f54842] text-white"
+                ? "border-[#B91C3B] text-white"
                 : "border-transparent text-slate-400 hover:text-slate-200"
             }`}
           >
@@ -219,7 +219,7 @@ export const VaultBackupModal: React.FC<VaultBackupModalProps> = ({
             onClick={() => setActiveTab("restore")}
             className={`flex items-center gap-2 py-3 px-3 text-xs font-semibold border-b-2 transition-all ${
               activeTab === "restore"
-                ? "border-[#f54842] text-white"
+                ? "border-[#B91C3B] text-white"
                 : "border-transparent text-slate-400 hover:text-slate-200"
             }`}
           >
@@ -297,7 +297,7 @@ export const VaultBackupModal: React.FC<VaultBackupModalProps> = ({
                       value={exportPassphrase}
                       onChange={(e) => setExportPassphrase(e.target.value)}
                       placeholder="Enter a strong passphrase"
-                      className="w-full bg-[#181a24] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#f54842]/50 font-mono pr-10"
+                      className="w-full bg-[#181a24] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#B91C3B]/50 font-mono pr-10"
                     />
                     <button
                       type="button"
@@ -318,7 +318,7 @@ export const VaultBackupModal: React.FC<VaultBackupModalProps> = ({
                     value={exportConfirm}
                     onChange={(e) => setExportConfirm(e.target.value)}
                     placeholder="Repeat passphrase"
-                    className="w-full bg-[#181a24] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#f54842]/50 font-mono"
+                    className="w-full bg-[#181a24] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#B91C3B]/50 font-mono"
                   />
                   {exportPassphrase && exportConfirm && exportPassphrase !== exportConfirm && (
                     <p className="text-[11px] text-rose-400 flex items-center gap-1">
@@ -384,7 +384,7 @@ export const VaultBackupModal: React.FC<VaultBackupModalProps> = ({
                     value={restorePassphrase}
                     onChange={(e) => setRestorePassphrase(e.target.value)}
                     placeholder="Enter vault passphrase"
-                    className="w-full bg-[#181a24] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#f54842]/50 font-mono pr-10"
+                    className="w-full bg-[#181a24] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-[#B91C3B]/50 font-mono pr-10"
                   />
                   <button
                     type="button"
@@ -475,13 +475,13 @@ export const VaultBackupModal: React.FC<VaultBackupModalProps> = ({
                         onClick={() => setRestoreMode("merge")}
                         className={`p-2.5 rounded-xl border text-left transition-all ${
                           restoreMode === "merge"
-                            ? "bg-white/[0.08] border-[#f54842] text-white"
+                            ? "bg-white/[0.08] border-[#B91C3B] text-white"
                             : "bg-[#12141a] border-white/5 text-slate-400 hover:text-slate-300"
                         }`}
                       >
                         <div className="text-xs font-semibold flex items-center justify-between">
                           <span>Merge State</span>
-                          {restoreMode === "merge" && <Check className="w-3 h-3 text-[#f54842]" />}
+                          {restoreMode === "merge" && <Check className="w-3 h-3 text-[#B91C3B]" />}
                         </div>
                         <div className="text-[10px] text-slate-400 mt-0.5">
                           Preserves current items; appends missing accounts and contacts.
@@ -493,14 +493,14 @@ export const VaultBackupModal: React.FC<VaultBackupModalProps> = ({
                         onClick={() => setRestoreMode("overwrite")}
                         className={`p-2.5 rounded-xl border text-left transition-all ${
                           restoreMode === "overwrite"
-                            ? "bg-white/[0.08] border-[#f54842] text-white"
+                            ? "bg-white/[0.08] border-[#B91C3B] text-white"
                             : "bg-[#12141a] border-white/5 text-slate-400 hover:text-slate-300"
                         }`}
                       >
                         <div className="text-xs font-semibold flex items-center justify-between">
                           <span>Overwrite State</span>
                           {restoreMode === "overwrite" && (
-                            <Check className="w-3 h-3 text-[#f54842]" />
+                            <Check className="w-3 h-3 text-[#B91C3B]" />
                           )}
                         </div>
                         <div className="text-[10px] text-slate-400 mt-0.5">
@@ -535,7 +535,7 @@ export const VaultBackupModal: React.FC<VaultBackupModalProps> = ({
                 exportPassphrase !== exportConfirm ||
                 isExporting
               }
-              className="flex items-center gap-2 bg-[#f54842] hover:bg-[#ff5a54] text-white px-5 py-2.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-[#f54842]/20"
+              className="flex items-center gap-2 bg-[#B91C3B] hover:bg-[#C92040] text-white px-5 py-2.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-[#B91C3B]/20"
             >
               {isExporting ? (
                 <span>Exporting...</span>
@@ -551,7 +551,7 @@ export const VaultBackupModal: React.FC<VaultBackupModalProps> = ({
               type="button"
               onClick={handleApplyRestore}
               disabled={!decryptedPayload || isApplying}
-              className="flex items-center gap-2 bg-[#f54842] hover:bg-[#ff5a54] text-white px-5 py-2.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-[#f54842]/20"
+              className="flex items-center gap-2 bg-[#B91C3B] hover:bg-[#C92040] text-white px-5 py-2.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-[#B91C3B]/20"
             >
               {isApplying ? (
                 <span>Restoring...</span>

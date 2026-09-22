@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpRight, Shield, ShieldAlert, ShieldCheck, Ban, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2, Activity, HeartPulse, CheckCircle2, AlertTriangle, Search, Users, Zap, Clock } from "lucide-react";
+import { ArrowUpRight, Shield, ShieldAlert, ShieldCheck, Ban, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2, Activity, HeartPulse, CheckCircle2, AlertTriangle, Search, Users, Zap, Clock, Cpu, Server } from "lucide-react";
 import type { ParsedIntent } from "../../lib/assistant/types";
 import type { InferenceReceipt } from "../../lib/assistant/inferenceReceipt";
 import { evaluateTransactionRisk } from "../../lib/riskScore";
@@ -46,11 +46,11 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
 
     return (
       <div className={`mt-3 rounded-xl border p-3.5 text-xs transition-colors ${
-        isDanger ? "border-[#f54842]/40 bg-[#f54842]/10" : "border-white/10 bg-white/[0.04]"
+        isDanger ? "border-[#B91C3B]/40 bg-[#B91C3B]/10" : "border-white/10 bg-white/[0.04]"
       }`}>
         <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
           <div className="flex items-center gap-1.5 font-medium text-white">
-            <ArrowUpRight className="h-3.5 w-3.5 text-[#f54842]" />
+            <ArrowUpRight className="h-3.5 w-3.5 text-[#B91C3B]" />
             <span>Proposed Transfer</span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -90,7 +90,7 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
               <span className="text-white/40">Address Guard:</span>
               <span className={`flex items-center gap-1 font-medium ${
                 safetyEvidence.poisonVerdict === "danger"
-                  ? "text-[#f54842]"
+                  ? "text-[#B91C3B]"
                   : safetyEvidence.poisonVerdict === "warning"
                   ? "text-yellow-400"
                   : "text-emerald-400"
@@ -108,7 +108,7 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
           {safetyEvidence?.guardrailVerdict && (
             <div className="flex items-center justify-between">
               <span className="text-white/40">Spending Limit:</span>
-              <span className={safetyEvidence.guardrailVerdict === "blocked" ? "text-[#f54842] font-semibold" : "text-white/70"}>
+              <span className={safetyEvidence.guardrailVerdict === "blocked" ? "text-[#B91C3B] font-semibold" : "text-white/70"}>
                 {safetyEvidence.guardrailVerdict === "blocked" ? "Limit Breached" : "Within Cap"}
               </span>
             </div>
@@ -133,7 +133,7 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
           <button
             type="button"
             onClick={() => onApplyIntent(intent)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-white bg-[#f54842] hover:bg-[#e03e38] transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-white bg-[#B91C3B] hover:bg-[#9D1632] transition-colors"
           >
             <span>Review in Send Form</span>
             <ArrowRight className="h-3.5 w-3.5" />
@@ -157,7 +157,7 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
       <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3.5 text-xs">
         <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
           <div className="flex items-center gap-1.5 font-medium text-white">
-            <Link2 className="h-3.5 w-3.5 text-[#f54842]" />
+            <Link2 className="h-3.5 w-3.5 text-[#B91C3B]" />
             <span>Proposed Payment Link</span>
           </div>
           {onDismiss && (
@@ -194,7 +194,7 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
           <button
             type="button"
             onClick={() => onApplyIntent(intent)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-white bg-[#f54842] hover:bg-[#e03e38] transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-white bg-[#B91C3B] hover:bg-[#9D1632] transition-colors"
           >
             <span>Open Pay Links Tab</span>
             <ArrowRight className="h-3.5 w-3.5" />
@@ -215,9 +215,9 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
 
   if (intent.type === "panic_freeze") {
     return (
-      <div className="mt-3 rounded-xl border border-[#f54842]/40 bg-[#f54842]/10 p-3.5 text-xs">
-        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-[#f54842]/20">
-          <div className="flex items-center gap-1.5 font-medium text-[#f54842]">
+      <div className="mt-3 rounded-xl border border-[#B91C3B]/40 bg-[#B91C3B]/10 p-3.5 text-xs">
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-[#B91C3B]/20">
+          <div className="flex items-center gap-1.5 font-medium text-[#B91C3B]">
             <Lock className="h-3.5 w-3.5" />
             <span>Emergency Panic Freeze</span>
           </div>
@@ -246,7 +246,7 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
           <button
             type="button"
             onClick={() => onApplyIntent(intent)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-white bg-[#f54842] hover:bg-[#e03e38] transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-white bg-[#B91C3B] hover:bg-[#9D1632] transition-colors"
           >
             <span>Open Freeze Modal</span>
             <ArrowRight className="h-3.5 w-3.5" />
@@ -322,7 +322,7 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
       <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3.5 text-xs">
         <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
           <div className="flex items-center gap-1.5 font-medium text-white">
-            <Download className="h-3.5 w-3.5 text-[#f54842]" />
+            <Download className="h-3.5 w-3.5 text-[#B91C3B]" />
             <span>Export Transaction History</span>
           </div>
           {onDismiss && (
@@ -343,7 +343,7 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
         <button
           type="button"
           onClick={() => onApplyIntent(intent)}
-          className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-white bg-[#f54842] hover:bg-[#e03e38] transition-colors"
+          className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-white bg-[#B91C3B] hover:bg-[#9D1632] transition-colors"
         >
           <span>Open Export Dialog</span>
           <ArrowRight className="h-3.5 w-3.5" />
@@ -464,7 +464,7 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
       <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3.5 text-xs">
         <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
           <div className="flex items-center gap-1.5 font-medium text-white">
-            <Inbox className="h-3.5 w-3.5 text-[#f54842]" />
+            <Inbox className="h-3.5 w-3.5 text-[#B91C3B]" />
             <span>Offline Transaction Outbox</span>
           </div>
           {onDismiss && (
@@ -485,7 +485,7 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
         <button
           type="button"
           onClick={() => onApplyIntent(intent)}
-          className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-white bg-[#f54842] hover:bg-[#e03e38] transition-colors cursor-pointer"
+          className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-white bg-[#B91C3B] hover:bg-[#9D1632] transition-colors cursor-pointer"
         >
           <span>Open Offline Outbox</span>
           <ArrowRight className="h-3.5 w-3.5" />
@@ -1026,7 +1026,7 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
                   <div className="flex items-center gap-2 min-w-0">
                     <span
                       className={`text-[9px] font-bold px-1 py-0.5 rounded uppercase ${
-                        isSend ? "bg-[#f54842]/10 text-[#f54842]" : "bg-emerald-500/10 text-emerald-400"
+                        isSend ? "bg-[#B91C3B]/10 text-[#B91C3B]" : "bg-emerald-500/10 text-emerald-400"
                       }`}
                     >
                       {tx.type}
@@ -1197,9 +1197,9 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
               ) : chk.status === "warn" ? (
                 <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0 mt-0.5" />
               ) : (
-                <ShieldAlert className="h-3 w-3 text-[#f54842] shrink-0 mt-0.5" />
+                <ShieldAlert className="h-3 w-3 text-[#B91C3B] shrink-0 mt-0.5" />
               )}
-              <span className={chk.status === "pass" ? "text-white/70" : chk.status === "warn" ? "text-amber-300" : "text-[#f54842]"}>
+              <span className={chk.status === "pass" ? "text-white/70" : chk.status === "warn" ? "text-amber-300" : "text-[#B91C3B]"}>
                 {chk.message}
               </span>
             </div>
@@ -1231,6 +1231,143 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
               className="py-2 px-3 rounded-lg font-medium text-xs text-white/50 hover:text-white bg-white/[0.02] hover:bg-white/5 border border-white/5 transition-colors cursor-pointer"
             >
               Dismiss
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (intent.type === "shard_health") {
+    const report = intent.report;
+    const scoreColor = report.score >= 90 ? "text-emerald-400" : report.score >= 60 ? "text-amber-400" : "text-[#B91C3B]";
+    const badgeBorder = report.score >= 90 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : report.score >= 60 ? "border-amber-500/30 bg-amber-500/10 text-amber-300" : "border-[#B91C3B]/30 bg-[#B91C3B]/10 text-[#B91C3B]";
+
+    return (
+      <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3.5 text-xs">
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-1.5 font-medium text-white">
+            <Cpu className="h-3.5 w-3.5 text-[#B91C3B]" />
+            <span>Threshold MPC &amp; Shard Diagnostics</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${badgeBorder}`}>
+              {report.overallStatus.toUpperCase()}
+            </span>
+            <span className={`text-[11px] font-bold font-mono ${scoreColor}`}>
+              {report.score}/100
+            </span>
+          </div>
+        </div>
+
+        {/* Shards Status Grid */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {/* Shard A */}
+          <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1 text-[11px] font-medium text-white">
+                <Lock className="w-3 h-3 text-[#B91C3B]" />
+                <span>Shard A (Device)</span>
+              </div>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono ${
+                report.shardA.status === "healthy" ? "bg-emerald-500/20 text-emerald-300" :
+                report.shardA.status === "degraded" ? "bg-amber-500/20 text-amber-300" : "bg-[#B91C3B]/20 text-[#B91C3B]"
+              }`}>
+                {report.shardA.status}
+              </span>
+            </div>
+            <p className="text-[10px] text-white/60 leading-tight">
+              {report.shardA.detail}
+            </p>
+          </div>
+
+          {/* Shard B */}
+          <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1 text-[11px] font-medium text-white">
+                <Server className="w-3 h-3 text-cyan-400" />
+                <span>Shard B (Cosigner)</span>
+              </div>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono ${
+                report.shardB.status === "healthy" ? "bg-emerald-500/20 text-emerald-300" :
+                report.shardB.status === "degraded" ? "bg-amber-500/20 text-amber-300" :
+                report.shardB.status === "offline" ? "bg-[#B91C3B]/20 text-[#B91C3B]" : "bg-white/10 text-white/50"
+              }`}>
+                {report.shardB.status}
+              </span>
+            </div>
+            <p className="text-[10px] text-white/60 leading-tight">
+              {report.shardB.detail}
+            </p>
+          </div>
+        </div>
+
+        {/* Ceremony Performance Breakdown */}
+        {report.ceremony && (
+          <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5 mb-3">
+            <div className="flex items-center justify-between text-[11px] text-white/80 mb-1.5">
+              <span className="font-medium text-white flex items-center gap-1">
+                <Activity className="w-3 h-3 text-indigo-400" />
+                <span>Last Signing Ceremony</span>
+              </span>
+              <span className="font-mono text-[10px] text-white/50">
+                {report.ceremony.totalElapsedMs}ms total ({report.ceremony.overallGrade})
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 text-center">
+              <div className="bg-white/[0.02] rounded p-1">
+                <div className="text-[9px] text-white/40">Shard A Signing</div>
+                <div className="text-[10px] font-mono text-white/80">
+                  {report.ceremony.shardALatencyMs !== undefined ? `${report.ceremony.shardALatencyMs}ms` : "N/A"}
+                </div>
+              </div>
+              <div className="bg-white/[0.02] rounded p-1">
+                <div className="text-[9px] text-white/40">Shard B Round-Trip</div>
+                <div className="text-[10px] font-mono text-cyan-300">
+                  {report.ceremony.coSignerLatencyMs !== null ? `${report.ceremony.coSignerLatencyMs}ms` : "N/A"}
+                </div>
+              </div>
+              <div className="bg-white/[0.02] rounded p-1">
+                <div className="text-[9px] text-white/40">Stages Status</div>
+                <div className="text-[10px] font-mono text-white/80">
+                  {report.ceremony.stagesCompleted} done{report.ceremony.stagesFailed > 0 ? `, ${report.ceremony.stagesFailed} failed` : ""}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Recommendations */}
+        {report.recommendations && report.recommendations.length > 0 && (
+          <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5 mb-3">
+            <div className="text-[10px] font-medium text-white/60 mb-1">Diagnostics Notes:</div>
+            <ul className="space-y-1">
+              {report.recommendations.map((rec, idx) => (
+                <li key={idx} className="text-[10px] text-white/70 flex items-start gap-1">
+                  <span className="text-[#B91C3B] select-none">*</span>
+                  <span>{rec}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {receipt && (
+          <div className="flex items-center justify-between text-[10px] pb-3 border-b border-white/5 mb-3">
+            <span className="text-white/40">Inference Proof:</span>
+            <span className="font-mono text-white/50">{receipt.shortRef}</span>
+          </div>
+        )}
+
+        {/* Dismiss Button */}
+        <div className="flex items-center justify-end gap-2">
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="py-1.5 px-3 rounded-lg font-medium text-xs text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/10 border border-white/5 transition-colors cursor-pointer"
+            >
+              Close
             </button>
           )}
         </div>

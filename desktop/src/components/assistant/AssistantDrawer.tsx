@@ -19,6 +19,7 @@ import type { SpendingGuardrailConfig, SpendingRecord } from "../../lib/spendGua
 import type { OfflineTransaction } from "../../lib/offlineOutbox";
 import type { WhitelistEntry, WhitelistConfig } from "../../lib/transferWhitelist";
 import type { BlacklistEntry } from "../../lib/transferBlacklist";
+import type { CeremonyStage } from "../../lib/thresholdCeremony";
 
 interface AssistantDrawerProps {
   isOpen: boolean;
@@ -35,6 +36,10 @@ interface AssistantDrawerProps {
   whitelistEntries?: WhitelistEntry[];
   whitelistConfig?: WhitelistConfig;
   blacklistEntries?: BlacklistEntry[];
+  shardAPrivKey?: string;
+  shardBAddress?: string;
+  cosignerApiUrl?: string;
+  recentCeremony?: CeremonyStage[];
   onApplyIntent: (intent: ParsedIntent) => void;
   /** Feature gate: inference_receipt_export (0.1.20). */
   receiptExportEnabled?: boolean;
@@ -47,6 +52,7 @@ interface AssistantDrawerProps {
 
 const DEFAULT_SUGGESTION_PROMPTS = [
   "Wallet health report",
+  "Check cosigner health",
   "What is in my outbox?",
   "Show my security policies",
   "How much have I spent today?",
@@ -68,6 +74,10 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
   whitelistEntries = [],
   whitelistConfig = { strictMode: false },
   blacklistEntries = [],
+  shardAPrivKey,
+  shardBAddress,
+  cosignerApiUrl,
+  recentCeremony,
   onApplyIntent,
   receiptExportEnabled = false,
   appVersion = "0.1.20",
@@ -167,6 +177,10 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
         whitelistEntries,
         whitelistConfig,
         blacklistEntries,
+        shardAPrivKey,
+        shardBAddress,
+        cosignerApiUrl,
+        recentCeremony,
         preferredEngine: engineMode,
         onToken: (token: string) => {
           if (!hasStreamedToken) {
@@ -258,7 +272,7 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
             <span>Enable AI</span>
             <div
               className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
-                engineMode === "smollm2_wasm" ? "bg-[#f54842]" : "bg-white/20"
+                engineMode === "smollm2_wasm" ? "bg-[#B91C3B]" : "bg-white/20"
               }`}
             >
               <span
@@ -272,17 +286,17 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
 
         {/* Model Loading / Status Bar */}
         {engineMode === "smollm2_wasm" && (wasmProgress.status === "loading" || wasmProgress.status === "downloading") && (
-          <div className="px-4 py-2 bg-[#f54842]/5 border-b border-[#f54842]/20 text-xs">
+          <div className="px-4 py-2 bg-[#B91C3B]/5 border-b border-[#B91C3B]/20 text-xs">
             <div className="flex justify-between text-white/60 mb-1 text-[11px]">
               <span className="flex items-center gap-1.5">
-                <Loader2 className="w-3 h-3 animate-spin text-[#f54842]" />
+                <Loader2 className="w-3 h-3 animate-spin text-[#B91C3B]" />
                 {wasmProgress.text || (wasmProgress.status === "downloading" ? "Downloading AI model..." : "Initializing on-device AI runtime...")}
               </span>
               <span>{wasmProgress.progress ? `${wasmProgress.progress}%` : "5%"}</span>
             </div>
             <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
               <div
-                className="h-full bg-[#f54842] transition-all duration-300"
+                className="h-full bg-[#B91C3B] transition-all duration-300"
                 style={{ width: `${wasmProgress.progress || 8}%` }}
               />
             </div>
@@ -399,7 +413,7 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
 
           {isProcessing && (
             <div className="flex items-center gap-2 text-xs text-white/40">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#f54842]" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#B91C3B]" />
               <span>Analyzing transaction facts...</span>
             </div>
           )}
@@ -472,12 +486,12 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder="Type command or question (e.g. send 10 USDG...)"
-              className="flex-1 bg-black border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-[#f54842] transition-colors"
+              className="flex-1 bg-black border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-[#B91C3B] transition-colors"
             />
             <button
               type="submit"
               disabled={!inputText.trim() || isProcessing}
-              className="p-2 rounded-lg bg-[#f54842] text-white hover:bg-[#e03e38] disabled:opacity-40 disabled:hover:bg-[#f54842] transition-colors"
+              className="p-2 rounded-lg bg-[#B91C3B] text-white hover:bg-[#9D1632] disabled:opacity-40 disabled:hover:bg-[#B91C3B] transition-colors"
             >
               <Send className="w-4 h-4" />
             </button>
