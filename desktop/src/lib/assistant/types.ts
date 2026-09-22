@@ -21,6 +21,7 @@ export type AssistantIntentType =
   | "wallet_health_report"
   | "ledger_search"
   | "batch_payment"
+  | "shard_health"
   | "general_query";
 
 export interface ParsedTransferIntent {
@@ -234,6 +235,11 @@ export interface ParsedBatchPaymentIntent {
   allChecksPassed: boolean;
 }
 
+export interface ParsedShardHealthIntent {
+  type: "shard_health";
+  report: import("../shardHealth").ShardHealthReport;
+}
+
 export type ParsedIntent =
   | ParsedTransferIntent
   | ParsedPaylinkIntent
@@ -255,6 +261,7 @@ export type ParsedIntent =
   | ParsedWalletHealthReportIntent
   | ParsedLedgerSearchIntent
   | ParsedBatchPaymentIntent
+  | ParsedShardHealthIntent
   | { type: "view_guardrails" }
   | { type: "view_contacts" }
   | { type: "export_ledger" }

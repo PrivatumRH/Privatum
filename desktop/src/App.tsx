@@ -234,6 +234,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.40": "Wallet Health & Security Audit NLP",
   "0.1.41": "Ledger Search & Recall NLP",
   "0.1.42": "Pre-Flight Batch & Multi-Pay Scheduling NLP",
+  "0.1.43": "Threshold MPC Ceremony & Shard Health Diagnostics NLP",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -3411,7 +3412,7 @@ export function App() {
                       className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/10"
                       title="Export transactions to CSV or JSON"
                     >
-                      <Download className="w-3.5 h-3.5 text-[#f54842]" />
+                      <Download className="w-3.5 h-3.5 text-[#B91C3B]" />
                       <span>Export</span>
                     </button>
                   )}
@@ -4467,7 +4468,7 @@ export function App() {
                     <div className="space-y-2 pt-1 border-t border-white/[0.08]">
                       <div className="flex items-center justify-between">
                         <label className="text-xs text-slate-400 flex items-center gap-1.5">
-                          <Tag className="w-3 h-3 text-[#f54842]" />
+                          <Tag className="w-3 h-3 text-[#B91C3B]" />
                           <span>Cost Center / Tag (Optional)</span>
                         </label>
                         {sendTag && (
@@ -5372,6 +5373,10 @@ export function App() {
         whitelistEntries={whitelistEntries}
         whitelistConfig={{ strictMode: whitelistStrictMode }}
         blacklistEntries={blacklistEntries}
+        shardAPrivKey={shardAPrivKey}
+        shardBAddress={wallet?.shardB?.address || localStorage.getItem("privatum_shard_b_address") || undefined}
+        cosignerApiUrl={wallet?.apiUrl || DEFAULT_API_URL}
+        recentCeremony={ceremony}
         onApplyIntent={async (intent) => {
           if (intent.type === "send_transfer") {
             setSendRecipient(intent.recipient);
@@ -5478,6 +5483,12 @@ export function App() {
             } catch (err: any) {
               addToast("error", "Batch Staging Failed", err?.message || "Failed to stage batch payment.");
             }
+          } else if (intent.type === "shard_health") {
+            addToast(
+              intent.report.overallStatus === "healthy" ? "success" : intent.report.overallStatus === "degraded" ? "info" : "error",
+              "Shard Diagnostics",
+              `Health Score: ${intent.report.score}/100. Shard A: ${intent.report.shardA.status}, Shard B: ${intent.report.shardB.status}.`
+            );
           }
         }}
       />

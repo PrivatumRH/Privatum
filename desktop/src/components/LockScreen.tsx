@@ -167,8 +167,8 @@ export const LockScreen: React.FC<LockScreenProps> = ({
       <div className="max-w-md w-full flex flex-col items-center text-center space-y-6">
         {/* Brand Header */}
         <div className="space-y-2 flex flex-col items-center">
-          <div className="w-14 h-14 rounded-2xl bg-[#f54842]/10 border border-[#f54842]/30 flex items-center justify-center shadow-xl shadow-[#f54842]/10 mb-1">
-            <Lock className="w-7 h-7 text-[#f54842]" />
+          <div className="w-14 h-14 rounded-2xl bg-[#B91C3B]/10 border border-[#B91C3B]/30 flex items-center justify-center shadow-xl shadow-[#B91C3B]/10 mb-1">
+            <Lock className="w-7 h-7 text-[#B91C3B]" />
           </div>
           <h1 className="text-xl font-bold tracking-tight text-white">PRIVATUM</h1>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/10 text-xs text-slate-300 font-mono">
@@ -226,7 +226,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({
                   onChange={(e) => setPin(e.target.value)}
                   disabled={cooldownSeconds > 0 || isVerifying}
                   placeholder="Enter PIN"
-                  className="w-full bg-[#161822] border border-white/10 rounded-xl px-4 py-3 text-center text-lg font-mono text-white tracking-[0.25em] placeholder:tracking-normal placeholder:text-xs placeholder:text-slate-500 focus:outline-none focus:border-[#f54842]/60 disabled:opacity-40"
+                  className="w-full bg-[#161822] border border-white/10 rounded-xl px-4 py-3 text-center text-lg font-mono text-white tracking-[0.25em] placeholder:tracking-normal placeholder:text-xs placeholder:text-slate-500 focus:outline-none focus:border-[#B91C3B]/60 disabled:opacity-40"
                 />
                 <button
                   type="button"
@@ -261,7 +261,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({
                         key={btn}
                         type="submit"
                         disabled={cooldownSeconds > 0 || isVerifying || !pin.trim()}
-                        className="py-2.5 rounded-xl bg-[#f54842] hover:bg-[#ff5a54] text-xs font-semibold text-white transition disabled:opacity-30 flex items-center justify-center gap-1 cursor-pointer shadow-lg shadow-[#f54842]/20"
+                        className="py-2.5 rounded-xl bg-[#B91C3B] hover:bg-[#C92040] text-xs font-semibold text-white transition disabled:opacity-30 flex items-center justify-center gap-1 cursor-pointer shadow-lg shadow-[#B91C3B]/20"
                       >
                         <Unlock className="w-3.5 h-3.5" />
                         <span>Go</span>
@@ -301,7 +301,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({
                   value={setupPin}
                   onChange={(e) => setSetupPin(e.target.value)}
                   placeholder="Enter 4-8 digit PIN"
-                  className="w-full bg-[#161822] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-mono text-white placeholder:text-slate-500 focus:outline-none focus:border-[#f54842]/60"
+                  className="w-full bg-[#161822] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-mono text-white placeholder:text-slate-500 focus:outline-none focus:border-[#B91C3B]/60"
                 />
               </div>
 
@@ -312,7 +312,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({
                   value={setupConfirm}
                   onChange={(e) => setSetupConfirm(e.target.value)}
                   placeholder="Repeat PIN"
-                  className="w-full bg-[#161822] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-mono text-white placeholder:text-slate-500 focus:outline-none focus:border-[#f54842]/60"
+                  className="w-full bg-[#161822] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs font-mono text-white placeholder:text-slate-500 focus:outline-none focus:border-[#B91C3B]/60"
                 />
               </div>
             </div>
@@ -320,7 +320,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({
             <button
               type="submit"
               disabled={!setupPin || setupPin.length < 4 || setupPin !== setupConfirm}
-              className="w-full py-2.5 rounded-xl bg-[#f54842] hover:bg-[#ff5a54] text-xs font-semibold text-white transition disabled:opacity-40 flex items-center justify-center gap-1.5 shadow-lg shadow-[#f54842]/20 cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-[#B91C3B] hover:bg-[#C92040] text-xs font-semibold text-white transition disabled:opacity-40 flex items-center justify-center gap-1.5 shadow-lg shadow-[#B91C3B]/20 cursor-pointer"
             >
               <span>Save PIN & Unlock</span>
               <ArrowRight className="w-3.5 h-3.5" />

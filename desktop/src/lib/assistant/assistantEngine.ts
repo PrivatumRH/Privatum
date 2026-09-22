@@ -30,6 +30,8 @@ import { evaluateSpendingAnalytics } from "./spendingAnalyticsQueries";
 import { evaluateWalletHealthQuery } from "./walletHealthQueries";
 import { evaluateLedgerSearchQuery } from "./ledgerSearchQueries";
 import { evaluateBatchPaymentQuery } from "./batchPaymentQueries";
+import { evaluateShardHealthQuery } from "./shardHealthQueries";
+import type { CeremonyStage } from "../thresholdCeremony";
 import { parseMultiIntent } from "./multiIntent";
 import { queryKnowledgeBase } from "./knowledgeBase";
 
@@ -47,6 +49,10 @@ export interface ProcessAssistantInputParams {
   whitelistEntries?: WhitelistEntry[];
   whitelistConfig?: WhitelistConfig;
   blacklistEntries?: BlacklistEntry[];
+  shardAPrivKey?: string;
+  shardBAddress?: string;
+  cosignerApiUrl?: string;
+  recentCeremony?: CeremonyStage[];
   preferredEngine?: EngineMode;
   onToken?: (token: string) => void;
 }
@@ -76,6 +82,10 @@ export async function processAssistantQuery(
     whitelistEntries = [],
     whitelistConfig = { strictMode: false },
     blacklistEntries = [],
+    shardAPrivKey = "",
+    shardBAddress = "",
+    cosignerApiUrl = "",
+    recentCeremony,
     preferredEngine = "deterministic",
   } = params;
 
@@ -321,6 +331,35 @@ export async function processAssistantQuery(
       intent: searchRes.intent,
       safetyEvidence: {
         intentSummary: `Ledger Search: ${searchRes.matchCount} result(s) matched`,
+      },
+    });
+  }
+
+  // STEP 4e: Local Natural Language Threshold MPC Ceremony & Shard Health Intelligence
+  const shardHealthRes = evaluateShardHealthQuery(cleanText, {
+    shardAPrivKey,
+    walletAddress,
+    shardBAddress,
+    cosignerApiUrl,
+    confirmedNonce,
+    isOnline,
+    forceAirGap,
+    recentCeremony,
+  });
+
+  if (shardHealthRes && shardHealthRes.handled) {
+    const lines = [shardHealthRes.summary];
+    if (shardHealthRes.details && shardHealthRes.details.length > 0) {
+      lines.push("");
+      for (const d of shardHealthRes.details) {
+        lines.push(d);
+      }
+    }
+
+    return await createResponse(lines.join("\n"), {
+      intent: shardHealthRes.intent,
+      safetyEvidence: {
+        intentSummary: `Threshold Shard Health: Score ${shardHealthRes.report.score}/100 [Shard A: ${shardHealthRes.report.shardA.status}, Shard B: ${shardHealthRes.report.shardB.status}]`,
       },
     });
   }

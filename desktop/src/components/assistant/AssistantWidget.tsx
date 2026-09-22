@@ -20,6 +20,10 @@ interface AssistantWidgetProps {
   whitelistEntries?: WhitelistEntry[];
   whitelistConfig?: WhitelistConfig;
   blacklistEntries?: BlacklistEntry[];
+  shardAPrivKey?: string;
+  shardBAddress?: string;
+  cosignerApiUrl?: string;
+  recentCeremony?: import("../../lib/thresholdCeremony").CeremonyStage[];
   onApplyIntent: (intent: ParsedIntent) => void;
   /** Feature gate: inference_receipt_export (0.1.20). */
   receiptExportEnabled?: boolean;
@@ -42,6 +46,10 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
   whitelistEntries,
   whitelistConfig,
   blacklistEntries,
+  shardAPrivKey,
+  shardBAddress,
+  cosignerApiUrl,
+  recentCeremony,
   onApplyIntent,
   receiptExportEnabled = false,
   appVersion,
@@ -73,7 +81,7 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="group relative flex items-center gap-2 bg-[#121212] hover:bg-[#1a1a1a] text-white border border-white/10 hover:border-[#f54842]/50 shadow-2xl rounded-full px-3.5 py-2 transition-all duration-200"
+          className="group relative flex items-center gap-2 bg-[#121212] hover:bg-[#1a1a1a] text-white border border-white/10 hover:border-[#B91C3B]/50 shadow-2xl rounded-full px-3.5 py-2 transition-all duration-200"
           title="Privatum Assistant (Ctrl+K)"
         >
           <span className="text-xs font-medium">Assistant</span>
@@ -99,6 +107,10 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
         whitelistEntries={whitelistEntries}
         whitelistConfig={whitelistConfig}
         blacklistEntries={blacklistEntries}
+        shardAPrivKey={shardAPrivKey}
+        shardBAddress={shardBAddress}
+        cosignerApiUrl={cosignerApiUrl}
+        recentCeremony={recentCeremony}
         onApplyIntent={onApplyIntent}
         receiptExportEnabled={receiptExportEnabled}
         appVersion={appVersion}

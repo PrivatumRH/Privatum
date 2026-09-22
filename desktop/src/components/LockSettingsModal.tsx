@@ -155,7 +155,7 @@ export const LockSettingsModal: React.FC<LockSettingsModalProps> = ({
         <div className="flex items-start justify-between p-6 pb-4 border-b border-white/[0.08] flex-shrink-0">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <Lock className="w-5 h-5 text-[#f54842]" />
+              <Lock className="w-5 h-5 text-[#B91C3B]" />
               <h3 className="text-base font-semibold text-white">Workstation Auto-Lock</h3>
             </div>
             <p className="text-xs text-slate-400">
@@ -222,7 +222,7 @@ export const LockSettingsModal: React.FC<LockSettingsModalProps> = ({
                 onChange={(e) => setAutoLockEnabled(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#f54842]" />
+              <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#B91C3B]" />
             </label>
           </div>
 
@@ -240,13 +240,13 @@ export const LockSettingsModal: React.FC<LockSettingsModalProps> = ({
                   onClick={() => setTimeoutMinutes(opt.value)}
                   className={`p-2.5 rounded-xl border text-left transition-all ${
                     timeoutMinutes === opt.value
-                      ? "bg-white/[0.08] border-[#f54842] text-white"
+                      ? "bg-white/[0.08] border-[#B91C3B] text-white"
                       : "bg-[#181a24] border-white/5 text-slate-400 hover:text-slate-300"
                   }`}
                 >
                   <div className="text-xs font-medium flex items-center justify-between">
                     <span>{opt.label}</span>
-                    {timeoutMinutes === opt.value && <Check className="w-3 h-3 text-[#f54842]" />}
+                    {timeoutMinutes === opt.value && <Check className="w-3 h-3 text-[#B91C3B]" />}
                   </div>
                 </button>
               ))}
@@ -284,7 +284,7 @@ export const LockSettingsModal: React.FC<LockSettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsChangingPin(true)}
-                  className="text-xs text-[#f54842] hover:text-[#ff5a54] font-medium"
+                  className="text-xs text-[#B91C3B] hover:text-[#C92040] font-medium"
                 >
                   Change PIN
                 </button>
@@ -299,7 +299,7 @@ export const LockSettingsModal: React.FC<LockSettingsModalProps> = ({
                       value={currentPin}
                       onChange={(e) => setCurrentPin(e.target.value)}
                       placeholder="Enter current PIN"
-                      className="w-full bg-[#12141a] border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-white placeholder:text-slate-500 focus:outline-none focus:border-[#f54842]/50"
+                      className="w-full bg-[#12141a] border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-white placeholder:text-slate-500 focus:outline-none focus:border-[#B91C3B]/50"
                     />
                   </div>
                 )}
@@ -313,7 +313,7 @@ export const LockSettingsModal: React.FC<LockSettingsModalProps> = ({
                     value={newPin}
                     onChange={(e) => setNewPin(e.target.value)}
                     placeholder="Enter 4-8 digit PIN"
-                    className="w-full bg-[#12141a] border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-white placeholder:text-slate-500 focus:outline-none focus:border-[#f54842]/50"
+                    className="w-full bg-[#12141a] border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-white placeholder:text-slate-500 focus:outline-none focus:border-[#B91C3B]/50"
                   />
                 </div>
 
@@ -324,7 +324,7 @@ export const LockSettingsModal: React.FC<LockSettingsModalProps> = ({
                     value={confirmPin}
                     onChange={(e) => setConfirmPin(e.target.value)}
                     placeholder="Repeat PIN"
-                    className="w-full bg-[#12141a] border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-white placeholder:text-slate-500 focus:outline-none focus:border-[#f54842]/50"
+                    className="w-full bg-[#12141a] border border-white/10 rounded-lg px-3 py-2 text-xs font-mono text-white placeholder:text-slate-500 focus:outline-none focus:border-[#B91C3B]/50"
                   />
                 </div>
 
@@ -360,7 +360,7 @@ export const LockSettingsModal: React.FC<LockSettingsModalProps> = ({
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="bg-[#f54842] hover:bg-[#ff5a54] text-white px-5 py-2.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-40 flex items-center gap-2 shadow-lg shadow-[#f54842]/20 cursor-pointer"
+            className="bg-[#B91C3B] hover:bg-[#C92040] text-white px-5 py-2.5 rounded-xl text-xs font-semibold transition-all disabled:opacity-40 flex items-center gap-2 shadow-lg shadow-[#B91C3B]/20 cursor-pointer"
           >
             {isSaving ? (
               <span>Saving...</span>
