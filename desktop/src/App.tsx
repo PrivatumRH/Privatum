@@ -148,6 +148,7 @@ import { evaluateTransactionRisk } from "./lib/riskScore";
 import { TransactionRiskScoreRow } from "./components/TransactionRiskScoreRow";
 import { PrivacyAuditCard } from "./components/PrivacyAuditCard";
 import { auditPrivacy } from "./lib/privacyAuditor";
+import { loadPrivacyProfile, PRIVACY_PROFILE_COPY, requiresStealthMetaAddress, savePrivacyProfile, type PrivacyProfile } from "./lib/privacyProfiles";
 import { RecipientAutocomplete } from "./components/RecipientAutocomplete";
 import { useGlobalHotkeys } from "./lib/hotkeys";
 import { KeyboardShortcutsModal } from "./components/KeyboardShortcutsModal";
@@ -238,6 +239,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.42": "Pre-Flight Batch & Multi-Pay Scheduling NLP",
   "0.1.43": "Threshold MPC Ceremony & Shard Health Diagnostics NLP",
   "0.1.44": "Stealth Address Leakage & Unlinkability Auditor NLP",
+  "0.1.45": "Privacy Posture Profiles",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -493,6 +495,8 @@ export function App() {
 
   // Private Send Mode Toggle & Stealth Inbox
   const [isStealthSend, setIsStealthSend] = useState<boolean>(false);
+  const [privacyProfile, setPrivacyProfile] = useState<PrivacyProfile>(() => loadPrivacyProfile());
+  const [privacyAcknowledged, setPrivacyAcknowledged] = useState(false);
   const [showStealthScanner, setShowStealthScanner] = useState<boolean>(false);
 
   // Preselected token for Swap tab
@@ -1011,6 +1015,18 @@ export function App() {
     isStealthSend,
     transactions,
   }), [sendRecipient, sendAmount, sendAssetType, isStealthSend, transactions]);
+  const privacyAcknowledgementRequired = privacyProfile === "maximum" && privacyAudit.score < 80;
+
+  useEffect(() => {
+    setPrivacyAcknowledged(false);
+  }, [sendRecipient, sendAmount, sendAssetType, isStealthSend]);
+
+  const selectPrivacyProfile = (profile: PrivacyProfile) => {
+    setPrivacyProfile(profile);
+    savePrivacyProfile(profile);
+    setPrivacyAcknowledged(false);
+    if (requiresStealthMetaAddress(profile)) setIsStealthSend(true);
+  };
 
   // Pre-Flight Asset & Balance Diff Preview (v0.1.29)
   const preFlightDiff = useMemo(() => {
@@ -2203,6 +2219,11 @@ export function App() {
     const trimmedRecipient = sendRecipient.trim();
     const isMeta = trimmedRecipient.startsWith("st:eth:0x") || (!trimmedRecipient.startsWith("st:") && trimmedRecipient.replace(/^0x/, "").length === 132);
 
+    if (requiresStealthMetaAddress(privacyProfile) && (!isStealthSend || !isMeta)) {
+      addToast("error", "Privacy Profile Requirement", `${PRIVACY_PROFILE_COPY[privacyProfile].label} requires an ERC-5564 stealth meta-address.`);
+      return;
+    }
+
     if (isStealthSend) {
       if (!isMeta && !isAddress(trimmedRecipient)) {
         addToast("error", "Invalid Recipient", "Please enter a valid ERC-5564 stealth meta-address (132 hex characters) or 0x address.");
@@ -2336,6 +2357,15 @@ export function App() {
 
     const trimmedRecipient = sendRecipient.trim();
     const isMeta = trimmedRecipient.startsWith("st:eth:0x") || (!trimmedRecipient.startsWith("st:") && trimmedRecipient.replace(/^0x/, "").length === 132);
+
+    if (requiresStealthMetaAddress(privacyProfile) && (!isStealthSend || !isMeta)) {
+      addToast("error", "Privacy Profile Requirement", `${PRIVACY_PROFILE_COPY[privacyProfile].label} requires an ERC-5564 stealth meta-address.`);
+      return;
+    }
+    if (privacyAcknowledgementRequired && !privacyAcknowledged) {
+      addToast("error", "Privacy Review Required", "Acknowledge the Privacy Scanner findings before signing in Maximum Privacy mode.");
+      return;
+    }
 
     if (isStealthSend) {
       if (!isMeta && !isAddress(trimmedRecipient)) {
@@ -4182,6 +4212,25 @@ export function App() {
                     </div>
                   </div>
 
+                  {isFeatureActive("privacy_posture_profiles", appVersion, previewVersion) && (
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1.5">Privacy Posture</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(Object.keys(PRIVACY_PROFILE_COPY) as PrivacyProfile[]).map((profile) => (
+                          <button
+                            key={profile}
+                            type="button"
+                            onClick={() => selectPrivacyProfile(profile)}
+                            className={`rounded-xl border p-2 text-left transition ${privacyProfile === profile ? "border-purple-400 bg-purple-500/15 text-white" : "border-white/10 bg-white/[0.03] text-slate-400 hover:text-white"}`}
+                          >
+                            <div className="text-[11px] font-semibold">{PRIVACY_PROFILE_COPY[profile].label}</div>
+                            <div className="mt-0.5 text-[9px] leading-snug opacity-70">{profile === "standard" ? "Guidance only" : profile === "private" ? "Stealth required" : "Stealth + review"}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Private Stealth Send Toggle (v0.1.1) */}
                   {isFeatureActive("private_send", appVersion, previewVersion) && (
                     <div className="flex items-center justify-between p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
@@ -4193,7 +4242,13 @@ export function App() {
                         type="button"
                         role="switch"
                         aria-checked={isStealthSend}
-                        onClick={() => setIsStealthSend(!isStealthSend)}
+                        onClick={() => {
+                          if (requiresStealthMetaAddress(privacyProfile)) {
+                            addToast("info", "Privacy Profile Active", `${PRIVACY_PROFILE_COPY[privacyProfile].label} requires Private Send.`);
+                            return;
+                          }
+                          setIsStealthSend(!isStealthSend);
+                        }}
                         className={`w-10 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer shrink-0 ${
                           isStealthSend ? "bg-purple-600" : "bg-white/20 hover:bg-white/30"
                         }`}
@@ -4887,6 +4942,12 @@ export function App() {
                   {isFeatureActive("privacy_auditor_nlp", appVersion, previewVersion) && (
                     <PrivacyAuditCard audit={privacyAudit} />
                   )}
+                  {isFeatureActive("privacy_posture_profiles", appVersion, previewVersion) && privacyProfile === "maximum" && privacyAcknowledgementRequired && (
+                    <label className="flex items-start gap-2.5 pt-2.5 border-t border-amber-500/20 text-[11px] text-amber-100 cursor-pointer">
+                      <input type="checkbox" checked={privacyAcknowledged} onChange={(event) => setPrivacyAcknowledged(event.target.checked)} className="mt-0.5 accent-amber-400" />
+                      <span><b>Maximum Privacy review.</b> I understand the Privacy Scanner detected residual linkage signals and want to proceed.</span>
+                    </label>
+                  )}
                 </div>
 
                 {/* Live threshold ceremony, shown only while a send is actually
@@ -4915,6 +4976,7 @@ export function App() {
                         isSimulating ||
                         Boolean(sendBlacklistVerdict?.isBlacklisted) ||
                         strictWhitelistBlock ||
+                        Boolean(privacyAcknowledgementRequired && !privacyAcknowledged) ||
                         Boolean(clipboardSanitizerVerdict?.isCompromised && !clipboardDismissed) ||
                         Boolean(addressVerdict && requiresAcknowledgement(addressVerdict) && !guardAcknowledged) ||
                         Boolean(guardrailVerdict && guardrailVerdict.warning && (!guardrailVerdict.allowed || !guardrailAcknowledged)) ||
