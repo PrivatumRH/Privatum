@@ -20,6 +20,7 @@ export type AssistantIntentType =
   | "spending_analytics"
   | "wallet_health_report"
   | "ledger_search"
+  | "batch_payment"
   | "general_query";
 
 export interface ParsedTransferIntent {
@@ -209,6 +210,30 @@ export interface ParsedLedgerSearchIntent {
   }[];
 }
 
+export interface ParsedBatchPaymentIntent {
+  type: "batch_payment";
+  items: {
+    recipient: string;
+    recipientName?: string;
+    amount: string;
+    asset: "ETH" | "USDG";
+    tag?: string;
+    isStealth?: boolean;
+  }[];
+  totalAmounts: Record<string, number>;
+  itemCount: number;
+  scheduledDelay?: string;
+  isScheduled: boolean;
+  estimatedGasSavingsPercent: number;
+  checks: {
+    id: string;
+    label: string;
+    status: "pass" | "warn" | "fail";
+    message: string;
+  }[];
+  allChecksPassed: boolean;
+}
+
 export type ParsedIntent =
   | ParsedTransferIntent
   | ParsedPaylinkIntent
@@ -229,6 +254,7 @@ export type ParsedIntent =
   | ParsedSpendingAnalyticsIntent
   | ParsedWalletHealthReportIntent
   | ParsedLedgerSearchIntent
+  | ParsedBatchPaymentIntent
   | { type: "view_guardrails" }
   | { type: "view_contacts" }
   | { type: "export_ledger" }

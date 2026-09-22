@@ -225,6 +225,29 @@ describe("Assistant Engine Pipeline", () => {
     expect(res.content).toContain("Ledger Search: Found 1 transaction(s)");
     expect(res.safetyEvidence?.intentSummary).toContain("Ledger Search: 1 result(s) matched");
   });
+
+  it("processes pre-flight batch payment queries through pipeline", async () => {
+    const res = await processAssistantQuery({
+      input: "batch send 100 USDG to Alice and 250 USDG to Bob",
+      contacts: [
+        {
+          name: "Alice",
+          address: "0x1111111111111111111111111111111111111111",
+          category: "Trusted",
+          addedAt: Date.now(),
+        },
+        {
+          name: "Bob",
+          address: "0x2222222222222222222222222222222222222222",
+          category: "Vendor",
+          addedAt: Date.now(),
+        },
+      ],
+    });
+    expect(res.intent?.type).toBe("batch_payment");
+    expect(res.content).toContain("Pre-Flight Batch Payment Proposal: 2 transfers totalling 350.00 USDG");
+    expect(res.safetyEvidence?.intentSummary).toContain("Batch Payment Proposal (2 recipients)");
+  });
 });
 
 

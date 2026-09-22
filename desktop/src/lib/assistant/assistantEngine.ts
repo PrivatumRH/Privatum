@@ -29,6 +29,7 @@ import { evaluateLedgerQuery } from "./ledgerQueries";
 import { evaluateSpendingAnalytics } from "./spendingAnalyticsQueries";
 import { evaluateWalletHealthQuery } from "./walletHealthQueries";
 import { evaluateLedgerSearchQuery } from "./ledgerSearchQueries";
+import { evaluateBatchPaymentQuery } from "./batchPaymentQueries";
 import { parseMultiIntent } from "./multiIntent";
 import { queryKnowledgeBase } from "./knowledgeBase";
 
@@ -126,6 +127,32 @@ export async function processAssistantQuery(
       transcript: { input: cleanText, output: content },
     };
   };
+
+  // STEP 2a: Pre-Flight Batch & Multi-Pay Scheduling NLP
+  const batchRes = evaluateBatchPaymentQuery(cleanText, {
+    contacts,
+    guardrailConfig,
+    spendingHistory,
+    whitelistEntries,
+    blacklistEntries,
+    history: transactionHistory.map((t) => ({
+      type: t.type,
+      counterparty: t.counterparty,
+      amount: t.amount,
+      asset: t.asset,
+    })),
+    ownAddresses: walletAddress ? [walletAddress] : [],
+  });
+
+  if (batchRes && batchRes.handled) {
+    const lines = [batchRes.summary, "", ...batchRes.details];
+    return await createResponse(lines.join("\n"), {
+      intent: batchRes.intent,
+      safetyEvidence: {
+        intentSummary: `Batch Payment Proposal (${batchRes.batch.itemCount} recipients)`,
+      },
+    });
+  }
 
   // STEP 2: Multi-Intent Command Chaining (Compound Instructions)
   const multiPlan = parseMultiIntent(cleanText, contacts);
