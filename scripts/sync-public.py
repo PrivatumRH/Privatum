@@ -130,7 +130,9 @@ def main():
 
     # Push to origin-public
     print(f"[3/3] Pushing `{LOCAL_EXPORT_REF}` to `{REMOTE_PUBLIC} {TARGET_BRANCH}`...")
-    push_cmd = ["git", "push", REMOTE_PUBLIC, f"{LOCAL_EXPORT_REF}:{TARGET_BRANCH}", "--force"]
+    # Both remotes contain a historical tag named `master`, so an unqualified
+    # destination is ambiguous. Explicitly target the branch ref.
+    push_cmd = ["git", "push", REMOTE_PUBLIC, f"refs/heads/{LOCAL_EXPORT_REF}:refs/heads/{TARGET_BRANCH}", "--force"]
     res = subprocess.run(push_cmd)
 
     if res.returncode == 0:
