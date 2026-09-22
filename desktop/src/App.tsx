@@ -233,6 +233,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.39": "Counterparty Velocity & Tag Analytics NLP",
   "0.1.40": "Wallet Health & Security Audit NLP",
   "0.1.41": "Ledger Search & Recall NLP",
+  "0.1.42": "Pre-Flight Batch & Multi-Pay Scheduling NLP",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -5371,7 +5372,7 @@ export function App() {
         whitelistEntries={whitelistEntries}
         whitelistConfig={{ strictMode: whitelistStrictMode }}
         blacklistEntries={blacklistEntries}
-        onApplyIntent={(intent) => {
+        onApplyIntent={async (intent) => {
           if (intent.type === "send_transfer") {
             setSendRecipient(intent.recipient);
             setSendAmount(intent.amount);
@@ -5434,6 +5435,48 @@ export function App() {
               addToast("info", "Blacklist Updated", `Address ${intent.address.slice(0, 8)}... unblocked.`);
             } catch (err: any) {
               addToast("error", "Blacklist Error", err?.message || "Failed to remove from blacklist.");
+            }
+          } else if (intent.type === "batch_payment") {
+            if (!wallet) {
+              addToast("error", "Wallet Required", "Unlock your wallet to stage or execute this batch payment.");
+              return;
+            }
+            if (!shardAPrivKey) {
+              setShowOfflineOutboxModal(true);
+              addToast("info", "Batch Staging", `Batch contains ${intent.itemCount} transfers. Signer key required for automated signing.`);
+              return;
+            }
+            try {
+              let stagedCount = 0;
+              const gweiPrice = parseFloat(gasPriceGwei) || 0.08;
+              for (const item of intent.items) {
+                const calculatedFeePerGas = parseUnits(Math.max(gweiPrice * 1.3, 0.08).toFixed(6), 9);
+                const signedOfflineTx = await signOfflineTransaction({
+                  shardAPrivKey: shardAPrivKey as Hex,
+                  walletAddress: wallet.address,
+                  recipient: item.recipient,
+                  recipientLabel: item.recipientName,
+                  amount: item.amount,
+                  asset: item.asset,
+                  confirmedNonce,
+                  maxFeePerGas: calculatedFeePerGas,
+                  maxPriorityFeePerGas: calculatedFeePerGas,
+                  tag: item.tag,
+                  note: intent.scheduledDelay ? `Scheduled: ${intent.scheduledDelay}` : undefined,
+                });
+                queueOfflineTransaction(wallet.address, signedOfflineTx);
+                stagedCount++;
+              }
+              const updatedOutbox = loadOfflineOutbox(wallet.address);
+              setOfflineOutbox(updatedOutbox);
+              setShowOfflineOutboxModal(true);
+              addToast(
+                "success",
+                "Batch Staged into Outbox",
+                `Successfully queued ${stagedCount} transfer(s) for atomic/delayed broadcast.`
+              );
+            } catch (err: any) {
+              addToast("error", "Batch Staging Failed", err?.message || "Failed to stage batch payment.");
             }
           }
         }}

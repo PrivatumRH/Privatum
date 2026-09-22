@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpRight, Shield, ShieldAlert, ShieldCheck, Ban, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2, Activity, HeartPulse, CheckCircle2, AlertTriangle, Search } from "lucide-react";
+import { ArrowUpRight, Shield, ShieldAlert, ShieldCheck, Ban, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2, Activity, HeartPulse, CheckCircle2, AlertTriangle, Search, Users, Zap, Clock } from "lucide-react";
 import type { ParsedIntent } from "../../lib/assistant/types";
 import type { InferenceReceipt } from "../../lib/assistant/inferenceReceipt";
 import { evaluateTransactionRisk } from "../../lib/riskScore";
@@ -1082,6 +1082,155 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
               className="py-1.5 px-2.5 rounded-lg font-medium text-[11px] text-white/50 hover:text-white bg-white/[0.02] hover:bg-white/5 border border-white/5 transition-colors cursor-pointer"
             >
               Close
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (intent.type === "batch_payment") {
+    const totalVolumeParts = Object.entries(intent.totalAmounts).map(
+      ([asset, total]) => `${total.toFixed(2)} ${asset}`
+    );
+
+    return (
+      <div className="mt-3 rounded-xl border border-indigo-500/30 bg-indigo-500/[0.06] p-3.5 text-xs">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-indigo-500/20">
+          <div className="flex items-center gap-1.5 font-medium text-indigo-400">
+            <Users className="h-3.5 w-3.5" />
+            <span>Pre-Flight Batch Payment Proposal</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-indigo-300 font-medium border border-indigo-400/30 bg-indigo-400/10 px-1.5 py-0.5 rounded">
+              {intent.itemCount} Transfers
+            </span>
+            {onDismiss && (
+              <button
+                type="button"
+                onClick={onDismiss}
+                className="p-1 text-white/40 hover:text-white rounded hover:bg-white/5 transition-colors"
+                title="Dismiss proposal"
+                aria-label="Dismiss proposal"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Schedule delay banner if present */}
+        {intent.isScheduled && intent.scheduledDelay && (
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] mb-2.5">
+            <Clock className="h-3 w-3 shrink-0" />
+            <span>Scheduled Release: {intent.scheduledDelay}</span>
+          </div>
+        )}
+
+        {/* Total Outflow & Gas Savings Banner */}
+        <div className="flex items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 mb-3">
+          <div>
+            <div className="text-[10px] text-white/50 uppercase tracking-wider">Total Aggregated Outflow</div>
+            <div className="text-sm font-semibold text-white mt-0.5">
+              {totalVolumeParts.join(" + ")}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="flex items-center gap-1 justify-end text-[10px] text-emerald-400 font-medium">
+              <Zap className="h-3 w-3" />
+              <span>~{intent.estimatedGasSavingsPercent}% Gas Saved</span>
+            </div>
+            <div className="text-[10px] text-white/40 mt-0.5">
+              Atomic Batch UserOp
+            </div>
+          </div>
+        </div>
+
+        {/* Itemized Recipients */}
+        <div className="space-y-1.5 mb-3">
+          <div className="text-[10px] text-white/40 uppercase tracking-wider font-medium px-0.5">
+            Recipients ({intent.items.length})
+          </div>
+          {intent.items.map((item, idx) => (
+            <div
+              key={idx}
+              className="flex items-center justify-between gap-2 p-2 rounded-lg bg-black/30 border border-white/5"
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-medium text-white truncate text-[11px]">
+                    {item.recipientName || `${item.recipient.slice(0, 6)}...${item.recipient.slice(-4)}`}
+                  </span>
+                  {item.tag && (
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-white/10 text-white/70 font-mono">
+                      {item.tag}
+                    </span>
+                  )}
+                  {item.isStealth && (
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-purple-500/20 text-purple-300 font-mono">
+                      Stealth
+                    </span>
+                  )}
+                </div>
+                {item.recipientName && (
+                  <div className="text-[9px] font-mono text-white/40 truncate">
+                    {item.recipient.slice(0, 8)}...{item.recipient.slice(-6)}
+                  </div>
+                )}
+              </div>
+              <div className="text-right shrink-0">
+                <span className="font-semibold text-white text-[11px]">
+                  {item.amount} {item.asset}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Preflight Checks List */}
+        <div className="space-y-1 mb-3 pt-2 border-t border-white/5">
+          {intent.checks.map((chk) => (
+            <div key={chk.id} className="flex items-start gap-1.5 text-[10px]">
+              {chk.status === "pass" ? (
+                <CheckCircle2 className="h-3 w-3 text-emerald-400 shrink-0 mt-0.5" />
+              ) : chk.status === "warn" ? (
+                <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0 mt-0.5" />
+              ) : (
+                <ShieldAlert className="h-3 w-3 text-[#f54842] shrink-0 mt-0.5" />
+              )}
+              <span className={chk.status === "pass" ? "text-white/70" : chk.status === "warn" ? "text-amber-300" : "text-[#f54842]"}>
+                {chk.message}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Inference Proof */}
+        {receipt && (
+          <div className="flex items-center justify-between text-[10px] pb-3 border-b border-white/5 mb-3">
+            <span className="text-white/40">Inference Proof:</span>
+            <span className="font-mono text-white/50">{receipt.shortRef}</span>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onApplyIntent(intent)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-xs text-white bg-indigo-600 hover:bg-indigo-500 transition-colors cursor-pointer"
+          >
+            <span>Stage Batch into Outbox ({intent.itemCount})</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="py-2 px-3 rounded-lg font-medium text-xs text-white/50 hover:text-white bg-white/[0.02] hover:bg-white/5 border border-white/5 transition-colors cursor-pointer"
+            >
+              Dismiss
             </button>
           )}
         </div>
