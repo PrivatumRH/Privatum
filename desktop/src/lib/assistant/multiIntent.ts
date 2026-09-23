@@ -69,6 +69,11 @@ export function summarizeIntentStep(intent: ParsedIntent, stepIndex: number): { 
         label: `Step ${stepIndex + 1}: Create Pay Link`,
         summary: `Generate ${intent.amount} ${intent.asset} payment link${intent.memo ? ` (${intent.memo})` : ""}`,
       };
+    case "rwa_command":
+      return {
+        label: `Step ${stepIndex + 1}: RWA Trade`,
+        summary: `${intent.action} ${intent.amount} ${intent.tokenSymbol} using ${intent.fundingAsset}`,
+      };
     case "panic_freeze":
       return {
         label: `Step ${stepIndex + 1}: Panic Freeze`,

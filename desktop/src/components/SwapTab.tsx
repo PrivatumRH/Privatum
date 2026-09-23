@@ -26,6 +26,8 @@ interface SwapTabProps {
   addToast: (type: "success" | "error" | "info", title: string, message?: string) => void;
   preselectedTokenIn?: string;
   preselectedTokenOut?: string;
+  prefillAmountIn?: string;
+  rwaGuardEnabled?: boolean;
   onExecuteBatch?: (targets: Address[], values: bigint[], datas: Hex[], sponsor?: boolean) => Promise<Hex>;
   isGaslessActive?: boolean;
 }
@@ -38,6 +40,8 @@ export function SwapTab({
   addToast,
   preselectedTokenIn = "USDG",
   preselectedTokenOut = "AAPL",
+  prefillAmountIn = "",
+  rwaGuardEnabled = false,
   onExecuteBatch,
   isGaslessActive,
 }: SwapTabProps) {
@@ -45,6 +49,7 @@ export function SwapTab({
   const [tokenIn, setTokenIn] = useState<TokenInfo>(() => findToken(preselectedTokenIn) || TOKENS[0]);
   const [tokenOut, setTokenOut] = useState<TokenInfo>(() => findToken(preselectedTokenOut) || TOKENS[2]);
   const [amountIn, setAmountIn] = useState<string>("");
+  const [rwaAcknowledged, setRwaAcknowledged] = useState(false);
   const [quote, setQuote] = useState<SwapQuoteResult | null>(null);
   const [isQuoting, setIsQuoting] = useState<boolean>(false);
   const [isSwapping, setIsSwapping] = useState<boolean>(false);
@@ -122,6 +127,12 @@ export function SwapTab({
     refreshBalances();
   }, [refreshBalances]);
 
+  useEffect(() => {
+    if (prefillAmountIn) setAmountIn(prefillAmountIn);
+  }, [prefillAmountIn]);
+
+  const isRwaTrade = Boolean(tokenIn.isRwa || tokenOut.isRwa);
+
   // Debounced quote fetch
   useEffect(() => {
     if (!amountIn || parseFloat(amountIn) <= 0) {
@@ -157,6 +168,7 @@ export function SwapTab({
     setTokenOut(prevIn);
     setAmountIn("");
     setQuote(null);
+    setRwaAcknowledged(false);
   }
 
   const signerAddress = useMemo(() => {
@@ -186,6 +198,10 @@ export function SwapTab({
 
   async function handleSwap() {
     if (!wallet || !quote || !amountIn) return;
+    if (rwaGuardEnabled && isRwaTrade && !rwaAcknowledged) {
+      addToast("error", "RWA Review Required", "Confirm the RWA issuer, quote, liquidity, and slippage before signing.");
+      return;
+    }
 
     if (isKeyMismatch) {
       addToast(
@@ -334,6 +350,30 @@ export function SwapTab({
           </div>
         )}
 
+        {rwaGuardEnabled && isRwaTrade && (
+          <div className="relative overflow-hidden p-4 rounded-xl bg-amber-400/[0.07] border border-amber-300/20 text-xs text-amber-100">
+            <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-300/10 blur-2xl" />
+            <div className="relative flex items-start gap-3">
+              <AlertCircle className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="font-semibold text-amber-200">RWA transfer guard</div>
+                <div className="mt-1 leading-relaxed text-amber-100/70">
+                  {tokenOut.isRwa ? tokenOut.name : tokenIn.name} is a tokenized real-world asset. Confirm the issuer, quote, liquidity, and slippage before signing.
+                </div>
+                <label className="mt-3 flex items-start gap-2 cursor-pointer text-[11px] text-amber-100/90">
+                  <input
+                    type="checkbox"
+                    checked={rwaAcknowledged}
+                    onChange={(e) => setRwaAcknowledged(e.target.checked)}
+                    className="mt-0.5 accent-amber-300"
+                  />
+                  <span>I understand this RWA trade is an on-chain transaction and approve reviewing the live quote.</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Token In Box */}
         <div className="flex flex-col gap-1.5 p-4 rounded-xl bg-[#13151b] border border-white/[0.06]">
           <div className="flex items-center justify-between text-xs text-neutral-400">
@@ -471,7 +511,8 @@ export function SwapTab({
             parsedAmountIn <= 0 ||
             isInsufficientBalance ||
             isInsufficientGas ||
-            isKeyMismatch
+            isKeyMismatch ||
+            (rwaGuardEnabled && isRwaTrade && !rwaAcknowledged)
           }
           onClick={handleSwap}
           className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer ${
@@ -482,7 +523,8 @@ export function SwapTab({
             parsedAmountIn <= 0 ||
             isInsufficientBalance ||
             isInsufficientGas ||
-            isKeyMismatch
+            isKeyMismatch ||
+            (rwaGuardEnabled && isRwaTrade && !rwaAcknowledged)
               ? "bg-white/5 text-neutral-500 cursor-not-allowed border border-white/5"
               : "bg-[#f64943] hover:bg-[#e03d38] text-white active:scale-[0.99]"
           }`}
