@@ -46,6 +46,12 @@ export interface ParsedRwaCommandIntent {
   requiresExplicitConfirmation: true;
 }
 
+export interface ParsedPortfolioIntelligenceIntent {
+  type: "portfolio_intelligence";
+  query: string;
+  summary: string;
+}
+
 export interface ParsedPaylinkIntent {
   type: "create_paylink";
   amount: string;
@@ -255,6 +261,7 @@ export interface ParsedShardHealthIntent {
 export type ParsedIntent =
   | ParsedTransferIntent
   | ParsedRwaCommandIntent
+  | ParsedPortfolioIntelligenceIntent
   | ParsedPaylinkIntent
   | ParsedFreezeIntent
   | ParsedUnfreezeIntent
