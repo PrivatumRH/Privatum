@@ -147,7 +147,9 @@ import { PortfolioSparklineCard } from "./components/PortfolioSparklineCard";
 import { evaluateTransactionRisk } from "./lib/riskScore";
 import { TransactionRiskScoreRow } from "./components/TransactionRiskScoreRow";
 import { PrivacyAuditCard } from "./components/PrivacyAuditCard";
+import { TransactionExplanationCard } from "./components/TransactionExplanationCard";
 import { auditPrivacy } from "./lib/privacyAuditor";
+import { explainTransfer } from "./lib/transactionExplainer";
 import { loadPrivacyProfile, PRIVACY_PROFILE_COPY, requiresStealthMetaAddress, savePrivacyProfile, type PrivacyProfile } from "./lib/privacyProfiles";
 import { RecipientAutocomplete } from "./components/RecipientAutocomplete";
 import { useGlobalHotkeys } from "./lib/hotkeys";
@@ -240,6 +242,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.43": "Threshold MPC Ceremony & Shard Health Diagnostics NLP",
   "0.1.44": "Stealth Address Leakage & Unlinkability Auditor NLP",
   "0.1.45": "Privacy Posture Profiles",
+  "0.1.47": "Transaction Simulation Explainer",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -1015,6 +1018,15 @@ export function App() {
     isStealthSend,
     transactions,
   }), [sendRecipient, sendAmount, sendAssetType, isStealthSend, transactions]);
+  const transactionExplanation = useMemo(() => explainTransfer({
+    asset: sendAssetType,
+    amount: sendAmount,
+    recipient: sendRecipient,
+    isStealthSend,
+    simulationStatus: simulationData?.status,
+    gasLimit: simulationData?.gasLimit,
+    gasPriceGwei: simulationData?.gasPriceGwei,
+  }), [sendAssetType, sendAmount, sendRecipient, isStealthSend, simulationData]);
   const privacyAcknowledgementRequired = privacyProfile === "maximum" && privacyAudit.score < 80;
 
   useEffect(() => {
@@ -4941,6 +4953,9 @@ export function App() {
                   )}
                   {isFeatureActive("privacy_auditor_nlp", appVersion, previewVersion) && (
                     <PrivacyAuditCard audit={privacyAudit} />
+                  )}
+                  {isFeatureActive("transaction_explainer", appVersion, previewVersion) && (
+                    <TransactionExplanationCard explanation={transactionExplanation} />
                   )}
                   {isFeatureActive("privacy_posture_profiles", appVersion, previewVersion) && privacyProfile === "maximum" && privacyAcknowledgementRequired && (
                     <label className="flex items-start gap-2.5 pt-2.5 border-t border-amber-500/20 text-[11px] text-amber-100 cursor-pointer">
