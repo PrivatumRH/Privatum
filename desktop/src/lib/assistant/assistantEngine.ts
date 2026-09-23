@@ -34,6 +34,7 @@ import { evaluateShardHealthQuery } from "./shardHealthQueries";
 import type { CeremonyStage } from "../thresholdCeremony";
 import { parseMultiIntent } from "./multiIntent";
 import { queryKnowledgeBase } from "./knowledgeBase";
+import { analyzePortfolio, answerPortfolioQuery, type PortfolioIntelligenceInput } from "../portfolioIntelligence";
 
 export interface ProcessAssistantInputParams {
   input: string;
@@ -53,6 +54,7 @@ export interface ProcessAssistantInputParams {
   shardBAddress?: string;
   cosignerApiUrl?: string;
   recentCeremony?: CeremonyStage[];
+  portfolio?: PortfolioIntelligenceInput;
   preferredEngine?: EngineMode;
   onToken?: (token: string) => void;
 }
@@ -86,6 +88,7 @@ export async function processAssistantQuery(
     shardBAddress = "",
     cosignerApiUrl = "",
     recentCeremony,
+    portfolio,
     preferredEngine = "deterministic",
   } = params;
 
@@ -397,6 +400,16 @@ export async function processAssistantQuery(
 
   // STEP 6: Deterministic NLP Parsing
   const parsed = parseDeterministicIntent(cleanText, contacts);
+
+  if (portfolio) {
+    const portfolioAnswer = answerPortfolioQuery(cleanText, analyzePortfolio(portfolio));
+    if (portfolioAnswer) {
+      return await createResponse(portfolioAnswer, {
+        intent: { type: "portfolio_intelligence", query: cleanText, summary: portfolioAnswer },
+        safetyEvidence: { intentSummary: "Local Portfolio Intelligence" },
+      });
+    }
+  }
 
   if (parsed) {
     // 2A: RWA command intent. RWA symbols are never downgraded to a generic

@@ -6,6 +6,7 @@ import type { SpendingGuardrailConfig, SpendingRecord } from "../../lib/spendGua
 import type { OfflineTransaction } from "../../lib/offlineOutbox";
 import type { WhitelistEntry, WhitelistConfig } from "../../lib/transferWhitelist";
 import type { BlacklistEntry } from "../../lib/transferBlacklist";
+import type { PortfolioIntelligenceInput } from "../../lib/portfolioIntelligence";
 
 interface AssistantWidgetProps {
   walletAddress?: string;
@@ -24,6 +25,7 @@ interface AssistantWidgetProps {
   shardBAddress?: string;
   cosignerApiUrl?: string;
   recentCeremony?: import("../../lib/thresholdCeremony").CeremonyStage[];
+  portfolio?: PortfolioIntelligenceInput;
   onApplyIntent: (intent: ParsedIntent) => void;
   /** Feature gate: inference_receipt_export (0.1.20). */
   receiptExportEnabled?: boolean;
@@ -50,6 +52,7 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
   shardBAddress,
   cosignerApiUrl,
   recentCeremony,
+  portfolio,
   onApplyIntent,
   receiptExportEnabled = false,
   appVersion,
@@ -111,6 +114,7 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
         shardBAddress={shardBAddress}
         cosignerApiUrl={cosignerApiUrl}
         recentCeremony={recentCeremony}
+        portfolio={portfolio}
         onApplyIntent={onApplyIntent}
         receiptExportEnabled={receiptExportEnabled}
         appVersion={appVersion}

@@ -144,6 +144,8 @@ import { GuardrailBudgetBar } from "./components/GuardrailBudgetBar";
 import { nextCapacityRelease, formatCountdown } from "./lib/guardrailForecast";
 import { isFeatureActive, RELEASE_VERSIONS, type ReleaseVersion } from "./config/features";
 import { PortfolioSparklineCard } from "./components/PortfolioSparklineCard";
+import { PortfolioIntelligenceCard } from "./components/PortfolioIntelligenceCard";
+import { analyzePortfolio } from "./lib/portfolioIntelligence";
 import { evaluateTransactionRisk } from "./lib/riskScore";
 import { TransactionRiskScoreRow } from "./components/TransactionRiskScoreRow";
 import { PrivacyAuditCard } from "./components/PrivacyAuditCard";
@@ -244,6 +246,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.45": "Privacy Posture Profiles",
   "0.1.47": "Transaction Simulation Explainer",
   "0.1.48": "AI RWA Command & Transfer Guard",
+  "0.1.49": "AI Portfolio Intelligence",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -1222,6 +1225,14 @@ export function App() {
     const eth = parseFloat(ethBalance) || 0;
     return usdg + eth * (ethPrice || 0);
   }, [usdgBalance, ethBalance, ethPrice]);
+
+  const portfolioIntelligence = useMemo(() => analyzePortfolio({
+    usdgBalance,
+    ethBalance,
+    ethPrice,
+    eth24hChange,
+    transactions: transactions.map((tx) => ({ asset: tx.asset, amount: tx.amount, type: tx.type })),
+  }), [usdgBalance, ethBalance, ethPrice, eth24hChange, transactions]);
 
   // Splash Screen 1.5s
   useEffect(() => {
@@ -3426,6 +3437,10 @@ export function App() {
               </div>
             )}
 
+            {isFeatureActive("ai_portfolio_intelligence", appVersion, previewVersion) && (
+              <PortfolioIntelligenceCard portfolio={portfolioIntelligence} />
+            )}
+
             {/* Spending Guardrails Card (v0.1.12) */}
             {isFeatureActive("spending_guardrails", appVersion, previewVersion) && (
               <GuardrailCard
@@ -5472,8 +5487,17 @@ export function App() {
         shardBAddress={wallet?.shardB?.address || localStorage.getItem("privatum_shard_b_address") || undefined}
         cosignerApiUrl={wallet?.apiUrl || DEFAULT_API_URL}
         recentCeremony={ceremony}
+        portfolio={{
+          usdgBalance,
+          ethBalance,
+          ethPrice,
+          eth24hChange,
+          transactions: transactions.map((tx) => ({ asset: tx.asset, amount: tx.amount, type: tx.type })),
+        }}
         onApplyIntent={async (intent) => {
-          if (intent.type === "rwa_command") {
+          if (intent.type === "portfolio_intelligence") {
+            addToast("info", "Portfolio Analysis", "The dashboard intelligence card reflects the latest local balances and ledger evidence.");
+          } else if (intent.type === "rwa_command") {
             setSwapTokenOut(intent.tokenSymbol);
             setSwapAmountIn(intent.amount);
             setActiveTab("swaps");

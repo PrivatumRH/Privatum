@@ -45,7 +45,8 @@ export type FeatureKey =
   | "privacy_auditor_nlp"
   | "privacy_posture_profiles"
   | "transaction_explainer"
-  | "ai_rwa_guard";
+  | "ai_rwa_guard"
+  | "ai_portfolio_intelligence";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -95,6 +96,7 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   privacy_posture_profiles: "0.1.45",
   transaction_explainer: "0.1.47",
   ai_rwa_guard: "0.1.48",
+  ai_portfolio_intelligence: "0.1.49",
 };
 
 export const RELEASE_VERSIONS = [
@@ -146,6 +148,7 @@ export const RELEASE_VERSIONS = [
   "0.1.45",
   "0.1.47",
   "0.1.48",
+  "0.1.49",
 ] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 

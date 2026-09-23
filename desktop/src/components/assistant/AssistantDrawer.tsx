@@ -20,6 +20,7 @@ import type { OfflineTransaction } from "../../lib/offlineOutbox";
 import type { WhitelistEntry, WhitelistConfig } from "../../lib/transferWhitelist";
 import type { BlacklistEntry } from "../../lib/transferBlacklist";
 import type { CeremonyStage } from "../../lib/thresholdCeremony";
+import type { PortfolioIntelligenceInput } from "../../lib/portfolioIntelligence";
 
 interface AssistantDrawerProps {
   isOpen: boolean;
@@ -40,6 +41,7 @@ interface AssistantDrawerProps {
   shardBAddress?: string;
   cosignerApiUrl?: string;
   recentCeremony?: CeremonyStage[];
+  portfolio?: PortfolioIntelligenceInput;
   onApplyIntent: (intent: ParsedIntent) => void;
   /** Feature gate: inference_receipt_export (0.1.20). */
   receiptExportEnabled?: boolean;
@@ -78,6 +80,7 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
   shardBAddress,
   cosignerApiUrl,
   recentCeremony,
+  portfolio,
   onApplyIntent,
   receiptExportEnabled = false,
   appVersion = "0.1.20",
@@ -181,6 +184,7 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
         shardBAddress,
         cosignerApiUrl,
         recentCeremony,
+        portfolio,
         preferredEngine: engineMode,
         onToken: (token: string) => {
           if (!hasStreamedToken) {

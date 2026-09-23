@@ -26,6 +26,16 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
   onApplyIntent,
   onDismiss,
 }) => {
+  if (intent.type === "portfolio_intelligence") {
+    return (
+      <div className="mt-3 rounded-xl border border-sky-300/20 bg-sky-300/[0.05] p-3.5 text-xs">
+        <div className="flex items-center gap-1.5 font-medium text-white"><Activity className="h-3.5 w-3.5 text-sky-300" /><span>Portfolio Intelligence</span></div>
+        <p className="mt-2 leading-relaxed text-white/65">Local balances, allocation, concentration, and RWA activity will be summarized without sending wallet data to a server.</p>
+        <button type="button" onClick={() => onApplyIntent(intent)} className="mt-3 w-full rounded-lg border border-sky-200/20 bg-sky-300/10 py-2 font-medium text-sky-100 hover:bg-sky-300/20">Refresh portfolio analysis</button>
+      </div>
+    );
+  }
+
   if (intent.type === "rwa_command") {
     return (
       <div className="mt-3 rounded-xl border border-amber-300/25 bg-amber-300/[0.06] p-3.5 text-xs">
