@@ -1,8 +1,10 @@
 import { isAddress } from "viem";
 import type { Contact } from "../contacts";
+import { findToken } from "../tokens";
 import type {
   ParsedIntent,
   ParsedTransferIntent,
+  ParsedRwaCommandIntent,
   ParsedPaylinkIntent,
   ParsedFreezeIntent,
   ParsedUnfreezeIntent,
@@ -121,6 +123,49 @@ export function parseDeterministicIntent(
   }
 
   // 7. Transfer / Send Intent
+  // RWA commands are handled before generic sends so symbols such as AAPL
+  // cannot silently fall back to a USDG transfer.
+  const rwaSwapMatch = lower.match(/\b(swap|buy|acquire|sell)\s+([0-9]+(?:\.[0-9]+)?)\s*(usdg|eth)?\s*(?:for|of|in)?\s*([a-z][a-z0-9]{1,9})\b/i);
+  if (rwaSwapMatch) {
+    const action = rwaSwapMatch[1].toLowerCase() === "sell" ? "sell" : rwaSwapMatch[1].toLowerCase() === "swap" ? "swap" : "buy";
+    const token = findToken(rwaSwapMatch[4]);
+    if (token?.isRwa) {
+      const fundingAsset = (rwaSwapMatch[3]?.toUpperCase() === "ETH" ? "ETH" : "USDG") as "USDG" | "ETH";
+      return {
+        type: "rwa_command",
+        action,
+        tokenSymbol: token.symbol,
+        tokenName: token.name,
+        tokenAddress: token.address,
+        amount: rwaSwapMatch[2],
+        fundingAsset,
+        confidence: 0.98,
+        requiresExplicitConfirmation: true,
+      } as ParsedRwaCommandIntent;
+    }
+  }
+
+  // A direct RWA send is intentionally surfaced as a guarded RWA command,
+  // never silently treated as a USDG transfer.
+  const directRwaMatch = lower.match(/\b(?:send|transfer)\s+([0-9]+(?:\.[0-9]+)?)\s*([a-z][a-z0-9]{1,9})\b/i);
+  if (directRwaMatch) {
+    const token = findToken(directRwaMatch[2]);
+    if (token?.isRwa) {
+      return {
+        type: "rwa_command",
+        action: "sell",
+        tokenSymbol: token.symbol,
+        tokenName: token.name,
+        tokenAddress: token.address,
+        amount: directRwaMatch[1],
+        fundingAsset: "USDG",
+        confidence: 0.9,
+        requiresExplicitConfirmation: true,
+      } as ParsedRwaCommandIntent;
+    }
+  }
+
+  // 7b. Standard transfer / send intent
   if (
     lower.startsWith("send") ||
     lower.startsWith("transfer") ||

@@ -399,6 +399,31 @@ export async function processAssistantQuery(
   const parsed = parseDeterministicIntent(cleanText, contacts);
 
   if (parsed) {
+    // 2A: RWA command intent. RWA symbols are never downgraded to a generic
+    // USDG transfer; they receive an explicit asset and confirmation guard.
+    if (parsed.type === "rwa_command") {
+      const actionLabel = parsed.action === "sell" ? "Sell" : parsed.action === "buy" ? "Buy" : "Swap into";
+      const lines = [
+        `${actionLabel} ${parsed.amount} ${parsed.tokenSymbol} (${parsed.tokenName})`,
+        "",
+        `* Token contract: ${parsed.tokenAddress}`,
+        `* Funding asset: ${parsed.fundingAsset}`,
+        "* RWA guard: tokenized equity exposure may have issuer, liquidity, and pricing constraints.",
+        "* The swap screen will fetch a fresh quote and show minimum received before signing.",
+        "",
+        "Review the quote and explicitly confirm the RWA risk disclosure before authorization.",
+      ];
+
+      return await createResponse(lines.join("\n"), {
+        intent: parsed,
+        safetyEvidence: {
+          poisonVerdict: "warning",
+          intentSummary: `${actionLabel} ${parsed.amount} ${parsed.tokenSymbol} using ${parsed.fundingAsset}`,
+          poisonMessage: "RWA command requires explicit quote and risk confirmation.",
+        },
+      });
+    }
+
     // 2A: Send Transfer Intent
     if (parsed.type === "send_transfer") {
       const historyEntries: AddressGuardHistoryEntry[] = transactionHistory.map((t) => ({

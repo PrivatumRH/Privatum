@@ -26,6 +26,28 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
   onApplyIntent,
   onDismiss,
 }) => {
+  if (intent.type === "rwa_command") {
+    return (
+      <div className="mt-3 rounded-xl border border-amber-300/25 bg-amber-300/[0.06] p-3.5 text-xs">
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-amber-200/10">
+          <div className="flex items-center gap-1.5 font-medium text-white">
+            <ShieldAlert className="h-3.5 w-3.5 text-amber-300" />
+            <span>RWA Trade Proposal</span>
+          </div>
+          {onDismiss && <button type="button" onClick={onDismiss} className="p-1 text-white/40 hover:text-white rounded" aria-label="Dismiss proposal"><X className="w-3.5 h-3.5" /></button>}
+        </div>
+        <div className="space-y-1.5 mb-3 text-white/80">
+          <div className="flex justify-between"><span className="text-white/40">Action:</span><span className="font-semibold text-white">{intent.action.toUpperCase()} {intent.amount} {intent.tokenSymbol}</span></div>
+          <div className="flex justify-between"><span className="text-white/40">Funding:</span><span className="text-white">{intent.fundingAsset}</span></div>
+          <div className="flex justify-between"><span className="text-white/40">Guard:</span><span className="text-amber-300">Explicit quote + risk confirmation</span></div>
+        </div>
+        <button type="button" onClick={() => onApplyIntent(intent)} className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-medium text-slate-950 bg-amber-300 hover:bg-amber-200 transition-colors">
+          <span>Review RWA Quote</span><ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
+
   if (intent.type === "send_transfer") {
     const isDanger = safetyEvidence?.poisonVerdict === "danger" || safetyEvidence?.guardrailVerdict === "blocked";
     const risk = evaluateTransactionRisk({

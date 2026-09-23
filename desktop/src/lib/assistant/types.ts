@@ -34,6 +34,18 @@ export interface ParsedTransferIntent {
   confidence: number;
 }
 
+export interface ParsedRwaCommandIntent {
+  type: "rwa_command";
+  action: "buy" | "sell" | "swap";
+  tokenSymbol: string;
+  tokenName: string;
+  tokenAddress: string;
+  amount: string;
+  fundingAsset: "USDG" | "ETH";
+  confidence: number;
+  requiresExplicitConfirmation: true;
+}
+
 export interface ParsedPaylinkIntent {
   type: "create_paylink";
   amount: string;
@@ -242,6 +254,7 @@ export interface ParsedShardHealthIntent {
 
 export type ParsedIntent =
   | ParsedTransferIntent
+  | ParsedRwaCommandIntent
   | ParsedPaylinkIntent
   | ParsedFreezeIntent
   | ParsedUnfreezeIntent

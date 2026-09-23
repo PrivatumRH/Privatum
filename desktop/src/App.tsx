@@ -243,6 +243,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.44": "Stealth Address Leakage & Unlinkability Auditor NLP",
   "0.1.45": "Privacy Posture Profiles",
   "0.1.47": "Transaction Simulation Explainer",
+  "0.1.48": "AI RWA Command & Transfer Guard",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -504,6 +505,7 @@ export function App() {
 
   // Preselected token for Swap tab
   const [swapTokenOut, setSwapTokenOut] = useState<string>("AAPL");
+  const [swapAmountIn, setSwapAmountIn] = useState<string>("");
   const [wallet, setWallet] = useState<PrivatumWallet | null>(null);
   const [walletAddress, setWalletAddress] = useState<string>("");
   const [shardAPrivKey, setShardAPrivKey] = useState<string>("");
@@ -3973,6 +3975,8 @@ export function App() {
               shardAPrivKey={shardAPrivKey}
               addToast={addToast}
               preselectedTokenOut={swapTokenOut}
+              prefillAmountIn={swapAmountIn}
+              rwaGuardEnabled={isFeatureActive("ai_rwa_guard", appVersion, previewVersion)}
               isGaslessActive={isGaslessActive}
             />
           </div>
@@ -5469,7 +5473,12 @@ export function App() {
         cosignerApiUrl={wallet?.apiUrl || DEFAULT_API_URL}
         recentCeremony={ceremony}
         onApplyIntent={async (intent) => {
-          if (intent.type === "send_transfer") {
+          if (intent.type === "rwa_command") {
+            setSwapTokenOut(intent.tokenSymbol);
+            setSwapAmountIn(intent.amount);
+            setActiveTab("swaps");
+            addToast("info", "RWA Review Ready", `${intent.tokenSymbol} is selected. Review the quote and risk disclosure before signing.`);
+          } else if (intent.type === "send_transfer") {
             setSendRecipient(intent.recipient);
             setSendAmount(intent.amount);
             setSendAssetType(intent.asset);

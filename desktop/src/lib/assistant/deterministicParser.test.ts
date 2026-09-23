@@ -34,6 +34,28 @@ describe("Deterministic NLP Parser", () => {
     }
   });
 
+  it("recognizes an RWA buy command without downgrading it to USDG", () => {
+    const res = parseDeterministicIntent("buy 25 AAPL", mockContacts);
+    expect(res?.type).toBe("rwa_command");
+    if (res?.type === "rwa_command") {
+      expect(res.tokenSymbol).toBe("AAPL");
+      expect(res.tokenName).toBe("Apple Inc.");
+      expect(res.amount).toBe("25");
+      expect(res.fundingAsset).toBe("USDG");
+      expect(res.requiresExplicitConfirmation).toBe(true);
+    }
+  });
+
+  it("recognizes an RWA swap with explicit funding asset", () => {
+    const res = parseDeterministicIntent("swap 0.5 ETH for TSLA", mockContacts);
+    expect(res?.type).toBe("rwa_command");
+    if (res?.type === "rwa_command") {
+      expect(res.tokenSymbol).toBe("TSLA");
+      expect(res.fundingAsset).toBe("ETH");
+      expect(res.action).toBe("swap");
+    }
+  });
+
   it("resolves contact name and recognizes stealth mode", () => {
     const raw = "transfer 0.25 ETH to Alice secretly with stealth";
     const res = parseDeterministicIntent(raw, mockContacts);
