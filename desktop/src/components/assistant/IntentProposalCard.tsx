@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpRight, Shield, ShieldAlert, ShieldCheck, Ban, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2, Activity, HeartPulse, CheckCircle2, AlertTriangle, Search, Users, Zap, Clock, Cpu, Server } from "lucide-react";
+import { ArrowUpRight, Shield, ShieldAlert, ShieldCheck, Ban, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2, Activity, HeartPulse, CheckCircle2, AlertTriangle, Search, Users, Zap, Clock, Cpu, Server, Gauge, TrendingDown } from "lucide-react";
 import type { ParsedIntent } from "../../lib/assistant/types";
 import type { InferenceReceipt } from "../../lib/assistant/inferenceReceipt";
 import { evaluateTransactionRisk } from "../../lib/riskScore";
@@ -1393,6 +1393,177 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
 
         {/* Dismiss Button */}
         <div className="flex items-center justify-end gap-2">
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="py-1.5 px-3 rounded-lg font-medium text-xs text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/10 border border-white/5 transition-colors cursor-pointer"
+            >
+              Close
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (intent.type === "gas_scheduler") {
+    const report = intent.report;
+    const tier = report.congestion.currentTier;
+    const tierBadge =
+      tier === "optimal"
+        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+        : tier === "moderate"
+        ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+        : "border-[#B91C3B]/30 bg-[#B91C3B]/10 text-[#B91C3B]";
+
+    const queuedCount = report.outboxAnalysis.queuedCount;
+
+    return (
+      <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3.5 text-xs">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-1.5 font-medium text-white">
+            <Gauge className="h-3.5 w-3.5 text-[#B91C3B]" />
+            <span>Gas Congestion &amp; Outbox Optimizer</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${tierBadge}`}>
+              {tier.toUpperCase()}
+            </span>
+            <span className="text-[11px] font-bold font-mono text-white">
+              {report.currentGwei.toFixed(2)} Gwei
+            </span>
+          </div>
+        </div>
+
+        {/* Congestion & Timing Card */}
+        <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5 mb-3">
+          <div className="flex items-center justify-between text-[11px] text-white/80 mb-1">
+            <span className="font-medium text-white flex items-center gap-1">
+              <Clock className="w-3 h-3 text-cyan-400" />
+              <span>Optimal Window: {report.congestion.bestWindowUtc}</span>
+            </span>
+            <span className="text-[10px] text-white/50 font-mono">
+              ~{report.congestion.estimatedWaitHours}h wait
+            </span>
+          </div>
+          <p className="text-[10px] text-white/60 leading-relaxed">
+            {report.congestion.explanation}
+          </p>
+        </div>
+
+        {/* Outbox Queue Fee Analysis (if transactions queued) */}
+        {queuedCount > 0 ? (
+          <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5 mb-3">
+            <div className="flex items-center justify-between text-[11px] font-medium text-white mb-2">
+              <span className="flex items-center gap-1">
+                <TrendingDown className="w-3 h-3 text-emerald-400" />
+                <span>Outbox Queue Fee Exposure ({queuedCount} transfer{queuedCount > 1 ? "s" : ""})</span>
+              </span>
+              {report.outboxAnalysis.projectedSavingsPercent > 0 && (
+                <span className="text-[10px] font-mono text-emerald-400 font-semibold">
+                  Save ~{report.outboxAnalysis.projectedSavingsPercent}%
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5 text-center mb-2.5">
+              <div className="bg-white/[0.02] rounded p-1.5">
+                <div className="text-[9px] text-white/40">Current Cost</div>
+                <div className="text-[11px] font-mono font-medium text-white">
+                  ${report.outboxAnalysis.currentCostUsd.toFixed(2)}
+                </div>
+              </div>
+              <div className="bg-white/[0.02] rounded p-1.5">
+                <div className="text-[9px] text-white/40">Target Cost</div>
+                <div className="text-[11px] font-mono font-medium text-cyan-300">
+                  ${report.outboxAnalysis.optimalCostUsd.toFixed(2)}
+                </div>
+              </div>
+              <div className="bg-white/[0.02] rounded p-1.5">
+                <div className="text-[9px] text-white/40">Estimated Savings</div>
+                <div className="text-[11px] font-mono font-medium text-emerald-400">
+                  ${report.outboxAnalysis.projectedSavingsUsd.toFixed(2)}
+                </div>
+              </div>
+            </div>
+
+            {/* Itemized Mini-list */}
+            <div className="space-y-1 max-h-28 overflow-y-auto pr-1">
+              {report.outboxAnalysis.items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between text-[10px] p-1.5 rounded bg-white/[0.015] border border-white/5"
+                >
+                  <div className="truncate mr-2">
+                    <span className="text-white font-medium">
+                      {item.recipientLabel || `${item.recipient.slice(0, 6)}...${item.recipient.slice(-4)}`}
+                    </span>
+                    <span className="text-white/40 ml-1">
+                      ({item.amount} {item.asset})
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="font-mono text-white/70">
+                      ${item.currentCostUsd.toFixed(2)}
+                    </span>
+                    {item.status !== "fair" && (
+                      <span
+                        className={`text-[8px] px-1 rounded uppercase font-mono ${
+                          item.status === "overpriced"
+                            ? "bg-amber-500/20 text-amber-300"
+                            : "bg-[#B91C3B]/20 text-[#B91C3B]"
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5 mb-3 text-[10px] text-white/50 text-center">
+            No queued transactions in offline outbox.
+          </div>
+        )}
+
+        {/* Actionable Strategy Notes */}
+        {report.actionableAdvice.length > 0 && (
+          <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5 mb-3">
+            <div className="text-[10px] font-medium text-white/60 mb-1">Fee Optimization Notes:</div>
+            <ul className="space-y-1">
+              {report.actionableAdvice.map((advice, idx) => (
+                <li key={idx} className="text-[10px] text-white/70 flex items-start gap-1">
+                  <span className="text-[#B91C3B] select-none">*</span>
+                  <span>{advice}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {receipt && (
+          <div className="flex items-center justify-between text-[10px] pb-3 border-b border-white/5 mb-3">
+            <span className="text-white/40">Inference Proof:</span>
+            <span className="font-mono text-white/50">{receipt.shortRef}</span>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          {queuedCount > 0 && (
+            <button
+              type="button"
+              onClick={() => onApplyIntent({ type: "broadcast_outbox", queuedCount })}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg font-medium text-xs text-white bg-indigo-600 hover:bg-indigo-500 transition-colors cursor-pointer"
+            >
+              <span>Broadcast Queue Now ({queuedCount})</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          )}
           {onDismiss && (
             <button
               type="button"

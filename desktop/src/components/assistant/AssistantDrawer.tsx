@@ -42,6 +42,7 @@ interface AssistantDrawerProps {
   cosignerApiUrl?: string;
   recentCeremony?: CeremonyStage[];
   portfolio?: PortfolioIntelligenceInput;
+  gasPriceGwei?: string;
   onApplyIntent: (intent: ParsedIntent) => void;
   /** Feature gate: inference_receipt_export (0.1.20). */
   receiptExportEnabled?: boolean;
@@ -54,6 +55,7 @@ interface AssistantDrawerProps {
 
 const DEFAULT_SUGGESTION_PROMPTS = [
   "Wallet health report",
+  "When is the cheapest time to broadcast?",
   "Check cosigner health",
   "What is in my outbox?",
   "Show my security policies",
@@ -81,6 +83,7 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
   cosignerApiUrl,
   recentCeremony,
   portfolio,
+  gasPriceGwei,
   onApplyIntent,
   receiptExportEnabled = false,
   appVersion = "0.1.20",
@@ -185,6 +188,7 @@ export const AssistantDrawer: React.FC<AssistantDrawerProps> = ({
         cosignerApiUrl,
         recentCeremony,
         portfolio,
+        gasPriceGwei,
         preferredEngine: engineMode,
         onToken: (token: string) => {
           if (!hasStreamedToken) {

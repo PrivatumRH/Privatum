@@ -269,6 +269,32 @@ describe("Assistant Engine Pipeline", () => {
     expect(res.content).toContain("Threshold MPC Shard Health");
     expect(res.safetyEvidence?.intentSummary).toContain("Threshold Shard Health");
   });
+
+  it("processes gas scheduler and outbox fee optimization queries through pipeline", async () => {
+    const res = await processAssistantQuery({
+      input: "When is the cheapest time to broadcast my queued payments?",
+      gasPriceGwei: "1.8",
+      offlineOutbox: [
+        {
+          id: "tx-queued-1",
+          walletAddress: "0x1111111111111111111111111111111111111111",
+          nonce: 3,
+          recipient: "0x2222222222222222222222222222222222222222",
+          amount: "0.5",
+          asset: "ETH",
+          rawSignedTx: "0x02f8",
+          txHash: "0x3333",
+          gasLimit: "21000",
+          chainId: 11155111,
+          createdAt: Date.now(),
+          status: "queued",
+        },
+      ],
+    });
+    expect(res.intent?.type).toBe("gas_scheduler");
+    expect(res.content).toContain("Gas Market");
+    expect(res.safetyEvidence?.intentSummary).toContain("Gas Optimizer");
+  });
 });
 
 

@@ -31,6 +31,7 @@ import { evaluateWalletHealthQuery } from "./walletHealthQueries";
 import { evaluateLedgerSearchQuery } from "./ledgerSearchQueries";
 import { evaluateBatchPaymentQuery } from "./batchPaymentQueries";
 import { evaluateShardHealthQuery } from "./shardHealthQueries";
+import { evaluateGasSchedulerQuery } from "./gasSchedulerQueries";
 import type { CeremonyStage } from "../thresholdCeremony";
 import { parseMultiIntent } from "./multiIntent";
 import { queryKnowledgeBase } from "./knowledgeBase";
@@ -55,6 +56,7 @@ export interface ProcessAssistantInputParams {
   cosignerApiUrl?: string;
   recentCeremony?: CeremonyStage[];
   portfolio?: PortfolioIntelligenceInput;
+  gasPriceGwei?: string;
   preferredEngine?: EngineMode;
   onToken?: (token: string) => void;
 }
@@ -89,6 +91,7 @@ export async function processAssistantQuery(
     cosignerApiUrl = "",
     recentCeremony,
     portfolio,
+    gasPriceGwei,
     preferredEngine = "deterministic",
   } = params;
 
@@ -363,6 +366,29 @@ export async function processAssistantQuery(
       intent: shardHealthRes.intent,
       safetyEvidence: {
         intentSummary: `Threshold Shard Health: Score ${shardHealthRes.report.score}/100 [Shard A: ${shardHealthRes.report.shardA.status}, Shard B: ${shardHealthRes.report.shardB.status}]`,
+      },
+    });
+  }
+
+  // STEP 4f: Local Natural Language Gas-Optimal Congestion Scheduler & Outbox Fee Optimizer Intelligence
+  const gasRes = evaluateGasSchedulerQuery(cleanText, {
+    offlineOutbox,
+    gasPriceGwei,
+  });
+
+  if (gasRes && gasRes.handled) {
+    const lines = [gasRes.summary];
+    if (gasRes.details && gasRes.details.length > 0) {
+      lines.push("");
+      for (const d of gasRes.details) {
+        lines.push(d);
+      }
+    }
+
+    return await createResponse(lines.join("\n"), {
+      intent: gasRes.intent,
+      safetyEvidence: {
+        intentSummary: `Gas Optimizer: ${gasRes.report.currentGwei.toFixed(2)} Gwei (${gasRes.report.congestion.currentTier.toUpperCase()})`,
       },
     });
   }

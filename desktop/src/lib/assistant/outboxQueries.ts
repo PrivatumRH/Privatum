@@ -88,11 +88,12 @@ export function evaluateOutboxQuery(
   // 1. Actionable intent: Broadcast Outbox
   // e.g. "broadcast outbox", "broadcast my queued transfers", "relay outbox", "settle queued transactions"
   if (
-    /(?:broadcast|relay|settle|send\s+all)\s+(?:my\s+)?(?:all\s+)?(?:offline\s+)?(?:queued\s+)?(?:outbox|transfers?|transactions?|queue)/i.test(
+    !/\b(?:when|cheapest|best\s+time|schedule|gas|optimize)\b/i.test(clean) &&
+    ((/(?:broadcast|relay|settle|send\s+all)\s+(?:my\s+)?(?:all\s+)?(?:offline\s+)?(?:queued\s+)?(?:outbox|transfers?|transactions?|queue)/i.test(
       clean
     ) ||
     clean === "broadcast outbox" ||
-    clean === "relay outbox"
+    clean === "relay outbox"))
   ) {
     if (queued.length === 0) {
       return {

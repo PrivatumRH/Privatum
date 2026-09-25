@@ -247,6 +247,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.47": "Transaction Simulation Explainer",
   "0.1.48": "AI RWA Command & Transfer Guard",
   "0.1.49": "AI Portfolio Intelligence",
+  "0.1.50": "Gas-Optimal Congestion Scheduler & Outbox Fee Optimizer NLP",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -5494,6 +5495,7 @@ export function App() {
           eth24hChange,
           transactions: transactions.map((tx) => ({ asset: tx.asset, amount: tx.amount, type: tx.type })),
         }}
+        gasPriceGwei={gasPriceGwei}
         onApplyIntent={async (intent) => {
           if (intent.type === "portfolio_intelligence") {
             addToast("info", "Portfolio Analysis", "The dashboard intelligence card reflects the latest local balances and ledger evidence.");
@@ -5612,6 +5614,12 @@ export function App() {
               intent.report.overallStatus === "healthy" ? "success" : intent.report.overallStatus === "degraded" ? "info" : "error",
               "Shard Diagnostics",
               `Health Score: ${intent.report.score}/100. Shard A: ${intent.report.shardA.status}, Shard B: ${intent.report.shardB.status}.`
+            );
+          } else if (intent.type === "gas_scheduler") {
+            addToast(
+              intent.report.congestion.currentTier === "optimal" ? "success" : "info",
+              "Gas Optimization Schedule",
+              `Target: <= ${intent.report.targetGweiThreshold.toFixed(2)} Gwei. Best window: ${intent.report.congestion.bestWindowUtc} (~${intent.report.congestion.estimatedWaitHours}h wait).`
             );
           }
         }}
