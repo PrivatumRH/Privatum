@@ -33,6 +33,7 @@ import { evaluateBatchPaymentQuery } from "./batchPaymentQueries";
 import { evaluateShardHealthQuery } from "./shardHealthQueries";
 import { evaluateGasSchedulerQuery } from "./gasSchedulerQueries";
 import { evaluateSwapSimulationQuery } from "./swapSimulatorQueries";
+import { evaluateBudgetRunwayQuery } from "./budgetRunwayQueries";
 import type { CeremonyStage } from "../thresholdCeremony";
 import { parseMultiIntent } from "./multiIntent";
 import { queryKnowledgeBase } from "./knowledgeBase";
@@ -417,6 +418,30 @@ export async function processAssistantQuery(
       intent: swapSimRes.intent,
       safetyEvidence: {
         intentSummary: `Swap Simulation: ${swapSimRes.simulation.amountInNumber} ${swapSimRes.simulation.tokenIn.symbol} -> ${swapSimRes.simulation.estimatedAmountOut} ${swapSimRes.simulation.tokenOut.symbol}`,
+      },
+    });
+  }
+
+  // STEP 4h: Local Natural Language Guardrail Capacity Forecasting & Budget Runway Intelligence
+  const runwayRes = evaluateBudgetRunwayQuery(cleanText, {
+    guardrailConfig,
+    spendingHistory,
+    offlineOutbox,
+  });
+
+  if (runwayRes && runwayRes.handled) {
+    const lines = [runwayRes.summary];
+    if (runwayRes.details && runwayRes.details.length > 0) {
+      lines.push("");
+      for (const d of runwayRes.details) {
+        lines.push(`* ${d}`);
+      }
+    }
+
+    return await createResponse(lines.join("\n"), {
+      intent: runwayRes.intent,
+      safetyEvidence: {
+        intentSummary: `Budget Runway: $${runwayRes.report.remainingHeadroomUsd.toFixed(2)} headroom (${runwayRes.report.headroomPercent}% capacity, ${runwayRes.report.riskTier.toUpperCase()})`,
       },
     });
   }

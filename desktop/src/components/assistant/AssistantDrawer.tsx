@@ -54,6 +54,7 @@ interface AssistantDrawerProps {
 }
 
 const DEFAULT_SUGGESTION_PROMPTS = [
+  "Forecast my spending runway",
   "Simulate swapping 500 USDG for ETH",
   "Wallet health report",
   "When is the cheapest time to broadcast?",

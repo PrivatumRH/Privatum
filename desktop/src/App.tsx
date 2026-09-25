@@ -249,6 +249,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.49": "AI Portfolio Intelligence",
   "0.1.50": "Gas-Optimal Congestion Scheduler & Outbox Fee Optimizer NLP",
   "0.1.51": "Conversational DEX Swap & Treasury Rebalance Simulator NLP",
+  "0.1.52": "Guardrail Capacity Forecasting & Budget Runway NLP",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -5630,6 +5631,13 @@ export function App() {
               "info",
               intent.simulation.isRebalance ? "Treasury Rebalance" : "Swap Pre-Flight Loaded",
               `${intent.simulation.amountIn} ${intent.simulation.tokenIn.symbol} for ~${intent.simulation.estimatedAmountOut} ${intent.simulation.tokenOut.symbol} loaded into Swap interface.`
+            );
+          } else if (intent.type === "budget_runway") {
+            setShowGuardrailsModal(true);
+            addToast(
+              intent.report.riskTier === "sustainable" ? "success" : intent.report.riskTier === "elevated" ? "info" : "error",
+              "Guardrail Capacity Forecast",
+              `Remaining Headroom: $${intent.report.remainingHeadroomUsd.toFixed(2)} (${intent.report.headroomPercent}%). Runway: ${intent.report.formattedRunway}.`
             );
           }
         }}
