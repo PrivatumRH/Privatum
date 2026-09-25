@@ -295,6 +295,34 @@ describe("Assistant Engine Pipeline", () => {
     expect(res.content).toContain("Gas Market");
     expect(res.safetyEvidence?.intentSummary).toContain("Gas Optimizer");
   });
+
+  it("processes DEX swap simulation queries through pipeline", async () => {
+    const res = await processAssistantQuery({
+      input: "Simulate swapping 500 USDG for ETH",
+      portfolio: {
+        usdgBalance: "2500",
+        ethBalance: "1.0",
+        ethPrice: 2500,
+      },
+    });
+    expect(res.intent?.type).toBe("swap_simulation");
+    expect(res.content).toContain("Pre-Flight Swap Simulation: 500 USDG");
+    expect(res.safetyEvidence?.intentSummary).toContain("Swap Simulation: 500 USDG");
+  });
+
+  it("processes conversational treasury rebalance queries through pipeline", async () => {
+    const res = await processAssistantQuery({
+      input: "Convert 20% of my USDG to ETH",
+      portfolio: {
+        usdgBalance: "1000",
+        ethBalance: "0.5",
+        ethPrice: 2500,
+      },
+    });
+    expect(res.intent?.type).toBe("swap_simulation");
+    expect(res.content).toContain("Pre-Flight Treasury Rebalance Simulation: 200 USDG");
+  });
 });
+
 
 

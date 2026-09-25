@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpRight, Shield, ShieldAlert, ShieldCheck, Ban, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2, Activity, HeartPulse, CheckCircle2, AlertTriangle, Search, Users, Zap, Clock, Cpu, Server, Gauge, TrendingDown } from "lucide-react";
+import { ArrowUpRight, Shield, ShieldAlert, ShieldCheck, Ban, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2, Activity, HeartPulse, CheckCircle2, AlertTriangle, Search, Users, Zap, Clock, Cpu, Server, Gauge, TrendingDown, ArrowLeftRight } from "lucide-react";
 import type { ParsedIntent } from "../../lib/assistant/types";
 import type { InferenceReceipt } from "../../lib/assistant/inferenceReceipt";
 import { evaluateTransactionRisk } from "../../lib/riskScore";
@@ -1571,6 +1571,160 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
               className="py-1.5 px-3 rounded-lg font-medium text-xs text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/10 border border-white/5 transition-colors cursor-pointer"
             >
               Close
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (intent.type === "swap_simulation") {
+    const sim = intent.simulation;
+    const impactBadge =
+      sim.priceImpactPercent < 0.2
+        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+        : sim.priceImpactPercent < 1.0
+        ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+        : "border-[#B91C3B]/30 bg-[#B91C3B]/10 text-[#B91C3B]";
+
+    return (
+      <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3.5 text-xs">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-1.5 font-medium text-white">
+            <ArrowLeftRight className="h-3.5 w-3.5 text-[#B91C3B]" />
+            <span>{sim.isRebalance ? "Treasury Rebalance Simulation" : "DEX Swap Simulation"}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${impactBadge}`}>
+              {sim.priceImpactPercent}% IMPACT
+            </span>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/5 text-white/70 border border-white/10">
+              {sim.tokenIn.symbol} &rarr; {sim.tokenOut.symbol}
+            </span>
+          </div>
+        </div>
+
+        {/* Exchange Route and Output Details */}
+        <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5 mb-3">
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <div>
+              <div className="text-[10px] text-white/40">You Send</div>
+              <div className="text-[12px] font-mono font-semibold text-white">
+                {sim.amountInNumber.toLocaleString()} {sim.tokenIn.symbol}
+              </div>
+              {sim.amountInUsd > 0 && (
+                <div className="text-[10px] text-white/50 font-mono">
+                  ~${sim.amountInUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                </div>
+              )}
+            </div>
+            <div>
+              <div className="text-[10px] text-white/40">Estimated Output</div>
+              <div className="text-[12px] font-mono font-semibold text-emerald-400">
+                ~{sim.estimatedAmountOut} {sim.tokenOut.symbol}
+              </div>
+              <div className="text-[10px] text-white/50 font-mono">
+                Min: {sim.minimumAmountOut} {sim.tokenOut.symbol} ({sim.slippageTolerancePercent}% slip)
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[10px] text-white/60">
+            <span>Rate: 1 {sim.tokenIn.symbol} = {sim.effectiveRate.toFixed(6)} {sim.tokenOut.symbol}</span>
+            <span>Gas: ~{sim.estimatedGasEth} ETH</span>
+          </div>
+        </div>
+
+        {/* Simulated Pre-Flight Balance Diffs */}
+        <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5 mb-3">
+          <div className="text-[10px] font-medium text-white/70 mb-1.5">
+            Pre-Flight Balance Projections:
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[11px] font-mono">
+              <span className="text-white/60">{sim.balanceDiff.tokenIn.symbol}:</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-white/50">{sim.balanceDiff.tokenIn.formattedInitial}</span>
+                <span className="text-white/30">&rarr;</span>
+                <span className="text-white">{sim.balanceDiff.tokenIn.formattedProjected}</span>
+                <span className="text-rose-400 text-[10px]">({sim.balanceDiff.tokenIn.formattedChange})</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-[11px] font-mono">
+              <span className="text-white/60">{sim.balanceDiff.tokenOut.symbol}:</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-white/50">{sim.balanceDiff.tokenOut.formattedInitial}</span>
+                <span className="text-white/30">&rarr;</span>
+                <span className="text-white">{sim.balanceDiff.tokenOut.formattedProjected}</span>
+                <span className="text-emerald-400 text-[10px]">({sim.balanceDiff.tokenOut.formattedChange})</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-[11px] font-mono">
+              <span className="text-white/60">ETH Gas:</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-white/50">{sim.balanceDiff.ethGas.formattedInitial}</span>
+                <span className="text-white/30">&rarr;</span>
+                <span className="text-white">{sim.balanceDiff.ethGas.formattedProjected}</span>
+                <span className="text-amber-400/80 text-[10px]">({sim.balanceDiff.ethGas.formattedChange})</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Warnings */}
+        {sim.warnings.length > 0 && (
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04] p-2.5 mb-3">
+            <div className="text-[10px] font-medium text-amber-300 flex items-center gap-1 mb-1">
+              <AlertTriangle className="w-3 h-3 text-amber-400" />
+              <span>Simulation Notice</span>
+            </div>
+            <ul className="space-y-1">
+              {sim.warnings.map((w, idx) => (
+                <li key={idx} className="text-[10px] text-amber-200/80 leading-relaxed flex items-start gap-1">
+                  <span className="text-amber-400 select-none">*</span>
+                  <span>{w}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Inference Proof */}
+        {receipt && (
+          <div className="flex items-center justify-between text-[10px] pb-3 border-b border-white/5 mb-3">
+            <span className="text-white/40">Inference Proof:</span>
+            <span className="font-mono text-white/50">{receipt.shortRef}</span>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center gap-2">
+          {sim.canExecute ? (
+            <button
+              type="button"
+              onClick={() => onApplyIntent(intent)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg font-medium text-xs text-white bg-[#B91C3B] hover:bg-[#9D1632] transition-colors cursor-pointer"
+            >
+              <span>Open Swap Screen</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="flex-1 py-1.5 px-3 rounded-lg font-medium text-xs text-white/40 bg-white/5 border border-white/5 cursor-not-allowed"
+            >
+              Insufficient Balance
+            </button>
+          )}
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="py-1.5 px-3 rounded-lg font-medium text-xs text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/10 border border-white/5 transition-colors cursor-pointer"
+            >
+              Dismiss
             </button>
           )}
         </div>

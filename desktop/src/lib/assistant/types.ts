@@ -23,6 +23,7 @@ export type AssistantIntentType =
   | "batch_payment"
   | "shard_health"
   | "gas_scheduler"
+  | "swap_simulation"
   | "general_query";
 
 export interface ParsedTransferIntent {
@@ -264,6 +265,11 @@ export interface ParsedGasSchedulerIntent {
   report: import("../gasScheduler").GasOptimizationReport;
 }
 
+export interface ParsedSwapSimulationIntent {
+  type: "swap_simulation";
+  simulation: import("../swapSimulator").SwapSimulationResult;
+}
+
 export type ParsedIntent =
   | ParsedTransferIntent
   | ParsedRwaCommandIntent
@@ -289,6 +295,7 @@ export type ParsedIntent =
   | ParsedBatchPaymentIntent
   | ParsedShardHealthIntent
   | ParsedGasSchedulerIntent
+  | ParsedSwapSimulationIntent
   | { type: "view_guardrails" }
   | { type: "view_contacts" }
   | { type: "export_ledger" }
