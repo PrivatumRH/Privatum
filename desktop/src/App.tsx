@@ -251,6 +251,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.51": "Conversational DEX Swap & Treasury Rebalance Simulator NLP",
   "0.1.52": "Guardrail Capacity Forecasting & Budget Runway NLP",
   "0.1.53": "Cross-Chain Bridge Expansion to Optimism (OP Mainnet)",
+  "0.1.54": "Expanded Base Asset & Bridge Quote Simulator NLP",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -513,6 +514,12 @@ export function App() {
   // Preselected token for Swap tab
   const [swapTokenOut, setSwapTokenOut] = useState<string>("AAPL");
   const [swapAmountIn, setSwapAmountIn] = useState<string>("");
+
+  // Preselected parameters for CrossChain tab
+  const [crossChainChainId, setCrossChainChainId] = useState<number | undefined>(undefined);
+  const [crossChainAmount, setCrossChainAmount] = useState<string | undefined>(undefined);
+  const [crossChainTokenSymbol, setCrossChainTokenSymbol] = useState<string | undefined>(undefined);
+
   const [wallet, setWallet] = useState<PrivatumWallet | null>(null);
   const [walletAddress, setWalletAddress] = useState<string>("");
   const [shardAPrivKey, setShardAPrivKey] = useState<string>("");
@@ -4010,6 +4017,9 @@ export function App() {
               walletAddress={walletAddress as Address}
               shardAPrivKey={shardAPrivKey}
               addToast={addToast}
+              prefillDestinationChainId={crossChainChainId}
+              prefillAmount={crossChainAmount}
+              prefillTokenSymbol={crossChainTokenSymbol}
             />
           </div>
         )}
@@ -5639,6 +5649,16 @@ export function App() {
               intent.report.riskTier === "sustainable" ? "success" : intent.report.riskTier === "elevated" ? "info" : "error",
               "Guardrail Capacity Forecast",
               `Remaining Headroom: $${intent.report.remainingHeadroomUsd.toFixed(2)} (${intent.report.headroomPercent}%). Runway: ${intent.report.formattedRunway}.`
+            );
+          } else if (intent.type === "bridge_simulation") {
+            setCrossChainChainId(intent.simulation.destinationChain.chainId);
+            setCrossChainAmount(intent.simulation.amountIn);
+            setCrossChainTokenSymbol(intent.simulation.tokenIn.symbol);
+            setActiveTab("cross_chain");
+            addToast(
+              "info",
+              "Cross-Chain Bridge Loaded",
+              `${intent.simulation.amountIn} ${intent.simulation.tokenIn.symbol} -> ~${intent.simulation.estimatedAmountOut} ${intent.simulation.tokenOut.symbol} on ${intent.simulation.destinationChain.name} loaded into Bridge interface.`
             );
           }
         }}
