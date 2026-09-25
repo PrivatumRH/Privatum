@@ -26,6 +26,7 @@ interface AssistantWidgetProps {
   cosignerApiUrl?: string;
   recentCeremony?: import("../../lib/thresholdCeremony").CeremonyStage[];
   portfolio?: PortfolioIntelligenceInput;
+  gasPriceGwei?: string;
   onApplyIntent: (intent: ParsedIntent) => void;
   /** Feature gate: inference_receipt_export (0.1.20). */
   receiptExportEnabled?: boolean;
@@ -53,6 +54,7 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
   cosignerApiUrl,
   recentCeremony,
   portfolio,
+  gasPriceGwei,
   onApplyIntent,
   receiptExportEnabled = false,
   appVersion,
@@ -115,6 +117,7 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
         cosignerApiUrl={cosignerApiUrl}
         recentCeremony={recentCeremony}
         portfolio={portfolio}
+        gasPriceGwei={gasPriceGwei}
         onApplyIntent={onApplyIntent}
         receiptExportEnabled={receiptExportEnabled}
         appVersion={appVersion}

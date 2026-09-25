@@ -22,6 +22,7 @@ export type AssistantIntentType =
   | "ledger_search"
   | "batch_payment"
   | "shard_health"
+  | "gas_scheduler"
   | "general_query";
 
 export interface ParsedTransferIntent {
@@ -258,6 +259,11 @@ export interface ParsedShardHealthIntent {
   report: import("../shardHealth").ShardHealthReport;
 }
 
+export interface ParsedGasSchedulerIntent {
+  type: "gas_scheduler";
+  report: import("../gasScheduler").GasOptimizationReport;
+}
+
 export type ParsedIntent =
   | ParsedTransferIntent
   | ParsedRwaCommandIntent
@@ -282,6 +288,7 @@ export type ParsedIntent =
   | ParsedLedgerSearchIntent
   | ParsedBatchPaymentIntent
   | ParsedShardHealthIntent
+  | ParsedGasSchedulerIntent
   | { type: "view_guardrails" }
   | { type: "view_contacts" }
   | { type: "export_ledger" }
