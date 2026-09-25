@@ -49,7 +49,8 @@ export type FeatureKey =
   | "ai_portfolio_intelligence"
   | "gas_scheduler_nlp"
   | "swap_simulator_nlp"
-  | "budget_runway_nlp";
+  | "budget_runway_nlp"
+  | "cross_chain_optimism";
 
 export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   wallet: "0.1.0",
@@ -103,6 +104,7 @@ export const FEATURE_MILESTONES: Record<FeatureKey, string> = {
   gas_scheduler_nlp: "0.1.50",
   swap_simulator_nlp: "0.1.51",
   budget_runway_nlp: "0.1.52",
+  cross_chain_optimism: "0.1.53",
 };
 
 export const RELEASE_VERSIONS = [
@@ -158,6 +160,7 @@ export const RELEASE_VERSIONS = [
   "0.1.50",
   "0.1.51",
   "0.1.52",
+  "0.1.53",
 ] as const;
 export type ReleaseVersion = typeof RELEASE_VERSIONS[number];
 

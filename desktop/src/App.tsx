@@ -250,6 +250,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.50": "Gas-Optimal Congestion Scheduler & Outbox Fee Optimizer NLP",
   "0.1.51": "Conversational DEX Swap & Treasury Rebalance Simulator NLP",
   "0.1.52": "Guardrail Capacity Forecasting & Budget Runway NLP",
+  "0.1.53": "Cross-Chain Bridge Expansion to Optimism (OP Mainnet)",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
