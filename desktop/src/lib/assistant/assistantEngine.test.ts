@@ -347,6 +347,29 @@ describe("Assistant Engine Pipeline", () => {
     expect(res.content).toContain("Budget Runway Forecast: $750.00 remaining");
     expect(res.safetyEvidence?.intentSummary).toContain("Budget Runway: $750.00 headroom");
   });
+
+  it("processes cross-chain bridge simulation queries through pipeline", async () => {
+    const res = await processAssistantQuery({
+      input: "Bridge 500 USDG to Base",
+      portfolio: {
+        usdgBalance: "2500",
+      },
+    });
+    expect(res.intent?.type).toBe("bridge_simulation");
+    expect(res.content).toContain("Pre-Flight Bridge Simulation: 500 USDG");
+    expect(res.safetyEvidence?.intentSummary).toContain("Bridge Simulation: 500 USDG");
+  });
+
+  it("processes bridge simulation with expanded Base asset cbBTC through pipeline", async () => {
+    const res = await processAssistantQuery({
+      input: "Bridge 6500 USDG to Base as cbBTC",
+      portfolio: {
+        usdgBalance: "10000",
+      },
+    });
+    expect(res.intent?.type).toBe("bridge_simulation");
+    expect(res.content).toContain("cbBTC on Base");
+  });
 });
 
 

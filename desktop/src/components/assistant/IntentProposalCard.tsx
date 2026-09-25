@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowUpRight, Shield, ShieldAlert, ShieldCheck, Ban, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2, Activity, HeartPulse, CheckCircle2, AlertTriangle, Search, Users, Zap, Clock, Cpu, Server, Gauge, TrendingDown, ArrowLeftRight } from "lucide-react";
+import { ArrowUpRight, Shield, ShieldAlert, ShieldCheck, Ban, Link2, Lock, Unlock, ArrowRight, X, Layers, Download, Radio, Inbox, Trash2, Activity, HeartPulse, CheckCircle2, AlertTriangle, Search, Users, Zap, Clock, Cpu, Server, Gauge, TrendingDown, ArrowLeftRight, Globe2 } from "lucide-react";
 import type { ParsedIntent } from "../../lib/assistant/types";
 import type { InferenceReceipt } from "../../lib/assistant/inferenceReceipt";
 import { evaluateTransactionRisk } from "../../lib/riskScore";
@@ -1879,6 +1879,143 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
             <span>Adjust Guardrail Limits</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </button>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="py-1.5 px-3 rounded-lg font-medium text-xs text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/10 border border-white/5 transition-colors cursor-pointer"
+            >
+              Dismiss
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (intent.type === "bridge_simulation") {
+    const sim = intent.simulation;
+    const isL1 = sim.destinationChain.chainId === 1;
+
+    return (
+      <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3.5 text-xs">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-1.5 font-medium text-white">
+            <Globe2 className="h-3.5 w-3.5 text-[#B91C3B]" />
+            <span>Cross-Chain Bridge Pre-Flight Simulation</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span
+              className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-white/10"
+              style={{ backgroundColor: `${sim.destinationChain.iconColor}20`, color: sim.destinationChain.iconColor }}
+            >
+              RH -&gt; {sim.destinationChain.symbol}
+            </span>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/5 text-white/70 border border-white/10">
+              {sim.estimatedTime}
+            </span>
+          </div>
+        </div>
+
+        {/* Route Details Box */}
+        <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5 mb-3">
+          <div className="flex items-center justify-between text-[11px] mb-2">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-white">
+                {sim.amountIn} {sim.tokenIn.symbol}
+              </span>
+              <span className="text-white/40 font-mono text-[10px]">
+                (~${sim.amountInUsd.toFixed(2)})
+              </span>
+            </div>
+            <ArrowRight className="w-3.5 h-3.5 text-neutral-400" />
+            <div className="flex items-center gap-1.5 text-right">
+              <span className="font-semibold text-emerald-400">
+                ~{sim.estimatedAmountOut} {sim.tokenOut.symbol}
+              </span>
+              <span className="text-white/40 font-mono text-[10px]">
+                (~${sim.estimatedAmountOutUsd.toFixed(2)})
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1.5 text-center pt-2 border-t border-white/5">
+            <div className="bg-white/[0.02] rounded p-1.5">
+              <div className="text-[9px] text-white/40">Target Chain</div>
+              <div className="text-[11px] font-medium text-white truncate" style={{ color: sim.destinationChain.iconColor }}>
+                {sim.destinationChain.name}
+              </div>
+            </div>
+            <div className="bg-white/[0.02] rounded p-1.5">
+              <div className="text-[9px] text-white/40">Relay Solver Fee</div>
+              <div className="text-[11px] font-mono font-medium text-amber-400">
+                {sim.fees.totalFeeFormatted}
+              </div>
+            </div>
+            <div className="bg-white/[0.02] rounded p-1.5">
+              <div className="text-[9px] text-white/40">Effective Rate</div>
+              <div className="text-[10px] font-mono font-medium text-white/80 truncate">
+                {sim.effectiveRate}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Pre-Flight Balance Diff Projection */}
+        <div className="rounded-lg border border-white/5 bg-white/[0.02] p-2.5 mb-3">
+          <div className="text-[10px] font-medium text-white/60 mb-1.5">Pre-Flight Balance Projections:</div>
+          <div className="flex items-center justify-between text-[11px] font-mono mb-1">
+            <span className="text-white/70">Origin {sim.tokenIn.symbol} (Robinhood Chain):</span>
+            <span className="text-white">
+              {sim.balanceDiff.originBefore.toFixed(2)} -&gt; {sim.balanceDiff.originAfter.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-[11px] font-mono">
+            <span className="text-white/70">Destination {sim.tokenOut.symbol} ({sim.destinationChain.name}):</span>
+            <span className="text-emerald-400 font-semibold">
+              +{sim.balanceDiff.destinationIncrease} {sim.tokenOut.symbol}
+            </span>
+          </div>
+        </div>
+
+        {/* Warnings */}
+        {sim.warnings.length > 0 && (
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2.5 mb-3">
+            <div className="flex items-center gap-1.5 text-[10px] font-medium text-amber-300 mb-1">
+              <AlertTriangle className="h-3 w-3 text-amber-400" />
+              <span>Bridge Notice</span>
+            </div>
+            <ul className="space-y-1">
+              {sim.warnings.map((w, idx) => (
+                <li key={idx} className="text-[10px] text-amber-200/90 leading-relaxed">
+                  * {w}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center gap-2">
+          {sim.canExecute ? (
+            <button
+              type="button"
+              onClick={() => onApplyIntent(intent)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg font-medium text-xs text-white bg-[#B91C3B] hover:bg-[#9D1632] transition-colors cursor-pointer"
+            >
+              <span>Open Cross-Chain Bridge</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="flex-1 py-1.5 px-3 rounded-lg font-medium text-xs text-white/40 bg-white/5 border border-white/5 cursor-not-allowed"
+            >
+              Insufficient Balance
+            </button>
+          )}
           {onDismiss && (
             <button
               type="button"

@@ -34,6 +34,7 @@ import { evaluateShardHealthQuery } from "./shardHealthQueries";
 import { evaluateGasSchedulerQuery } from "./gasSchedulerQueries";
 import { evaluateSwapSimulationQuery } from "./swapSimulatorQueries";
 import { evaluateBudgetRunwayQuery } from "./budgetRunwayQueries";
+import { evaluateBridgeSimulationQuery } from "./bridgeSimulatorQueries";
 import type { CeremonyStage } from "../thresholdCeremony";
 import { parseMultiIntent } from "./multiIntent";
 import { queryKnowledgeBase } from "./knowledgeBase";
@@ -442,6 +443,30 @@ export async function processAssistantQuery(
       intent: runwayRes.intent,
       safetyEvidence: {
         intentSummary: `Budget Runway: $${runwayRes.report.remainingHeadroomUsd.toFixed(2)} headroom (${runwayRes.report.headroomPercent}% capacity, ${runwayRes.report.riskTier.toUpperCase()})`,
+      },
+    });
+  }
+
+  // STEP 4i: Local Natural Language Cross-Chain Bridge & Fee Simulation Intelligence
+  const bridgeSimRes = evaluateBridgeSimulationQuery(cleanText, {
+    walletAddress,
+    portfolio,
+    tokenBalances,
+  });
+
+  if (bridgeSimRes && bridgeSimRes.handled) {
+    const lines = [bridgeSimRes.summary];
+    if (bridgeSimRes.details && bridgeSimRes.details.length > 0) {
+      lines.push("");
+      for (const d of bridgeSimRes.details) {
+        lines.push(`* ${d}`);
+      }
+    }
+
+    return await createResponse(lines.join("\n"), {
+      intent: bridgeSimRes.intent,
+      safetyEvidence: {
+        intentSummary: `Bridge Simulation: ${bridgeSimRes.simulation.amountIn} ${bridgeSimRes.simulation.tokenIn.symbol} -> ~${bridgeSimRes.simulation.estimatedAmountOut} ${bridgeSimRes.simulation.tokenOut.symbol} on ${bridgeSimRes.simulation.destinationChain.name}`,
       },
     });
   }

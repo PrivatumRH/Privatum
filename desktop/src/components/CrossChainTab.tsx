@@ -28,6 +28,9 @@ interface CrossChainTabProps {
   shardAPrivKey?: string;
   addToast: (type: "success" | "error" | "info", title: string, message?: string) => void;
   onExecute?: (target: Address, value: bigint, data: `0x${string}`) => Promise<`0x${string}`>;
+  prefillDestinationChainId?: number;
+  prefillAmount?: string;
+  prefillTokenSymbol?: string;
 }
 
 export function CrossChainTab({
@@ -37,16 +40,31 @@ export function CrossChainTab({
   shardAPrivKey,
   addToast,
   onExecute,
+  prefillDestinationChainId,
+  prefillAmount,
+  prefillTokenSymbol,
 }: CrossChainTabProps) {
   const [tokenList, setTokenList] = useState<TokenInfo[]>(TOKENS);
-  const [tokenIn, setTokenIn] = useState<TokenInfo>(() => findToken("USDG") || TOKENS[0]);
+  const [tokenIn, setTokenIn] = useState<TokenInfo>(() => {
+    if (prefillTokenSymbol) {
+      const p = findToken(prefillTokenSymbol);
+      if (p) return p;
+    }
+    return findToken("USDG") || TOKENS[0];
+  });
   const [showTokenPicker, setShowTokenPicker] = useState<boolean>(false);
 
-  const [targetChain, setTargetChain] = useState<SupportedDestinationChain>(DESTINATION_CHAINS[0]);
+  const [targetChain, setTargetChain] = useState<SupportedDestinationChain>(() => {
+    if (prefillDestinationChainId) {
+      const c = DESTINATION_CHAINS.find((ch) => ch.chainId === prefillDestinationChainId);
+      if (c) return c;
+    }
+    return DESTINATION_CHAINS[0];
+  });
   const [showChainDropdown, setShowChainDropdown] = useState<boolean>(false);
   const chainDropdownRef = useRef<HTMLDivElement>(null);
 
-  const [amount, setAmount] = useState<string>("");
+  const [amount, setAmount] = useState<string>(prefillAmount || "");
   const [balanceIn, setBalanceIn] = useState<string>("0.00");
   const [recipient, setRecipient] = useState<string>(() => walletAddress || "");
 
@@ -54,6 +72,27 @@ export function CrossChainTab({
   const [isQuoting, setIsQuoting] = useState<boolean>(false);
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [txHash, setTxHash] = useState<string | null>(null);
+
+  // Synchronize prefill props when updated dynamically
+  useEffect(() => {
+    if (prefillDestinationChainId) {
+      const chain = DESTINATION_CHAINS.find((c) => c.chainId === prefillDestinationChainId);
+      if (chain) setTargetChain(chain);
+    }
+  }, [prefillDestinationChainId]);
+
+  useEffect(() => {
+    if (prefillAmount) {
+      setAmount(prefillAmount);
+    }
+  }, [prefillAmount]);
+
+  useEffect(() => {
+    if (prefillTokenSymbol) {
+      const tok = findToken(prefillTokenSymbol);
+      if (tok) setTokenIn(tok);
+    }
+  }, [prefillTokenSymbol]);
 
   // Close chain dropdown when clicking outside
   useEffect(() => {

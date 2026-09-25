@@ -54,6 +54,7 @@ interface AssistantDrawerProps {
 }
 
 const DEFAULT_SUGGESTION_PROMPTS = [
+  "Simulate bridge 250 USDG to Base",
   "Forecast my spending runway",
   "Simulate swapping 500 USDG for ETH",
   "Wallet health report",

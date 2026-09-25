@@ -3,6 +3,14 @@ import type { Address, Hex } from "viem";
 export const RELAY_API_URL = "https://api.relay.link";
 export const RELAY_API_KEY = "edcabeb0-41ed-4827-9d8a-976280cfc0b7";
 
+export interface DestinationTokenInfo {
+  symbol: string;
+  name: string;
+  address: Address;
+  decimals: number;
+  isNative?: boolean;
+}
+
 export interface SupportedDestinationChain {
   chainId: number;
   name: string;
@@ -11,6 +19,7 @@ export interface SupportedDestinationChain {
   usdcAddress: Address;
   ethAddress: Address;
   explorerUrl: string;
+  tokens: DestinationTokenInfo[];
 }
 
 export const DESTINATION_CHAINS: SupportedDestinationChain[] = [
@@ -22,6 +31,45 @@ export const DESTINATION_CHAINS: SupportedDestinationChain[] = [
     usdcAddress: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     ethAddress: "0x0000000000000000000000000000000000000000",
     explorerUrl: "https://basescan.org",
+    tokens: [
+      {
+        symbol: "ETH",
+        name: "Ether",
+        address: "0x0000000000000000000000000000000000000000",
+        decimals: 18,
+        isNative: true,
+      },
+      {
+        symbol: "USDC",
+        name: "USD Coin",
+        address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        decimals: 6,
+      },
+      {
+        symbol: "cbBTC",
+        name: "Coinbase Wrapped BTC",
+        address: "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
+        decimals: 8,
+      },
+      {
+        symbol: "EURC",
+        name: "Circle Euro",
+        address: "0x60a3E35Cc655a00529c9cc2163E731847780063D",
+        decimals: 6,
+      },
+      {
+        symbol: "USDbC",
+        name: "Bridged USD Coin",
+        address: "0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA",
+        decimals: 6,
+      },
+      {
+        symbol: "AERO",
+        name: "Aerodrome Finance",
+        address: "0x940181a94A35A4569E4529A3CDfB74e38FD98631",
+        decimals: 18,
+      },
+    ],
   },
   {
     chainId: 10,
@@ -31,6 +79,27 @@ export const DESTINATION_CHAINS: SupportedDestinationChain[] = [
     usdcAddress: "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
     ethAddress: "0x0000000000000000000000000000000000000000",
     explorerUrl: "https://optimistic.etherscan.io",
+    tokens: [
+      {
+        symbol: "ETH",
+        name: "Ether",
+        address: "0x0000000000000000000000000000000000000000",
+        decimals: 18,
+        isNative: true,
+      },
+      {
+        symbol: "USDC",
+        name: "USD Coin",
+        address: "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
+        decimals: 6,
+      },
+      {
+        symbol: "OP",
+        name: "Optimism",
+        address: "0x4200000000000000000000000000000000000042",
+        decimals: 18,
+      },
+    ],
   },
   {
     chainId: 1,
@@ -40,6 +109,33 @@ export const DESTINATION_CHAINS: SupportedDestinationChain[] = [
     usdcAddress: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
     ethAddress: "0x0000000000000000000000000000000000000000",
     explorerUrl: "https://etherscan.io",
+    tokens: [
+      {
+        symbol: "ETH",
+        name: "Ether",
+        address: "0x0000000000000000000000000000000000000000",
+        decimals: 18,
+        isNative: true,
+      },
+      {
+        symbol: "USDC",
+        name: "USD Coin",
+        address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        decimals: 6,
+      },
+      {
+        symbol: "USDT",
+        name: "Tether USD",
+        address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+        decimals: 6,
+      },
+      {
+        symbol: "WBTC",
+        name: "Wrapped BTC",
+        address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+        decimals: 8,
+      },
+    ],
   },
   {
     chainId: 42161,
@@ -49,6 +145,27 @@ export const DESTINATION_CHAINS: SupportedDestinationChain[] = [
     usdcAddress: "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
     ethAddress: "0x0000000000000000000000000000000000000000",
     explorerUrl: "https://arbiscan.io",
+    tokens: [
+      {
+        symbol: "ETH",
+        name: "Ether",
+        address: "0x0000000000000000000000000000000000000000",
+        decimals: 18,
+        isNative: true,
+      },
+      {
+        symbol: "USDC",
+        name: "USD Coin",
+        address: "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+        decimals: 6,
+      },
+      {
+        symbol: "ARB",
+        name: "Arbitrum",
+        address: "0x912CE59144191C1204E64559FE8253a0e49E6548",
+        decimals: 18,
+      },
+    ],
   },
 ];
 
@@ -81,6 +198,32 @@ export function findDestinationChain(
  */
 export function isSupportedDestinationChain(chainId: number): boolean {
   return DESTINATION_CHAINS.some((c) => c.chainId === chainId);
+}
+
+/**
+ * Returns supported destination tokens for a given chain ID.
+ */
+export function getDestinationTokens(chainId: number): DestinationTokenInfo[] {
+  const chain = findDestinationChain(chainId);
+  return chain?.tokens || [];
+}
+
+/**
+ * Resolves a destination token on a specific chain by symbol or address.
+ */
+export function findDestinationToken(
+  chainId: number,
+  symbolOrAddress: string
+): DestinationTokenInfo | undefined {
+  const tokens = getDestinationTokens(chainId);
+  const clean = symbolOrAddress.trim().toLowerCase();
+  return tokens.find(
+    (t) =>
+      t.symbol.toLowerCase() === clean ||
+      t.address.toLowerCase() === clean ||
+      (clean === "usd" && t.symbol === "USDC") ||
+      (clean === "ether" && t.symbol === "ETH")
+  );
 }
 
 export interface RelayQuoteResponse {
