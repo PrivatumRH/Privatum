@@ -24,6 +24,15 @@ export const DESTINATION_CHAINS: SupportedDestinationChain[] = [
     explorerUrl: "https://basescan.org",
   },
   {
+    chainId: 10,
+    name: "Optimism",
+    symbol: "OP",
+    iconColor: "#ff0420",
+    usdcAddress: "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
+    ethAddress: "0x0000000000000000000000000000000000000000",
+    explorerUrl: "https://optimistic.etherscan.io",
+  },
+  {
     chainId: 1,
     name: "Ethereum",
     symbol: "ETH",
@@ -42,6 +51,37 @@ export const DESTINATION_CHAINS: SupportedDestinationChain[] = [
     explorerUrl: "https://arbiscan.io",
   },
 ];
+
+/**
+ * Resolves a supported destination chain by chainId, name, or symbol.
+ */
+export function findDestinationChain(
+  identifier: string | number
+): SupportedDestinationChain | undefined {
+  if (typeof identifier === "number") {
+    return DESTINATION_CHAINS.find((c) => c.chainId === identifier);
+  }
+  const clean = identifier.trim().toLowerCase();
+  const numeric = parseInt(clean, 10);
+  if (!isNaN(numeric)) {
+    const byId = DESTINATION_CHAINS.find((c) => c.chainId === numeric);
+    if (byId) return byId;
+  }
+  return DESTINATION_CHAINS.find(
+    (c) =>
+      c.name.toLowerCase() === clean ||
+      c.symbol.toLowerCase() === clean ||
+      (clean === "op mainnet" && c.symbol === "OP") ||
+      (clean === "arbitrum" && c.symbol === "ARB")
+  );
+}
+
+/**
+ * Checks whether a given chain ID is supported for cross-chain bridging.
+ */
+export function isSupportedDestinationChain(chainId: number): boolean {
+  return DESTINATION_CHAINS.some((c) => c.chainId === chainId);
+}
 
 export interface RelayQuoteResponse {
   steps?: {
