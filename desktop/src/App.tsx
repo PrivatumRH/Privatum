@@ -248,6 +248,7 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.48": "AI RWA Command & Transfer Guard",
   "0.1.49": "AI Portfolio Intelligence",
   "0.1.50": "Gas-Optimal Congestion Scheduler & Outbox Fee Optimizer NLP",
+  "0.1.51": "Conversational DEX Swap & Treasury Rebalance Simulator NLP",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -5620,6 +5621,15 @@ export function App() {
               intent.report.congestion.currentTier === "optimal" ? "success" : "info",
               "Gas Optimization Schedule",
               `Target: <= ${intent.report.targetGweiThreshold.toFixed(2)} Gwei. Best window: ${intent.report.congestion.bestWindowUtc} (~${intent.report.congestion.estimatedWaitHours}h wait).`
+            );
+          } else if (intent.type === "swap_simulation") {
+            setSwapTokenOut(intent.simulation.tokenOut.symbol);
+            setSwapAmountIn(intent.simulation.amountIn);
+            setActiveTab("swaps");
+            addToast(
+              "info",
+              intent.simulation.isRebalance ? "Treasury Rebalance" : "Swap Pre-Flight Loaded",
+              `${intent.simulation.amountIn} ${intent.simulation.tokenIn.symbol} for ~${intent.simulation.estimatedAmountOut} ${intent.simulation.tokenOut.symbol} loaded into Swap interface.`
             );
           }
         }}

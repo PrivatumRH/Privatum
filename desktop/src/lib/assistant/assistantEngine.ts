@@ -32,6 +32,7 @@ import { evaluateLedgerSearchQuery } from "./ledgerSearchQueries";
 import { evaluateBatchPaymentQuery } from "./batchPaymentQueries";
 import { evaluateShardHealthQuery } from "./shardHealthQueries";
 import { evaluateGasSchedulerQuery } from "./gasSchedulerQueries";
+import { evaluateSwapSimulationQuery } from "./swapSimulatorQueries";
 import type { CeremonyStage } from "../thresholdCeremony";
 import { parseMultiIntent } from "./multiIntent";
 import { queryKnowledgeBase } from "./knowledgeBase";
@@ -57,6 +58,7 @@ export interface ProcessAssistantInputParams {
   recentCeremony?: CeremonyStage[];
   portfolio?: PortfolioIntelligenceInput;
   gasPriceGwei?: string;
+  tokenBalances?: Record<string, string | number>;
   preferredEngine?: EngineMode;
   onToken?: (token: string) => void;
 }
@@ -92,6 +94,7 @@ export async function processAssistantQuery(
     recentCeremony,
     portfolio,
     gasPriceGwei,
+    tokenBalances,
     preferredEngine = "deterministic",
   } = params;
 
@@ -389,6 +392,31 @@ export async function processAssistantQuery(
       intent: gasRes.intent,
       safetyEvidence: {
         intentSummary: `Gas Optimizer: ${gasRes.report.currentGwei.toFixed(2)} Gwei (${gasRes.report.congestion.currentTier.toUpperCase()})`,
+      },
+    });
+  }
+
+  // STEP 4g: Local Natural Language DEX Swap & Treasury Rebalance Simulation Intelligence
+  const swapSimRes = evaluateSwapSimulationQuery(cleanText, {
+    usdgBalance: portfolio?.usdgBalance,
+    ethBalance: portfolio?.ethBalance,
+    ethPriceUsd: portfolio?.ethPrice,
+    tokenBalances,
+  });
+
+  if (swapSimRes && swapSimRes.handled) {
+    const lines = [swapSimRes.summary];
+    if (swapSimRes.details && swapSimRes.details.length > 0) {
+      lines.push("");
+      for (const d of swapSimRes.details) {
+        lines.push(`* ${d}`);
+      }
+    }
+
+    return await createResponse(lines.join("\n"), {
+      intent: swapSimRes.intent,
+      safetyEvidence: {
+        intentSummary: `Swap Simulation: ${swapSimRes.simulation.amountInNumber} ${swapSimRes.simulation.tokenIn.symbol} -> ${swapSimRes.simulation.estimatedAmountOut} ${swapSimRes.simulation.tokenOut.symbol}`,
       },
     });
   }

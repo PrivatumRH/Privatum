@@ -54,6 +54,7 @@ interface AssistantDrawerProps {
 }
 
 const DEFAULT_SUGGESTION_PROMPTS = [
+  "Simulate swapping 500 USDG for ETH",
   "Wallet health report",
   "When is the cheapest time to broadcast?",
   "Check cosigner health",
