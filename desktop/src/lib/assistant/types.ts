@@ -24,6 +24,7 @@ export type AssistantIntentType =
   | "shard_health"
   | "gas_scheduler"
   | "swap_simulation"
+  | "budget_runway"
   | "general_query";
 
 export interface ParsedTransferIntent {
@@ -270,6 +271,11 @@ export interface ParsedSwapSimulationIntent {
   simulation: import("../swapSimulator").SwapSimulationResult;
 }
 
+export interface ParsedBudgetRunwayIntent {
+  type: "budget_runway";
+  report: import("../budgetRunway").BudgetRunwayReport;
+}
+
 export type ParsedIntent =
   | ParsedTransferIntent
   | ParsedRwaCommandIntent
@@ -296,6 +302,7 @@ export type ParsedIntent =
   | ParsedShardHealthIntent
   | ParsedGasSchedulerIntent
   | ParsedSwapSimulationIntent
+  | ParsedBudgetRunwayIntent
   | { type: "view_guardrails" }
   | { type: "view_contacts" }
   | { type: "export_ledger" }

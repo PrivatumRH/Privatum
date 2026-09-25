@@ -322,6 +322,31 @@ describe("Assistant Engine Pipeline", () => {
     expect(res.intent?.type).toBe("swap_simulation");
     expect(res.content).toContain("Pre-Flight Treasury Rebalance Simulation: 200 USDG");
   });
+
+  it("processes budget runway and guardrail capacity forecast queries through pipeline", async () => {
+    const res = await processAssistantQuery({
+      input: "Forecast my spending runway for the rest of the month",
+      guardrailConfig: {
+        enabled: true,
+        dailyLimitUsd: 1000,
+        singleTxLimitUsd: 500,
+        strictMode: false,
+      },
+      spendingHistory: [
+        {
+          txHash: "0x1",
+          timestamp: Date.now() - 3600000,
+          amount: 250,
+          symbol: "USDG",
+          amountUsd: 250,
+          recipient: "0xabc",
+        },
+      ],
+    });
+    expect(res.intent?.type).toBe("budget_runway");
+    expect(res.content).toContain("Budget Runway Forecast: $750.00 remaining");
+    expect(res.safetyEvidence?.intentSummary).toContain("Budget Runway: $750.00 headroom");
+  });
 });
 
 
