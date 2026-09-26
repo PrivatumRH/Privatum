@@ -35,6 +35,7 @@ import { evaluateGasSchedulerQuery } from "./gasSchedulerQueries";
 import { evaluateSwapSimulationQuery } from "./swapSimulatorQueries";
 import { evaluateBudgetRunwayQuery } from "./budgetRunwayQueries";
 import { evaluateBridgeSimulationQuery } from "./bridgeSimulatorQueries";
+import { evaluateTreasuryAutomationQuery } from "./treasuryAutomationQueries";
 import type { CeremonyStage } from "../thresholdCeremony";
 import { parseMultiIntent } from "./multiIntent";
 import { queryKnowledgeBase } from "./knowledgeBase";
@@ -372,6 +373,19 @@ export async function processAssistantQuery(
       safetyEvidence: {
         intentSummary: `Threshold Shard Health: Score ${shardHealthRes.report.score}/100 [Shard A: ${shardHealthRes.report.shardA.status}, Shard B: ${shardHealthRes.report.shardB.status}]`,
       },
+    });
+  }
+
+  // STEP 4g: Intent-Based Treasury Automation Planner
+  const treasuryRes = evaluateTreasuryAutomationQuery(cleanText, {
+    usdgBalance: Number.parseFloat(portfolio?.usdgBalance || "0") || 0,
+    ethBalance: Number.parseFloat(portfolio?.ethBalance || "0") || 0,
+    strictChainAllowlist: whitelistConfig.strictMode,
+  });
+  if (treasuryRes && treasuryRes.handled) {
+    return await createResponse([treasuryRes.summary, "", ...treasuryRes.details.map((d) => `* ${d}`), "", "No funds move automatically. Review each step before staging or signing."].join("\n"), {
+      intent: treasuryRes.intent,
+      safetyEvidence: { intentSummary: "Intent-Based Treasury Automation Plan" },
     });
   }
 

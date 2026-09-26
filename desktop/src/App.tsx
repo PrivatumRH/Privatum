@@ -252,6 +252,10 @@ const RELEASE_METADATA: Record<ReleaseVersion, string> = {
   "0.1.52": "Guardrail Capacity Forecasting & Budget Runway NLP",
   "0.1.53": "Cross-Chain Bridge Expansion to Optimism (OP Mainnet)",
   "0.1.54": "Expanded Base Asset & Bridge Quote Simulator NLP",
+  "0.1.55": "Bridge Execution & Receipt Tracker",
+  "0.1.56": "Cross-Chain Policy Guard",
+  "0.1.57": "Proof-of-Reserves & Token Attestation",
+  "0.1.58": "Intent-Based Treasury Automation",
 };
 import { privateKeyToAccount } from "viem/accounts";
 import {
@@ -5649,6 +5653,19 @@ export function App() {
               intent.report.riskTier === "sustainable" ? "success" : intent.report.riskTier === "elevated" ? "info" : "error",
               "Guardrail Capacity Forecast",
               `Remaining Headroom: $${intent.report.remainingHeadroomUsd.toFixed(2)} (${intent.report.headroomPercent}%). Runway: ${intent.report.formattedRunway}.`
+            );
+          } else if (intent.type === "treasury_automation") {
+            const destination = intent.plan.request.destinationChain;
+            if (destination) {
+              setCrossChainChainId(destination.chainId);
+              setCrossChainAmount(intent.plan.amountNumber.toString());
+              setCrossChainTokenSymbol(intent.plan.request.asset);
+              setActiveTab("cross_chain");
+            }
+            addToast(
+              "info",
+              "Treasury Plan Ready",
+              destination ? `Review the ${intent.plan.request.asset} route to ${destination.name} before staging.` : "Review the treasury reserve plan before staging."
             );
           } else if (intent.type === "bridge_simulation") {
             setCrossChainChainId(intent.simulation.destinationChain.chainId);

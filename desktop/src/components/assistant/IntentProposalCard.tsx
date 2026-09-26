@@ -2030,5 +2030,23 @@ export const IntentProposalCard: React.FC<IntentProposalCardProps> = ({
     );
   }
 
+  if (intent.type === "treasury_automation") {
+    const plan = intent.plan;
+    const blocked = plan.steps.some((step) => step.status === "blocked");
+    return (
+      <div className={`mt-3 rounded-xl border p-3.5 text-xs ${blocked ? "border-[#B91C3B]/30 bg-[#B91C3B]/10" : "border-cyan-300/20 bg-cyan-300/[0.05]"}`}>
+        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+          <div className="flex items-center gap-1.5 font-medium text-white"><Layers className="h-3.5 w-3.5 text-cyan-300" /><span>Treasury Intent Plan</span></div>
+          <span className={`rounded-full border px-2 py-0.5 text-[10px] ${blocked ? "border-[#B91C3B]/30 text-[#f3a0a8]" : "border-cyan-300/20 text-cyan-200"}`}>{blocked ? "BLOCKED" : "REVIEW"}</span>
+        </div>
+        <div className="text-white/80">{plan.summary}</div>
+        <div className="mt-3 space-y-1.5">
+          {plan.steps.map((step) => <div key={step.id} className="flex items-start gap-2"><span className={`mt-1 h-1.5 w-1.5 rounded-full ${step.status === "pass" ? "bg-emerald-400" : step.status === "blocked" ? "bg-[#B91C3B]" : "bg-amber-300"}`} /><div><div className="font-medium text-white/80">{step.title}</div><div className="text-[10px] text-white/45">{step.detail}</div></div></div>)}
+        </div>
+        <div className="mt-3 flex items-center gap-2"><button type="button" disabled={blocked} onClick={() => onApplyIntent(intent)} className="flex-1 rounded-lg bg-cyan-300 py-2 font-medium text-slate-950 disabled:cursor-not-allowed disabled:opacity-40">{blocked ? "Resolve Policy Block" : "Review Plan"}</button>{onDismiss && <button type="button" onClick={onDismiss} className="rounded-lg border border-white/10 px-3 py-2 text-white/60 hover:text-white">Dismiss</button>}</div>
+      </div>
+    );
+  }
+
   return null;
 };

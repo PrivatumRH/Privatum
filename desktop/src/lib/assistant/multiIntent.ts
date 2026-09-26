@@ -79,6 +79,11 @@ export function summarizeIntentStep(intent: ParsedIntent, stepIndex: number): { 
         label: `Step ${stepIndex + 1}: Portfolio Intelligence`,
         summary: "Analyze local holdings, allocation, and concentration",
       };
+    case "treasury_automation":
+      return {
+        label: `Step ${stepIndex + 1}: Treasury Automation`,
+        summary: intent.plan.summary,
+      };
     case "panic_freeze":
       return {
         label: `Step ${stepIndex + 1}: Panic Freeze`,
